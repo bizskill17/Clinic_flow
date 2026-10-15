@@ -1145,7 +1145,7 @@ function apiCall(method,body){
 }
 function initMySqlStore(){
   var keys=Object.keys(COL);
-  Promise.all(keys.map(function(k){return apiCall('GET',{collection:COL[k]}).then(function(result){S[k]=result.records||[];loaded[k]=true;});})).then(function(){
+  keys.reduce(function(chain,k){return chain.then(function(){return apiCall('GET',{collection:COL[k]}).then(function(result){S[k]=result.records||[];loaded[k]=true;});});},Promise.resolve()).then(function(){
     DB={collection:function(collection){return {doc:function(id){return {
       set:function(data){return apiCall('POST',{collection:collection,id:id,data:data});},
       delete:function(){return apiCall('DELETE',{collection:collection,id:id});}

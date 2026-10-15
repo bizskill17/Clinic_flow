@@ -38,7 +38,7 @@ try {
         'mysql:host=' . $config['host'] . ';dbname=' . $config['name'] . ';charset=utf8mb4',
         $config['user'],
         $config['pass'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_PERSISTENT => true]
     );
     $pdo->exec('CREATE TABLE IF NOT EXISTS docs (
         collection VARCHAR(64) NOT NULL,
@@ -51,8 +51,7 @@ try {
 } catch (Throwable $e) {
     error_log('Clinic Flow database connection failed: ' . $e->getMessage());
     $code = $e instanceof PDOException ? (string) $e->getCode() : 'server';
-    $detail = $e instanceof PDOException ? preg_replace('/\s+/', ' ', $e->getMessage()) : 'Server error';
-    respond(500, ['error' => 'Database connection failed (code ' . $code . ': ' . $detail . ').']);
+    respond(500, ['error' => 'Database connection failed (code ' . $code . ').']);
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
