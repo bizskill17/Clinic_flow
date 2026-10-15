@@ -2174,15 +2174,18 @@ SECTIONS.users=simpleMaster({
   emptyText:'Add your staff. They appear in Performed by and Referred by on the Invoice Form.',
   fields:[{id:'name',label:'Full name',req:true,max:80},
     {id:'userId',label:'User ID',req:true,max:40,placeholderText:'e.g. DR001'},
-    {id:'email',label:'Email',type:'email',max:120},
+    {id:'email',label:'Email',type:'email',req:true,max:120},
     {id:'password',label:'Password',type:'password',max:128,placeholderText:'Leave blank to keep the current password'},
-    {id:'role',label:'Role',type:'select',placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Spa','Pharmacy']}},
+    {id:'role',label:'Role',type:'select',req:true,placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Spa','Pharmacy']}},
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
   cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
     {h:'Services performed',num:true,text:function(r){return String(userLineCount(r.id,'performedBy'))}},{h:'Referrals',num:true,text:function(r){return String(userLineCount(r.id,'referredBy'))}}],
   search:function(r){return r.name+' '+(r.userId||'')+' '+(r.email||'')+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){
+    if(!/^\S+@\S+\.\S+$/.test(o.email||''))return 'Enter a valid email address.';
+    if(!id&&!o.password)return 'Enter a password for the new user.';
+    if(o.password&&o.password.length<8)return 'Password must be at least 8 characters.';
     if(dupName('users',o,id))return 'A user with this name already exists.';
     if(S.users.some(function(u){return u.id!==id&&norm(u.userId)===norm(o.userId)}))return 'This User ID already exists.';
     if(o.email&&S.users.some(function(u){return u.id!==id&&norm(u.email)===norm(o.email)}))return 'This email already exists.';
