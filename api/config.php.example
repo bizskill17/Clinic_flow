@@ -1,0 +1,8 @@
+<?php
+// This example is deliberately safe to commit. The live config.php is generated in GitHub Actions.
+return [
+    'host' => 'localhost',
+    'name' => 'u000000000_clinic_flow',
+    'user' => 'u000000000_clinic_flow',
+    'pass' => 'replace-with-a-strong-password',
+];

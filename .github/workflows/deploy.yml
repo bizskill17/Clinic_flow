@@ -12,6 +12,24 @@ jobs:
       - name: Get the code
         uses: actions/checkout@v4
 
+      - name: Create server-only database configuration
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+        run: |
+          mkdir -p api
+          cat > api/config.php <<PHP
+          <?php
+          return [
+            'host' => base64_decode('$(printf %s "$DB_HOST" | base64 -w 0)'),
+            'name' => base64_decode('$(printf %s "$DB_NAME" | base64 -w 0)'),
+            'user' => base64_decode('$(printf %s "$DB_USER" | base64 -w 0)'),
+            'pass' => base64_decode('$(printf %s "$DB_PASS" | base64 -w 0)'),
+          ];
+          PHP
+
       - name: Upload to Hostinger by FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
