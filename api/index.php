@@ -11,7 +11,14 @@ if (!is_file($configFile)) {
     exit;
 }
 
-$config = require $configFile;
+try {
+    $config = require $configFile;
+} catch (Throwable $e) {
+    respond(500, ['error' => 'Database configuration file is invalid.']);
+}
+if (!is_array($config) || !isset($config['host'], $config['name'], $config['user'], $config['pass'])) {
+    respond(500, ['error' => 'Database configuration file is incomplete.']);
+}
 $collections = [
     'spa_clients', 'spa_services', 'spa_invoices', 'spa_receipts', 'spa_categories',
     'spa_cities', 'spa_states', 'spa_users', 'spa_business', 'ph_items',
