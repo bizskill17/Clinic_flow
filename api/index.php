@@ -72,6 +72,7 @@ if ($method === 'GET') {
     foreach ($stmt as $row) {
         $record = json_decode($row['data'], true);
         if (is_array($record)) {
+            if ($collection === 'spa_users') unset($record['passwordHash']);
             $record['id'] = $row['id'];
             $records[] = $record;
         }
@@ -85,9 +86,27 @@ if ($method === 'POST') {
     if (!is_string($id) || $id === '' || strlen($id) > 100 || !is_array($data)) {
         respond(400, ['error' => 'Invalid record.']);
     }
+    if ($collection === 'spa_users') {
+        $password = $data['password'] ?? '';
+        unset($data['password']);
+        if (is_string($password) && $password !== '') {
+            $data['passwordHash'] = password_hash($password, PASSWORD_DEFAULT);
+        } else {
+            $old = $pdo->prepare('SELECT data FROM docs WHERE collection = ? AND id = ?');
+            $old->execute([$collection, $id]);
+            $previous = $old->fetchColumn();
+            $previousData = is_string($previous) ? json_decode($previous, true) : null;
+            if (is_array($previousData) && isset($previousData['passwordHash'])) {
+                $data['passwordHash'] = $previousData['passwordHash'];
+            }
+        }
+    }
     $stmt = $pdo->prepare('INSERT INTO docs (collection, id, data, updated_at) VALUES (?, ?, ?, NOW(3)) ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = NOW(3)');
     $stmt->execute([$collection, $id, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
-    respond(200, ['ok' => true]);
+    $responseRecord = $data;
+    unset($responseRecord['passwordHash']);
+    $responseRecord['id'] = $id;
+    respond(200, ['ok' => true, 'record' => $responseRecord]);
 }
 
 if ($method === 'DELETE') {

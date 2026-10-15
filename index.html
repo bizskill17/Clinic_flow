@@ -1183,7 +1183,7 @@ function errText(e){
 }
 function put(kind,obj){
   var data=Object.assign({},obj); var id=data.id; delete data.id;
-  if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(){var list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=obj;else list.push(obj);scheduleRefresh();});
+  if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);scheduleRefresh();});
   var list=S[kind], i=list.findIndex(function(x){return x.id===id});
   if(i>=0) list[i]=obj; else list.push(obj);
   scheduleRefresh(); return Promise.resolve();
@@ -2093,7 +2093,9 @@ function simpleMaster(cfg){
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
-        return fc+lab+'<input type="text" id="mf-'+f.id+'" value="'+esc(v)+'"'+(f.max?' maxlength="'+f.max+'"':'')+(f.upper?' style="text-transform:uppercase"':'')+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+' autocomplete="off"></div>';
+        var inputType=f.type==='email'?'email':(f.type==='password'?'password':'text');
+        var inputValue=f.type==='password'?'':v;
+        return fc+lab+'<input type="'+inputType+'" id="mf-'+f.id+'" value="'+esc(inputValue)+'"'+(f.max?' maxlength="'+f.max+'"':'')+(f.upper?' style="text-transform:uppercase"':'')+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+' autocomplete="'+(f.type==='password'?'new-password':'off')+'"></div>';
       }).join('')+
       '</div><p class="err" id="mf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add '+esc(cfg.singular))+'</button></div></form>',cfg.color,!!cfg.wide,function(m){
         m.querySelector('[data-x]').onclick=closeModal;
@@ -2159,13 +2161,21 @@ SECTIONS.users=simpleMaster({
   kind:'users',prefix:'u',title:'Users',singular:'user',singularCap:'User',color:'--m10',searchPh:'Name, role or phone',
   emptyText:'Add your staff. They appear in Performed by and Referred by on the Invoice Form.',
   fields:[{id:'name',label:'Full name',req:true,max:80},
+    {id:'userId',label:'User ID',req:true,max:40,placeholderText:'e.g. DR001'},
+    {id:'email',label:'Email',type:'email',max:120},
+    {id:'password',label:'Password',type:'password',max:128,placeholderText:'Leave blank to keep the current password'},
     {id:'role',label:'Role',type:'select',placeholder:function(){return 'Select a role'},options:function(){return ['Therapist','Doctor','Receptionist','Manager','Other']}},
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
-  cols:[{h:'Name',text:function(r){return r.name}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
+  cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
     {h:'Services performed',num:true,text:function(r){return String(userLineCount(r.id,'performedBy'))}},{h:'Referrals',num:true,text:function(r){return String(userLineCount(r.id,'referredBy'))}}],
-  search:function(r){return r.name+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
-  validate:function(o,id){return dupName('users',o,id)?'A user with this name already exists.':''},
+  search:function(r){return r.name+' '+(r.userId||'')+' '+(r.email||'')+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
+  validate:function(o,id){
+    if(dupName('users',o,id))return 'A user with this name already exists.';
+    if(S.users.some(function(u){return u.id!==id&&norm(u.userId)===norm(o.userId)}))return 'This User ID already exists.';
+    if(o.email&&S.users.some(function(u){return u.id!==id&&norm(u.email)===norm(o.email)}))return 'This email already exists.';
+    return '';
+  },
   usage:function(r){return (userLineCount(r.id,'performedBy')+userLineCount(r.id,'referredBy'))?r.name+' appears on invoices, so the record can’t be deleted. Set the status to Inactive instead.':''}
 });
 function userLineCount(id,field){var n=0;S.invoices.forEach(function(i){(i.items||[]).forEach(function(it){if(it[field]===id)n++})});return n}
