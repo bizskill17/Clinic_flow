@@ -188,6 +188,7 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .tile .s{font-size:13px;color:var(--muted)}
 .panels{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
 @media (max-width:1000px){.panels{grid-template-columns:1fr}}
+.pdf-box{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.pdf-name{font-weight:600;color:var(--ink);word-break:break-all}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -2106,6 +2107,7 @@ function simpleMaster(cfg){
         if(f.type==='static') return '<div class="field"><label>'+esc(f.label)+'</label><div class="ro-field" id="mf-'+f.id+'" aria-live="polite">'+esc(f.compute(r[f.from])||'—')+'</div></div>';
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
         var inputType=f.type==='email'?'email':(f.type==='password'?'password':'text');
         var inputValue=f.type==='password'?'':v;
@@ -2113,16 +2115,17 @@ function simpleMaster(cfg){
       }).join('')+
       '</div><p class="err" id="mf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add '+esc(cfg.singular))+'</button></div></form>',cfg.color,!!cfg.wide,function(m){
         m.querySelector('[data-x]').onclick=closeModal;
-        var consVals={};
+        var consVals={}, fileVals={};
+        cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
         cfg.fields.forEach(function(f){if(f.type==='static'){var src=m.querySelector('#mf-'+f.from);if(src)src.addEventListener('change',function(){m.querySelector('#mf-'+f.id).textContent=f.compute(src.value)||'—'})}});
         m.querySelector('#mf').onsubmit=function(e){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='static'||f.type==='consumables')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='static'||f.type==='consumables'||f.type==='pdf')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
           if(!msg) msg=cfg.validate(obj,id)||'';
@@ -2130,6 +2133,7 @@ function simpleMaster(cfg){
           var btn=m.querySelector('[type=submit]');btn.disabled=true;
           put(cfg.kind,obj).then(function(){
             closeModal();toast(id?cfg.singularCap+' updated':cfg.singularCap+' added');
+            cfg.fields.forEach(function(f){if(f.type==='pdf'&&r[f.id]&&r[f.id].id&&(!obj[f.id]||obj[f.id].id!==r[f.id].id))getAssets().then(function(a){if(a)a.delete(r[f.id].id).catch(function(){})})});
             if(cfg.afterSave) cfg.afterSave(obj,r);
           }).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
         };
@@ -2858,6 +2862,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'consent',label:'Consent form text',type:'textarea'},
+    {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'Category',text:function(r){return aeCatName(r.categoryId)}},{h:'SAC',text:function(r){return r.sac||''}},
     {h:'Price',num:true,text:function(r){return r.price===''||r.price==null?'':money(r.price)}},{h:'GST',num:true,text:function(r){return (r.gst==null?'':r.gst+'%')}},
@@ -3405,9 +3410,41 @@ function consentPdf(c){
 var sesDraft=null, sesMode='list', sesF={q:'',from:'',to:''}, sesCombos=[], sesOldPhotos=[];
 var SES_PHOTOS=[['front','Front 0°'],['l45','Left 45°'],['l90','Left 90°'],['r45','Right 45°'],['r90','Right 90°']];
 var assetsPromise=null;
-function getAssets(){ if(!assetsPromise) assetsPromise=(window.claude&&window.claude.use)?window.claude.use('assets').catch(function(){return null}):Promise.resolve(null); return assetsPromise; }
+function getAssets(){
+  if(!window.claude&&storeMode==='live') return Promise.resolve(serverAssets);
+  if(!assetsPromise) assetsPromise=(window.claude&&window.claude.use)?window.claude.use('assets').catch(function(){return null}):Promise.resolve(null); return assetsPromise;
+}
+/* files on your own server (Hostinger): stored privately, served only to logged-in users */
+var serverAssets={
+  upload:function(blob,o){var fd=new FormData();fd.append('action','file_upload');fd.append('file',blob,'upload');
+    return fetch('api/index.php',{method:'POST',body:fd}).then(function(r){return r.json().catch(function(){return {}}).then(function(x){if(!r.ok||!x.id)throw new Error(x.error||'Upload failed.');return {id:x.id,url:blobUrl(x.id,(o&&o.type)||blob.type)}})})},
+  delete:function(id){return fetch('api/index.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'file_delete',id:id})}).then(function(r){if(!r.ok)throw new Error('Delete failed.')})}
+};
+/* PDF upload box: shows the file, with Replace and Remove */
+function pdfField(host,get,set){
+  function render(){
+    var f=get();
+    host.innerHTML='<div class="pdf-box">'+(f?'<a class="pdf-name" href="'+esc(blobUrl(f.id,'application/pdf'))+'" target="_blank" rel="noopener">'+esc(f.name||'Document.pdf')+'</a><span class="sub">'+(f.size?Math.max(1,Math.round(f.size/1024))+' KB':'')+'</span>':'')+
+      '<button type="button" class="btn sm" data-pick>'+(f?'Replace':PLUS+' Upload PDF')+'</button>'+(f?'<button type="button" class="btn sm danger" data-rm>Remove</button>':'')+
+      '<input type="file" accept="application/pdf,.pdf" hidden><span class="pdf-msg sub" aria-live="polite"></span></div>';
+    var inp=host.querySelector('input[type=file]'), msg=host.querySelector('.pdf-msg');
+    host.querySelector('[data-pick]').onclick=function(){if(readOnly){toast('You need Contributor access to upload files.');return}inp.click()};
+    var rm=host.querySelector('[data-rm]'); if(rm) rm.onclick=function(){set(null);render()};
+    inp.onchange=function(){
+      var file=inp.files&&inp.files[0]; if(!file) return;
+      if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name)){msg.textContent='Choose a PDF file.';return}
+      if(file.size>15*1024*1024){msg.textContent='The PDF must be 15 MB or smaller.';return}
+      msg.textContent='Uploading…'; host.querySelectorAll('button').forEach(function(b){b.disabled=true});
+      getAssets().then(function(a){
+        if(!a) throw new Error('File upload is not available here.');
+        return a.upload(file,{type:'application/pdf'}).then(function(up){set({id:up.id,name:file.name,size:file.size,type:'application/pdf',uploadedAt:new Date().toISOString()});render()});
+      }).catch(function(e){render();host.querySelector('.pdf-msg').textContent=e&&e.message?e.message:'Upload failed. Try again.'});
+    };
+  }
+  render();
+}
 /* uploaded files live at /_blob/<id> on claude.ai; a local copy keeps them in data/files/ */
-function blobUrl(id,type){return window.claude?'/_blob/'+id:'data/files/'+id+(type==='application/pdf'?'.pdf':(type==='image/png'?'.png':'.jpg'))}
+function blobUrl(id,type){return window.claude?'/_blob/'+id:storeMode==='live'?'api/index.php?action=file&id='+encodeURIComponent(id):'data/files/'+id+(type==='application/pdf'?'.pdf':(type==='image/png'?'.png':'.jpg'))}
 function photoSrc(p){return p?(p.id?blobUrl(p.id,'image/jpeg'):(p.data||'')):''}
 function sesNew(){return {id:null,date:todayStr(),clientId:'',clientName:'',quoteId:'',lineKey:'',apptId:'',staffIds:[],procNotes:'',outcomeNotes:'',rxProc:true,rxOutcome:true,meds:[conBlankMed()],photos:{},consumables:[],consTouched:false,consFor:''}}
 function sesLine(q,key){var out=null;(q&&q.lines||[]).some(function(l,i){if(qtLineKey(q,l,i)===key){out={l:l,i:i};return true}});return out}
