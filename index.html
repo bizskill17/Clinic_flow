@@ -2164,7 +2164,7 @@ SECTIONS.users=simpleMaster({
     {id:'userId',label:'User ID',req:true,max:40,placeholderText:'e.g. DR001'},
     {id:'email',label:'Email',type:'email',max:120},
     {id:'password',label:'Password',type:'password',max:128,placeholderText:'Leave blank to keep the current password'},
-    {id:'role',label:'Role',type:'select',placeholder:function(){return 'Select a role'},options:function(){return ['Therapist','Doctor','Receptionist','Manager','Other']}},
+    {id:'role',label:'Role',type:'select',placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Spa','Pharmacy']}},
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
   cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
