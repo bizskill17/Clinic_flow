@@ -188,6 +188,7 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .tile .s{font-size:13px;color:var(--muted)}
 .panels{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
 @media (max-width:1000px){.panels{grid-template-columns:1fr}}
+.stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
 .chart svg{width:100%;height:auto;display:block}
@@ -1385,7 +1386,7 @@ SECTIONS.dashboard={
     var modeTot={}; recM.forEach(function(r){modeTot[r.mode||'Other']=r2((modeTot[r.mode||'Other']||0)+(+r.amount||0))});
     var mk=Object.keys(modeTot).sort(function(a,b){return modeTot[b]-modeTot[a]}), mmax=Math.max.apply(null,mk.map(function(k){return modeTot[k]}).concat([1]));
     var mcol=['--m5','--m4','--m2','--m3','--m1'];
-    html+='<div class="panel"><h3>Payments received in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k,ix){return hbar(k,money0(modeTot[k]),modeTot[k]/mmax,mcol[ix%mcol.length])}).join(''):'<p class="hint">No payments recorded this month yet.</p>')+'</div></div>';
+    html+='<div class="stack"><div class="panel"><h3>Payments received in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k,ix){return hbar(k,money0(modeTot[k]),modeTot[k]/mmax,mcol[ix%mcol.length])}).join(''):'<p class="hint">No payments recorded this month yet.</p>')+'</div>'+occasionsPanel()+'</div></div>';
 
     // recent invoices + top services
     var recent=S.invoices.slice().sort(sortInv).slice(0,6);
@@ -1454,6 +1455,7 @@ function editClient(id,onSaved){
     '<div class="field"><label for="cf-email">Email</label><input type="email" id="cf-email" value="'+esc(c.email)+'"></div>'+
     '<div class="field"><label for="cf-gender">Gender</label><select id="cf-gender">'+optList([['','Not specified'],'Female','Male','Other'],c.gender||'')+'</select></div>'+
     '<div class="field"><label for="cf-dob">Date of birth</label><input type="date" id="cf-dob" value="'+esc(c.dob)+'"></div>'+
+    '<div class="field"><label for="cf-anniv">Anniversary date</label><input type="date" id="cf-anniv" value="'+esc(c.anniv)+'"></div>'+
     '<div class="field span2"><label for="cf-address">Address</label><textarea id="cf-address" rows="3">'+esc(c.address)+'</textarea></div>'+
     '<div class="field"><label for="cf-city">City</label><select id="cf-city">'+optList([['',S.cities.length?'Select a city':'No cities yet (add in Masters › Cities)']].concat(S.cities.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(ct){return [ct.id,ct.name]})),c.cityId||'')+'</select></div>'+
     '<div class="field"><label>State</label><div class="ro-field" id="cf-state" aria-live="polite">'+esc(cityLabel(c.cityId).state||'—')+'</div></div>'+
@@ -1474,7 +1476,7 @@ function editClient(id,onSaved){
         else { var dup=S.clients.find(function(x){return x.id!==id&&String(x.phone||'').replace(/\D/g,'').slice(-10)===digits.slice(-10)}); if(dup) msg='This phone number already belongs to '+dup.name+'.'; }
         if(msg){err.textContent=msg;err.hidden=false;return}
         var now=new Date().toISOString();
-        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),address:v('address'),cityId:v('city'),openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
+        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),anniv:v('anniv'),address:v('address'),cityId:v('city'),openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
         var btn=m.querySelector('[type=submit]'); btn.disabled=true;
         put('clients',obj).then(function(){
           closeModal(); toast(id?'Client updated':'Client added');
@@ -1497,7 +1499,7 @@ function viewClient(id){
     var c=clientById(id); if(!c){closeModal();return}
     var al=allocate(), pm=al.paid, inv=S.invoices.filter(function(i){return i.clientId===id}).sort(sortInv), a=clientAccount(id,al);
     var recs=S.receipts.filter(function(r){return r.clientId===id}).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||(+y.seq||0)-(+x.seq||0)});
-    m.innerHTML='<h2>'+esc(c.name)+'</h2><div class="doc-head"><dl class="kv"><dt>Phone</dt><dd>'+esc(c.phone)+'</dd>'+(c.email?'<dt>Email</dt><dd>'+esc(c.email)+'</dd>':'')+(c.gender?'<dt>Gender</dt><dd>'+esc(c.gender)+'</dd>':'')+(c.dob?'<dt>Birthday</dt><dd>'+fmtDate(c.dob)+'</dd>':'')+(c.address?'<dt>Address</dt><dd style="white-space:pre-line">'+esc(c.address)+'</dd>':'')+(cityLabel(c.cityId).city?'<dt>City</dt><dd>'+esc(cityLabel(c.cityId).city)+'</dd><dt>State</dt><dd>'+esc(cityLabel(c.cityId).state)+'</dd>':'')+'</dl>'+
+    m.innerHTML='<h2>'+esc(c.name)+'</h2><div class="doc-head"><dl class="kv"><dt>Phone</dt><dd>'+esc(c.phone)+'</dd>'+(c.email?'<dt>Email</dt><dd>'+esc(c.email)+'</dd>':'')+(c.gender?'<dt>Gender</dt><dd>'+esc(c.gender)+'</dd>':'')+(c.dob?'<dt>Birthday</dt><dd>'+fmtDate(c.dob)+'</dd>':'')+(c.anniv?'<dt>Anniversary</dt><dd>'+fmtDate(c.anniv)+'</dd>':'')+(c.address?'<dt>Address</dt><dd style="white-space:pre-line">'+esc(c.address)+'</dd>':'')+(cityLabel(c.cityId).city?'<dt>City</dt><dd>'+esc(cityLabel(c.cityId).city)+'</dd><dt>State</dt><dd>'+esc(cityLabel(c.cityId).state)+'</dd>':'')+'</dl>'+
       (dept!=='spa'?'</div>':'<dl class="kv"><dt>Visits</dt><dd class="num">'+inv.length+'</dd>'+((+c.openingBal||0)>0?'<dt>Opening balance</dt><dd class="num">'+money(c.openingBal)+' <span class="sub">'+(c.obType==='Advance'?'advance':'receivable')+'</span></dd>':'')+'<dt>Billed</dt><dd class="num">'+money(a.billed)+'</dd><dt>Received</dt><dd class="num">'+money(a.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(a)+'</dd></dl></div>')+
       (dept!=='spa'?'':(inv.length?'<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+inv.map(function(i){var x=invInfo(i,pm);return '<tr><td><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td class="num">'+money(i.total)+'</td><td class="num">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No invoices for this client yet.</p>')+
       '<h3 class="sec-h">Payments</h3>'+(recs.length?'<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Towards</th><th>Mode</th><th class="num">Amount</th></tr></thead><tbody>'+recs.map(function(r){return '<tr><td>'+esc(r.no)+'</td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'<span class="pill off">Advance / on account</span>')+'</td><td>'+esc(r.mode)+'</td><td class="num">'+money(r.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No payments from this client yet.</p>'))+
@@ -1515,8 +1517,8 @@ function viewClient(id){
 }
 function exportClients(){
   var st=clientStats();
-  saveFile('spa-clients-'+todayStr()+'.csv',csv([['Name','Phone','Email','Gender','Date of birth','Address','City','State','Opening balance','Opening type','Visits','Billed','Received','Balance due','Advance']].concat(
-    S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){var s=st[c.id];return [c.name,c.phone,c.email,c.gender,c.dob,c.address,cityLabel(c.cityId).city,cityLabel(c.cityId).state,+c.openingBal||0,(+c.openingBal||0)>0?(c.obType||'Receivable'):'',s.n,s.billed,s.received,s.due,s.advance]}))));
+  saveFile('spa-clients-'+todayStr()+'.csv',csv([['Name','Phone','Email','Gender','Date of birth','Anniversary','Address','City','State','Opening balance','Opening type','Visits','Billed','Received','Balance due','Advance']].concat(
+    S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){var s=st[c.id];return [c.name,c.phone,c.email,c.gender,c.dob,c.anniv||'',c.address,cityLabel(c.cityId).city,cityLabel(c.cityId).state,+c.openingBal||0,(+c.openingBal||0)>0?(c.obType||'Receivable'):'',s.n,s.billed,s.received,s.due,s.advance]}))));
 }
 
 /* =========================================================
@@ -4737,6 +4739,26 @@ SECTIONS['ph-dashboard']={
   }
 };
 
+/* ---------- birthdays & anniversaries in the next 7 days ---------- */
+function waLink(phone,text){var d=String(phone||'').replace(/\D/g,'');if(d.length===10)d='91'+d;else if(d.length===11&&d[0]==='0')d='91'+d.slice(1);return d.length>=11?'https://wa.me/'+d+'?text='+encodeURIComponent(text):''}
+function occasions(days){
+  var t=todayStr(), out=[], ty=+t.slice(0,4);
+  S.clients.forEach(function(c){[['dob','Birthday'],['anniv','Anniversary']].forEach(function(f){
+    var v=c[f[0]]; if(!v||!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    var md=v.slice(5), nx=ty+'-'+md; if(md==='02-29'&&!(ty%4===0&&(ty%100!==0||ty%400===0)))nx=ty+'-02-28';
+    if(nx<t) nx=(ty+1)+'-'+(md==='02-29'?'02-28':md);
+    var n=Math.round((parseD(nx)-parseD(t))/864e5); if(n>=days) return;
+    out.push({c:c,kind:f[1],date:nx,days:n,years:+nx.slice(0,4)-(+v.slice(0,4))});
+  })});
+  return out.sort(function(a,b){return a.days-b.days||byText(a.c.name,b.c.name)});
+}
+function occasionsPanel(){
+  var list=occasions(7), clinic=biz().name||'us';
+  return '<div class="panel"><h3>Birthdays &amp; anniversaries</h3>'+(list.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Occasion</th><th></th></tr></thead><tbody>'+
+    list.map(function(o){var first=(o.c.name||'').split(' ')[0], msg=o.kind==='Birthday'?'Happy Birthday '+first+'! Warm wishes from all of us at '+clinic+'.':'Happy Anniversary '+first+'! Warm wishes from all of us at '+clinic+'.', wa=waLink(o.c.phone,msg);
+      return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(o.c.id)+'"><strong>'+esc(o.c.name)+'</strong></button><div class="sub">'+esc(o.c.phone||'')+'</div></td><td>'+esc(o.kind)+(o.years>0&&o.years<120?' <span class="sub">('+o.years+')</span>':'')+'<div class="sub">'+(o.days===0?'<strong style="color:var(--ink)">Today</strong>':o.days===1?'Tomorrow':fmtDate(o.date))+'</div></td><td class="num">'+(wa?'<a class="btn sm" style="text-decoration:none;color:inherit" href="'+esc(wa)+'" target="_blank" rel="noopener">WhatsApp</a>':'')+'</td></tr>'}).join('')+
+    '</tbody></table></div>':'<p class="hint">None in the next 7 days.</p>')+'</div>';
+}
 /* ---------- Aesthetics dashboard ---------- */
 function aeRecpt(r){return r.module==='aes'||!!r.aeInvId}
 SECTIONS['ae-dashboard']={
@@ -4792,7 +4814,7 @@ SECTIONS['ae-dashboard']={
 
     html+='<div class="panels"><div class="panel"><h3>Today’s appointments</h3>'+(apT.length?'<div class="tbl"><table><thead><tr><th>Time</th><th>Client</th><th>For</th><th>Doctor / staff</th><th>Status</th></tr></thead><tbody>'+
         apT.map(function(a){return '<tr class="click-row" data-ad-appt="'+esc(a.id)+'"><td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong></td><td><strong>'+esc(a.clientName)+'</strong></td><td>'+esc(apWhat(a))+'</td><td>'+esc(apStaffNames(a)||'—')+'</td><td><span class="pill '+(AP_PILL[a.status]||'off')+'">'+esc(a.status)+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No appointments today.</p>')+'</div>'+
-      '<div class="panel"><h3>Collections in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k){return hbar(k,money0(modes[k]),modes[k]/mmax,'--m5')}).join(''):'<p class="hint">No collections this month.</p>')+'</div></div>';
+      '<div class="stack"><div class="panel"><h3>Collections in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k){return hbar(k,money0(modes[k]),modes[k]/mmax,'--m5')}).join(''):'<p class="hint">No collections this month.</p>')+'</div>'+occasionsPanel()+'</div></div>';
 
     html+='<div class="panels"><div class="panel"><h3>Follow-up: sessions left, nothing booked</h3>'+(follow.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Procedure</th><th>Done</th><th>Last session</th><th></th></tr></thead><tbody>'+
         follow.slice(0,10).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'"><strong>'+esc(r.q.clientName)+'</strong></button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td><td>'+esc(r.l.name)+'<div class="sub">'+esc(r.q.no)+'</div></td><td class="nowrap">'+progBar(r.st.done,+r.l.sessions||0)+'</td><td class="nowrap">'+(r.last?fmtDate(r.last):'—')+'</td><td>'+(readOnly?'':'<button class="btn sm w" data-ad-book="'+esc(r.q.id)+'|'+r.i+'">Book</button>')+'</td></tr>'}).join('')+'</tbody></table></div>'+
