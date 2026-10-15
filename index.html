@@ -1151,7 +1151,11 @@ function initMySqlStore(){
       delete:function(){return apiCall('DELETE',{collection:collection,id:id});}
     };}};}};
     storeMode='live'; bannerMsg=''; scheduleRefresh();
-  }).catch(function(){goLocal();});
+  }).catch(function(e){
+    goLocal();
+    bannerMsg='Database is not connected: '+(e&&e.message?e.message:'Please check api/config.php.');
+    scheduleRefresh();
+  });
 }
 function goLocal(){
   storeMode='local';
