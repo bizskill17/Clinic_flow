@@ -44,7 +44,8 @@ try {
 } catch (Throwable $e) {
     error_log('Clinic Flow database connection failed: ' . $e->getMessage());
     $code = $e instanceof PDOException ? (string) $e->getCode() : 'server';
-    respond(500, ['error' => 'Database connection failed (code ' . $code . ').']);
+    $detail = $e instanceof PDOException ? preg_replace('/\s+/', ' ', $e->getMessage()) : 'Server error';
+    respond(500, ['error' => 'Database connection failed (code ' . $code . ': ' . $detail . ').']);
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
