@@ -85,3 +85,4 @@ Department stock: `dept_openings`, `dept_usage`
 - Dates are stored as `YYYY-MM-DD`; times are IST.
 - Document numbers (INV-, RCT-, SES- …) come from each record's `seq`, and the lowest free number is reused.
 - Consumables are internal only and never printed on client PDFs.
+# Clinic_flow
