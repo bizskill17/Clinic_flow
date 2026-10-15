@@ -189,6 +189,8 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .panels{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;margin-bottom:16px}
 @media (max-width:1000px){.panels{grid-template-columns:1fr}}
 .pdf-box{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.pdf-name{font-weight:600;color:var(--ink);word-break:break-all}
+.mem-tag{margin-left:8px;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px}.mem-tag.yes{background:var(--m5-soft);color:var(--m5)}.mem-tag.no{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.svp{border:1px solid var(--line);border-radius:10px;padding:10px}.svp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}.svp-q{flex:1;min-width:160px}.svp-list{max-height:240px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:2px 14px}.svp-item{display:flex;gap:8px;align-items:center;padding:4px 0}.svp-item .sub{margin-left:auto}
 .mem-pick{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--m3-soft)}
 .mem-sum{display:flex;flex-wrap:wrap;gap:6px 22px;margin:12px 0;font-size:14px;color:var(--muted)}.mem-sum strong{color:var(--ink)}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
@@ -1108,6 +1110,11 @@ function membership(J,ctx){
       y+=w.length*4+2;d.setDrawColor.apply(d,LINE);d.setLineWidth(0.2);d.line(L,y-3.6,R,y-3.6)});
     y+=3;
   }
+  if(ctx.covers){
+    y=ensure(d,y,14);
+    font(d,'bold',8,MUTED);d.text('SERVICES COVERED',L,y);y+=4.8;
+    font(d,'normal',8.6);d.splitTextToSize(String(ctx.covers),R-L).forEach(function(t){y=ensure(d,y,5);d.text(t,L,y);y+=4.4});y+=3;
+  }
   if(ctx.terms){
     y=ensure(d,y,14);
     font(d,'bold',8,MUTED);d.text('TERMS',L,y);y+=4.8;
@@ -1781,7 +1788,7 @@ function renderItems(){
     var lc=lineCalc(it);
     return '<div class="line" data-i="'+i+'">'+
       '<div class="line-top"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
-      '<div class="field"><label for="it-svc-'+i+'">Service <span class="req">*</span></label><div class="h-svc"></div></div>'+
+      '<div class="field"><label for="it-svc-'+i+'">Service <span class="req">*</span><span class="mem-tag" hidden></span></label><div class="h-svc"></div></div>'+
       '<div class="field"><label for="it-perf-'+i+'">Performed by</label><div class="h-perf"></div></div>'+
       '<div class="field"><label for="it-ref-'+i+'">Referred by</label><div class="h-ref"></div></div>'+
       '<button type="button" class="icon-btn it-del" aria-label="Remove service '+(i+1)+'"'+(draft.items.length===1?' disabled':'')+'>×</button></div>'+
@@ -1829,6 +1836,9 @@ function renderTotals(){
         :'<div class="r big"><span>To pay</span><span>'+money(0)+'</span></div><div class="r"><span class="sub">Covered fully. Only a redemption slip is saved.</span><span></span></div>');
   }
   var fr=$('#f-round'); if(fr) fr.onchange=function(e){draft.roundOn=e.target.checked;renderTotals()};
+  $$('#f-items .line').forEach(function(row){var it=draft.items[+row.dataset.i],tg=row.querySelector('.mem-tag');if(!tg)return;
+    if(!sp||!it||!it.serviceId){tg.hidden=true;return}
+    var ok=memCovers(sp.m,it.serviceId);tg.hidden=false;tg.className='mem-tag '+(ok?'yes':'no');tg.textContent=ok?'Covered by membership':'Not covered';});
 }
 function saveInvoice(){
   var err=$('#f-err'), show=function(m){err.textContent=m;err.hidden=false;err.scrollIntoView({block:'nearest'})};
@@ -2197,6 +2207,7 @@ function simpleMaster(cfg){
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='services') return '<div class="field span2"><label>'+esc(f.label)+(f.req?' <span class="req">*</span>':'')+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
         var inputType=f.type==='email'?'email':(f.type==='password'?'password':'text');
         var inputValue=f.type==='password'?'':v;
@@ -2205,6 +2216,8 @@ function simpleMaster(cfg){
       '</div><p class="err" id="mf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add '+esc(cfg.singular))+'</button></div></form>',cfg.color,!!cfg.wide,function(m){
         m.querySelector('[data-x]').onclick=closeModal;
         var consVals={}, fileVals={};
+        var svcVals={};
+        cfg.fields.forEach(function(f){if(f.type==='services'){svcVals[f.id]=Array.isArray(r[f.id])?r[f.id].slice():[];svcPicker(m.querySelector('#mf-'+f.id),function(){return svcVals[f.id]},function(v){svcVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
         cfg.fields.forEach(function(f){if(f.type==='static'){var src=m.querySelector('#mf-'+f.from);if(src)src.addEventListener('change',function(){m.querySelector('#mf-'+f.id).textContent=f.compute(src.value)||'—'})}});
@@ -2212,9 +2225,9 @@ function simpleMaster(cfg){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='static'||f.type==='consumables'||f.type==='pdf')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
           if(!msg) msg=cfg.validate(obj,id)||'';
@@ -4887,6 +4900,25 @@ function clientMems(cid,date){
     .sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')});
 }
 function memLabel(m){return (m.planName||'Membership')+' · '+m.no}
+/* memberships sold before service lists existed cover every service */
+function memCovers(m,serviceId){return !Array.isArray(m.serviceIds)||m.serviceIds.indexOf(serviceId)>=0}
+function memCoverNames(ids){if(!Array.isArray(ids))return 'All Spa services';return ids.map(function(id){var sv=findIn('services',id);return sv?sv.name:''}).filter(Boolean).join(', ')}
+/* tick-list of services with search, Select all and Clear; nothing ticked by default */
+function svcPicker(host,get,set){
+  var q='';
+  function list(){return S.services.filter(function(sv){return sv.active!==false||get().indexOf(sv.id)>=0}).sort(function(a,b){return byText(a.name,b.name)})}
+  function render(){
+    var sel=get(), all=list(), shown=all.filter(function(sv){return !q||norm(sv.name).indexOf(norm(q))>=0});
+    host.querySelector('.svp-list').innerHTML=shown.length?shown.map(function(sv){return '<label class="check svp-item"><input type="checkbox" value="'+esc(sv.id)+'"'+(sel.indexOf(sv.id)>=0?' checked':'')+'> <span>'+esc(sv.name)+'</span><span class="sub">'+money0(sv.price)+'</span></label>'}).join(''):'<p class="hint" style="margin:6px 0">'+(all.length?'No service matches.':'Add services in Masters › Services first.')+'</p>';
+    host.querySelector('.svp-count').textContent=sel.length+' of '+all.length+' selected';
+    $$('.svp-item input',host).forEach(function(cb){cb.onchange=function(){var v=get().slice(),k=v.indexOf(cb.value);if(cb.checked&&k<0)v.push(cb.value);if(!cb.checked&&k>=0)v.splice(k,1);set(v);render()}});
+  }
+  host.innerHTML='<div class="svp"><div class="svp-bar"><input type="search" class="svp-q" placeholder="Search services" aria-label="Search services"><button type="button" class="btn sm svp-all">Select all</button><button type="button" class="btn sm svp-none">Clear</button><span class="sub svp-count"></span></div><div class="svp-list"></div></div>';
+  host.querySelector('.svp-q').oninput=function(e){q=e.target.value;render()};
+  host.querySelector('.svp-all').onclick=function(){var v=get().slice();list().forEach(function(sv){if((!q||norm(sv.name).indexOf(norm(q))>=0)&&v.indexOf(sv.id)<0)v.push(sv.id)});set(v);render()};
+  host.querySelector('.svp-none').onclick=function(){set([]);render()};
+  render();
+}
 
 SECTIONS['mem-plans']=simpleMaster({
   kind:'memPlans',prefix:'mp',title:'Membership Plans',singular:'plan',singularCap:'Plan',color:'--m3',searchPh:'Plan name',
@@ -4900,10 +4932,11 @@ SECTIONS['mem-plans']=simpleMaster({
     {id:'validity',label:'Validity period',type:'number',req:true,step:'1'},
     {id:'validityUnit',label:'Validity in',type:'select',noBlank:true,def:'Months',options:function(){return ['Months','Days']}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
+    {id:'serviceIds',label:'Services covered',type:'services',req:true},
     {id:'terms',label:'Terms (printed on the membership)',type:'textarea'}],
   cols:[{h:'Plan',text:function(r){return r.name}},{h:'Price',num:true,text:function(r){return money(+r.price||+r.paid||0)}},{h:'GST',num:true,text:function(r){return (+r.gst||0)+'%'}},
     {h:'Price incl. GST',num:true,text:function(r){return money(r2((+r.price||+r.paid||0)*(1+(+r.gst||0)/100)))}},{h:'Services worth',num:true,text:function(r){return money(r.value)}},
-    {h:'Extra',num:true,text:function(r){return memExtraPct(r)+'%'}},{h:'Validity',text:function(r){return memValidityText(r)}},{h:'Status',text:function(r){return r.status||'Active'}}],
+    {h:'Extra',num:true,text:function(r){return memExtraPct(r)+'%'}},{h:'Validity',text:function(r){return memValidityText(r)}},{h:'Services',num:true,text:function(r){return String((r.serviceIds||[]).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
   search:function(r){return r.name},sort:function(a,b){return (+a.price||0)-(+b.price||0)},
   validate:function(o,id){
     o.gst=+o.gst||0;
@@ -4917,8 +4950,8 @@ SECTIONS['mem-plans']=simpleMaster({
 });
 function memSeedPlans(){
   var now=new Date().toISOString(), defs=[['Silver',12000,16000],['Gold',25000,35000],['Platinum',50000,80000]];
-  Promise.all(defs.map(function(d){return put('memPlans',{id:newId('mp'),name:d[0],price:d[1],gst:18,value:d[2],sac:'',validity:12,validityUnit:'Months',status:'Active',terms:'',createdAt:now,updatedAt:now})}))
-    .then(function(){toast('Silver, Gold and Platinum added')}).catch(function(e){toast(errText(e))});
+  Promise.all(defs.map(function(d){return put('memPlans',{id:newId('mp'),name:d[0],price:d[1],gst:18,value:d[2],sac:'',serviceIds:[],validity:12,validityUnit:'Months',status:'Active',terms:'',createdAt:now,updatedAt:now})}))
+    .then(function(){toast('Silver, Gold and Platinum added. Edit each one to choose its services.')}).catch(function(e){toast(errText(e))});
 }
 
 var memF={q:'',status:'Active',view:'members'};
@@ -4986,7 +5019,7 @@ function sellMembership(cid){
     });
   var plan=function(){return findIn('memPlans',st.planId)};
   var sum=function(){var p=plan();if(!p){m.querySelector('#ms-sum').innerHTML='';return}var pc=memPriceCalc(p,true);
-    m.querySelector('#ms-sum').innerHTML='<span>Price <strong>'+money(pc.price)+'</strong></span><span>GST '+(+p.gst||0)+'% <strong>'+money(pc.tax)+'</strong></span><span>Invoice total <strong>'+money(pc.total)+'</strong></span><span>Services worth <strong>'+money(p.value)+'</strong></span>';
+    m.querySelector('#ms-sum').innerHTML='<span>Covers <strong>'+esc(memCoverNames(p.serviceIds||[])||'no services yet')+'</strong></span><span>Price <strong>'+money(pc.price)+'</strong></span><span>GST '+(+p.gst||0)+'% <strong>'+money(pc.tax)+'</strong></span><span>Invoice total <strong>'+money(pc.total)+'</strong></span><span>Services worth <strong>'+money(p.value)+'</strong></span>';
     m.querySelector('#ms-pay').value=pc.total};
   sum();
   m.querySelector('[data-x]').onclick=closeModal;
@@ -4996,14 +5029,14 @@ function sellMembership(cid){
   m.querySelector('#msf').onsubmit=function(e){
     e.preventDefault();
     var err=m.querySelector('#ms-err'), c=clientById(st.clientId), p=plan(), msg='', pay=r2(m.querySelector('#ms-pay').value||0);
-    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!st.date) msg='Choose the date.'; else if(!st.expiry||st.expiry<st.date) msg='Valid till must be on or after the date.'; else if(pay<0) msg='Payment can’t be negative.';
+    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!(p.serviceIds||[]).length) msg='Choose the services this plan covers in Masters › Membership Plans first.'; else if(!st.date) msg='Choose the date.'; else if(!st.expiry||st.expiry<st.date) msg='Valid till must be on or after the date.'; else if(pay<0) msg='Payment can’t be negative.';
     if(msg){err.textContent=msg;err.hidden=false;return}
     var btn=m.querySelector('[type=submit]'); btn.disabled=true;
     var now=new Date().toISOString(), seq=nextSeq(S.members), iseq=nextSeq(S.invoices), pc=memPriceCalc(p,true);
     var mem={id:newId('mm'),seq:seq,no:'MEM-'+pad(seq),date:st.date,start:st.date,expiry:st.expiry,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
-      planId:p.id,planName:p.name,price:pc.price,gst:+p.gst||0,value:r2(p.value),terms:p.terms||'',invoiceId:'',invoiceNo:'',createdAt:now,updatedAt:now};
+      planId:p.id,planName:p.name,price:pc.price,gst:+p.gst||0,value:r2(p.value),serviceIds:(p.serviceIds||[]).slice(),terms:p.terms||'',invoiceId:'',invoiceNo:'',createdAt:now,updatedAt:now};
     var inv={id:newId('i'),seq:iseq,no:'INV-'+pad(iseq),date:st.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,
-      items:[{serviceId:'',memItem:true,name:p.name+' Membership',note:'Services worth '+money(p.value)+' · valid '+fmtDate(st.date)+' to '+fmtDate(st.expiry)+' · '+mem.no,sac:p.sac||'',qty:1,rate:pc.price,discPct:0,disc:0,gst:+p.gst||0,amount:pc.price,tax:pc.tax,total:r2(pc.price+pc.tax),consumables:[]}],
+      items:[{serviceId:'',memItem:true,name:p.name+' Membership',note:'Services worth '+money(p.value)+' · valid '+fmtDate(st.date)+' to '+fmtDate(st.expiry)+' · '+mem.no+' · Covers: '+((p.serviceIds||[]).length<=3?memCoverNames(p.serviceIds):(p.serviceIds.length+' services, listed on the membership')),sac:p.sac||'',qty:1,rate:pc.price,discPct:0,disc:0,gst:+p.gst||0,amount:pc.price,tax:pc.tax,total:r2(pc.price+pc.tax),consumables:[]}],
       subtotal:pc.price,discount:0,taxable:pc.price,tax:pc.tax,roundOn:true,roundOff:pc.roundOff,total:pc.total,memSaleId:mem.id,memNo:mem.no,createdAt:now,updatedAt:now};
     mem.invoiceId=inv.id; mem.invoiceNo=inv.no;
     put('members',mem).then(function(){return put('invoices',inv)}).then(function(){
@@ -5016,7 +5049,7 @@ function viewMembership(id){
   var render=function(m){
     var mm=findIn('members',id); if(!mm){closeModal();return}
     var x=memInfo(mm), lapsed=x.status==='Expired'&&x.bal>0.004, bal=+mm.value||0, inv=mm.invoiceId&&invById(mm.invoiceId), ix=inv?invInfo(inv):null;
-    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd>'+
+    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd><dt>Covers</dt><dd>'+esc(memCoverNames(mm.serviceIds))+'</dd>'+
       '<dt>Invoice</dt><dd>'+(inv?'<button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> · '+money(inv.total)+' '+statusPill(ix.status):esc(mm.invoiceNo||'—'))+'</dd></dl>'+
       '<div style="text-align:right"><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span><div class="big" style="margin-top:6px">'+money(lapsed?0:x.bal)+'</div><div class="sub">balance'+(lapsed?' · '+money(x.bal)+' lapsed':'')+'</div></div></div>'+
       '<div class="mem-sum"><span>Worth <strong>'+money(mm.value)+'</strong></span><span>Used <strong>'+money(x.used)+'</strong></span></div>'+
@@ -5062,7 +5095,7 @@ function membershipPdf(mm){
   var uses=x.uses.map(function(r){bal=r2(bal-(+r.worth||0));return {date:r.date,no:r.no,what:(r.items||[]).map(function(it){return it.name}).join(', '),used:+r.worth||0,bal:bal}});
   var terms=(mm.terms||plan.terms||'').trim()||('Valid for Spa services only, till '+fmtDate(mm.expiry)+'.\nAny unused balance lapses on expiry.\nFor the member’s use only. Not transferable or refundable.');
   try{
-    return window.PDFKIT.membership(J,{biz:bizCtx(),m:mm,client:{name:mm.clientName,phone:mm.clientPhone},status:x.status,bal:x.status==='Expired'?0:x.bal,used:x.used,uses:uses,terms:terms,fmtDate:fmtDate});
+    return window.PDFKIT.membership(J,{biz:bizCtx(),covers:memCoverNames(mm.serviceIds),m:mm,client:{name:mm.clientName,phone:mm.clientPhone},status:x.status,bal:x.status==='Expired'?0:x.bal,used:x.used,uses:uses,terms:terms,fmtDate:fmtDate});
   }catch(e){toast('The PDF could not be created.');return null}
 }
 function redemptionPdf(r){
@@ -5086,7 +5119,7 @@ function memSplit(items){
   var bal=memInfo(m).bal, rem=bal, slip=[], inv=[];
   items.forEach(function(it){
     if(!it.serviceId) return;
-    var lc=lineCalc(it), after=lc.amount, cover=r2(Math.max(0,Math.min(after,rem)));
+    var lc=lineCalc(it), after=lc.amount, cover=memCovers(m,it.serviceId)?r2(Math.max(0,Math.min(after,rem))):0;
     if(cover<=0.004){inv.push(it);return}
     rem=r2(rem-cover);
     slip.push(Object.assign({},it,{worth:cover,partial:cover<after-0.004}));
