@@ -2828,7 +2828,6 @@ function ledgerDetails(dk,cid){return cid?'<details class="ledger-peek"><summary
 SECTIONS['ph-receipts']=SECTIONS.receipts;
 SECTIONS['ae-receipts']=SECTIONS.receipts;
 SECTIONS['ae-outstanding']=SECTIONS.outstanding;
-[['ae-dashboard','Dashboard']].forEach(function(p){SECTIONS[p[0]]=placeholder(p[1])});
 SECTIONS['ph-outstanding']=SECTIONS.outstanding;
 
 /* =========================================================
@@ -4735,6 +4734,85 @@ SECTIONS['ph-dashboard']={
       (lossM.length?'<p class="hint" style="margin-top:10px">Expiry and damage written off in '+esc(monthName)+': <strong style="color:var(--ink)">'+money(sum(lossM))+'</strong> at cost.</p>':'')+'</div></div>';
     b.innerHTML=html;
     $$('[data-item-ledger]',b).forEach(function(tr){tr.onclick=function(){viewItemLedger(tr.dataset.itemLedger)}});
+  }
+};
+
+/* ---------- Aesthetics dashboard ---------- */
+function aeRecpt(r){return r.module==='aes'||!!r.aeInvId}
+SECTIONS['ae-dashboard']={
+  mount:function(){
+    work.innerHTML=head('Dashboard',readOnly?'':'<button class="btn primary w" id="ad-appt">'+PLUS+' New appointment</button>')+'<div id="body"></div>';
+    var na=$('#ad-appt'); if(na) na.onclick=function(){editAppt(null)};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var t=todayStr(), ym=t.slice(0,7), monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
+    var isT=function(x){return x.date===t}, isM=function(x){return (x.date||'').slice(0,7)===ym};
+    var sum=function(a,f){return r2(a.reduce(function(s,x){return s+(+x[f||'total']||0)},0))};
+    var pl=function(n,w){return n+' '+w+(n===1?'':'s')};
+    /* today */
+    var apT=S.aeAppts.filter(isT).sort(function(a,c){return toMin(apFrom(a))-toMin(apFrom(c))});
+    var apLive=apT.filter(function(a){return a.status!=='Cancelled'&&a.status!=='No-show'}), apDone=apT.filter(function(a){return a.status==='Completed'}).length;
+    var sesT=S.aeSessions.filter(isT), conT=S.aeCons.filter(isT);
+    /* money */
+    var recs=allReceipts().filter(aeRecpt), recT=recs.filter(isT), recM=recs.filter(isM);
+    var invT=S.aeInvoices.filter(isT), invM=S.aeInvoices.filter(isM);
+    var al=allocate(), dues=dueBills(al).filter(function(x){return x.kind==='ae'}), dueTot=0, owe={};
+    dues.forEach(function(x){var bal=billInfo(x,al).bal;dueTot+=bal;var o=owe[x.clientId]=owe[x.clientId]||{id:x.clientId,name:x.clientName,phone:x.clientPhone,n:0,bal:0};o.n++;o.bal=r2(o.bal+bal)});
+    var owers=Object.keys(owe).map(function(k){return owe[k]}).sort(function(a,c){return c.bal-a.bal});
+    /* quotations */
+    var qtM=S.aeQuotes.filter(isM), started=qtM.filter(function(q){return qtProgress(q).done>0||S.aeAppts.some(function(a){return a.quoteId===q.id&&a.status!=='Cancelled'&&a.status!=='No-show'})}).length;
+    /* follow-up + consent */
+    var follow=[], consent=[];
+    S.aeQuotes.forEach(function(q){(q.lines||[]).forEach(function(l,i){
+      var st=qtLineStats(q,i); if(st.left<=0) return;
+      var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0});
+      var last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
+      if(!up) follow.push({q:q,l:l,i:i,st:st,last:last});
+      if(consentNeeded(q.id,st.key)) consent.push({q:q,l:l,i:i,up:up});
+    })});
+    follow.sort(function(a,c){return (a.last||a.q.date||'').localeCompare(c.last||c.q.date||'')});
+    /* stock */
+    var stk=deptStock('aes'), low=Object.keys(stk).map(function(k){return stk[k]}).filter(function(r){return r.bal<secQty(phItem(r.itemId))}).sort(function(a,c){return a.bal-c.bal});
+    /* modes */
+    var modes={}; recM.forEach(function(r){var k=r.mode||'Other';modes[k]=r2((modes[k]||0)+(+r.amount||0))});
+    var mk=Object.keys(modes).sort(function(a,c){return modes[c]-modes[a]}), mmax=mk.length?modes[mk[0]]||1:1;
+
+    var html='<div class="tiles">'+
+      tile('--m2','Appointments today',String(apLive.length),apDone+' completed')+
+      tile('--m11','Sessions today',String(sesT.length),pl(conT.length,'consultation'))+
+      tile('--m4','Billed today',money0(sum(invT)),pl(invT.length,'invoice'))+
+      tile('--m5','Collected today',money0(sum(recT,'amount')),pl(recT.length,'receipt'))+'</div>'+
+      '<div class="tiles">'+
+      tile('--m4','Billed in '+monthName,money0(sum(invM)),pl(invM.length,'invoice'))+
+      tile('--m5','Collected in '+monthName,money0(sum(recM,'amount')),pl(recM.length,'receipt'))+
+      tile('--m6','Outstanding',money0(dueTot),pl(owers.length,'client'))+
+      tile('--m3','Quotations in '+monthName,money0(sum(qtM)),started+' of '+qtM.length+' started')+'</div>';
+
+    html+='<div class="panels"><div class="panel"><h3>Today’s appointments</h3>'+(apT.length?'<div class="tbl"><table><thead><tr><th>Time</th><th>Client</th><th>For</th><th>Doctor / staff</th><th>Status</th></tr></thead><tbody>'+
+        apT.map(function(a){return '<tr class="click-row" data-ad-appt="'+esc(a.id)+'"><td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong></td><td><strong>'+esc(a.clientName)+'</strong></td><td>'+esc(apWhat(a))+'</td><td>'+esc(apStaffNames(a)||'—')+'</td><td><span class="pill '+(AP_PILL[a.status]||'off')+'">'+esc(a.status)+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No appointments today.</p>')+'</div>'+
+      '<div class="panel"><h3>Collections in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k){return hbar(k,money0(modes[k]),modes[k]/mmax,'--m5')}).join(''):'<p class="hint">No collections this month.</p>')+'</div></div>';
+
+    html+='<div class="panels"><div class="panel"><h3>Follow-up: sessions left, nothing booked</h3>'+(follow.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Procedure</th><th>Done</th><th>Last session</th><th></th></tr></thead><tbody>'+
+        follow.slice(0,10).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'"><strong>'+esc(r.q.clientName)+'</strong></button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td><td>'+esc(r.l.name)+'<div class="sub">'+esc(r.q.no)+'</div></td><td class="nowrap">'+progBar(r.st.done,+r.l.sessions||0)+'</td><td class="nowrap">'+(r.last?fmtDate(r.last):'—')+'</td><td>'+(readOnly?'':'<button class="btn sm w" data-ad-book="'+esc(r.q.id)+'|'+r.i+'">Book</button>')+'</td></tr>'}).join('')+'</tbody></table></div>'+
+        (follow.length>10?'<p style="margin:8px 0 0"><button class="link" data-go="ae-procedures">See all '+follow.length+' in Sessions Tracker</button></p>':''):'<p class="hint">Every client with sessions left has an appointment booked.</p>')+'</div>'+
+      '<div class="panel"><h3>Top dues</h3>'+(owers.length?'<div class="tbl"><table><thead><tr><th>Client</th><th class="num">Bills</th><th class="num">Balance</th></tr></thead><tbody>'+
+        owers.slice(0,8).map(function(o){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(o.id)+'"><strong>'+esc(o.name)+'</strong></button><div class="sub">'+esc(o.phone||'')+'</div></td><td class="num">'+o.n+'</td><td class="num due">'+money(o.bal)+'</td></tr>'}).join('')+'</tbody></table></div>'+
+        '<p style="margin:8px 0 0"><button class="link" data-go="ae-outstanding">Open Outstanding</button></p>':'<p class="hint">No dues on Aesthetics invoices.</p>')+'</div></div>';
+
+    html+='<div class="panels"><div class="panel"><h3>Consent pending</h3>'+(consent.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Procedure</th><th>Appointment</th><th></th></tr></thead><tbody>'+
+        consent.map(function(r){return '<tr><td><strong>'+esc(r.q.clientName)+'</strong><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td><td>'+esc(r.l.name)+'<div class="sub">'+esc(r.q.no)+'</div></td><td>'+(r.up?'<span class="pill partial">Booked</span>':'—')+'</td><td>'+(readOnly?'':'<button class="btn sm w" data-ad-cons="'+esc(r.q.id)+'|'+r.i+'">Take</button>')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No consent forms pending.</p>')+'</div>'+
+      '<div class="panel"><h3>Consumables running low</h3>'+(low.length?'<div class="tbl"><table><thead><tr><th>Item</th><th class="num">Left</th></tr></thead><tbody>'+
+        low.slice(0,8).map(function(r){return '<tr class="click-row" data-ad-led="'+esc(r.itemId)+'"><td><strong>'+esc(r.name)+'</strong></td><td class="num'+(r.bal<=0?' due':'')+'">'+fmtSec(r.itemId,r.bal)+'</td></tr>'}).join('')+'</tbody></table></div>'+
+        '<p style="margin:8px 0 0"><button class="link" data-go="ae-inventory">Open Inventory</button></p>':'<p class="hint">Every consumable has at least one full unit left.</p>')+'</div></div>';
+
+    b.innerHTML=html;
+    $$('[data-ad-appt]',b).forEach(function(x){x.onclick=function(){if(!readOnly)editAppt(x.dataset.adAppt)}});
+    $$('[data-ad-led]',b).forEach(function(x){x.onclick=function(){deptLedger('aes',x.dataset.adLed)}});
+    var line=function(v){var p=v.split('|'),q=findIn('aeQuotes',p[0]),i=+p[1],l=q&&q.lines[i];return l?{q:q,l:l,i:i,key:qtLineKey(q,l,i)}:null};
+    $$('[data-ad-book]',b).forEach(function(x){x.onclick=function(){var r=line(x.dataset.adBook);if(!r)return;editAppt(null,{type:'Procedure',clientId:r.q.clientId,clientName:r.q.clientName,procedureId:r.l.procId,procedureName:r.l.name,quoteId:r.q.id,quoteLineId:r.key,staffIds:qtStaff(r.q,r.key)})}});
+    $$('[data-ad-cons]',b).forEach(function(x){x.onclick=function(){var r=line(x.dataset.adCons);if(r)openConsent(r.q.id,r.key)}});
   }
 };
 
