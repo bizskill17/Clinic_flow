@@ -1111,6 +1111,7 @@ var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],st
 var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false};
 var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
+var CURRENT_USER=null;
 
 function ready(){return storeMode==='local'||Object.keys(loaded).every(function(k){return loaded[k]})}
 var refreshQueued=false;
@@ -1143,8 +1144,18 @@ function apiCall(method,body){
     return r.json().catch(function(){return {}}).then(function(data){if(!r.ok)throw new Error(data.error||'Database request failed.');return data});
   });
 }
+function authCall(action,data){
+  return fetch('api/index.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({action:action},data||{}))}).then(function(r){return r.json().catch(function(){return {}}).then(function(x){if(!r.ok)throw new Error(x.error||'Request failed.');return x})});
+}
+function permittedKeys(){
+  if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
+  var common=['clients','cities','states','users','business'];
+  if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage']);
+  if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
+  return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts']);
+}
 function initMySqlStore(){
-  var keys=Object.keys(COL);
+  var keys=permittedKeys();
   keys.reduce(function(chain,k){return chain.then(function(){return apiCall('GET',{collection:COL[k]}).then(function(result){S[k]=result.records||[];loaded[k]=true;});});},Promise.resolve()).then(function(){
     DB={collection:function(collection){return {doc:function(id){return {
       set:function(data){return apiCall('POST',{collection:collection,id:id,data:data});},
@@ -4743,8 +4754,30 @@ $('#back-home-pha').onclick=function(){show('home')};
 $$('.mi[data-key]').forEach(function(b){b.onclick=function(){go(b.dataset.key)}});
 $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'));t.onclick=function(){var open=t.getAttribute('aria-expanded')!=='true';t.setAttribute('aria-expanded',String(open));sub.hidden=!open}});
 
-initStore();
-if(location.hash==='#spa') show('spa'); else if(location.hash==='#pharmacy') show('pha'); else if(location.hash==='#aesthetics') show('aes');
+function roleKeys(){
+  if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
+  if(CURRENT_USER.role==='Spa')return ['dashboard','clients','services','categories','cities','states','invoice-form','invoices','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','clients','cities','states','ae-proc-cats','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
+  return ['ph-dashboard','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-outstanding','ph-inventory','ph-low-stock'];
+}
+function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
+function applyRoleUI(){
+  var keys=roleKeys();
+  $$('.dept').forEach(function(b){b.hidden=!allowedDept(b.id==='btn-spa'?'spa':b.id==='btn-aes'?'aes':'pha')});
+  $$('.mi[data-key]').forEach(function(b){b.closest('li').hidden=!!(keys&&keys.indexOf(b.dataset.key)<0)||(!CURRENT_USER||(!CURRENT_USER.role==='Admin'&&b.dataset.key==='business'));});
+  if(CURRENT_USER&&CURRENT_USER.role!=='Admin')$$('.mi[data-key="business"]').forEach(function(b){b.closest('li').hidden=true});
+  if(CURRENT_USER&&!['Admin','Manager'].includes(CURRENT_USER.role))$$('.mi[data-key="users"]').forEach(function(b){b.closest('li').hidden=true});
+  $$('.mgroup').forEach(function(g){var sub=$('#'+g.getAttribute('aria-controls'));g.closest('li').hidden=!$$('li',sub).some(function(li){return !li.hidden});});
+}
+function authOverlay(message){
+  var old=$('#auth-overlay');if(old)old.remove();
+  document.body.insertAdjacentHTML('afterbegin','<style>#auth-overlay{position:fixed;inset:0;z-index:9999;background:#102022;display:grid;place-items:center;padding:20px}.auth-card{width:min(420px,100%);background:#fff;border-radius:16px;padding:28px;box-shadow:0 24px 80px #0008;color:#17262a}.auth-card h1{margin:0 0 8px}.auth-card label{display:block;margin:14px 0 5px;font-weight:700}.auth-card input{width:100%;box-sizing:border-box;padding:11px;border:1px solid #b7c5c3;border-radius:8px}.auth-card button{margin-top:18px;width:100%;padding:11px;background:#4f58c9;color:white;border:0;border-radius:8px;font-weight:700}.auth-error{color:#b42318;min-height:20px;margin-top:10px}</style><div id="auth-overlay"><form class="auth-card" id="login-form"><h1>Clinic Management</h1><p>Sign in to continue.</p><label>User ID</label><input id="login-user" autocomplete="username" required><label>Password</label><input id="login-pass" type="password" autocomplete="current-password" required><p class="auth-error">'+esc(message||'')+'</p><button>Sign in</button></form></div>');
+  $('#login-form').onsubmit=function(e){e.preventDefault();var err=$('.auth-error',this);authCall('login',{userId:$('#login-user').value.trim(),password:$('#login-pass').value}).then(function(x){CURRENT_USER=x.user;$('#auth-overlay').remove();startApp();if(CURRENT_USER.mustChangePassword)passwordDialog();}).catch(function(e2){err.textContent=e2.message});};
+}
+function passwordDialog(){openModal('<h2>Change password</h2><form id="pw-form"><div class="field"><label>Current password</label><input id="pw-old" type="password" required></div><div class="field"><label>New password</label><input id="pw-new" type="password" minlength="8" required></div><p class="err" id="pw-err" hidden></p><div class="m-actions"><button class="btn primary">Save password</button></div></form>','--m10',false,function(m){m.querySelector('#pw-form').onsubmit=function(e){e.preventDefault();authCall('change_password',{oldPassword:m.querySelector('#pw-old').value,newPassword:m.querySelector('#pw-new').value}).then(function(){CURRENT_USER.mustChangePassword=false;closeModal();toast('Password updated');}).catch(function(x){var er=m.querySelector('#pw-err');er.textContent=x.message;er.hidden=false})}})}
+function startApp(){applyRoleUI();document.body.insertAdjacentHTML('beforeend','<div id="user-chip" style="position:fixed;right:16px;top:14px;z-index:50;background:#fff;border:1px solid #d9e2e0;padding:8px 10px;border-radius:9px;font-size:13px"><strong>'+esc(CURRENT_USER.name)+'</strong> · '+esc(CURRENT_USER.role)+' <button id="logout-btn" class="btn sm">Logout</button></div>');$('#logout-btn').onclick=function(){authCall('logout').finally(function(){location.reload()})};initStore();if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
+function initAuth(){authCall('me').then(function(x){CURRENT_USER=x.user;startApp();if(CURRENT_USER.mustChangePassword)passwordDialog();}).catch(function(){authOverlay();});}
+initAuth();
 })();
 </script>
 

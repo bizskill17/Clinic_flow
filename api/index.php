@@ -1,120 +1,24 @@
 <?php
 declare(strict_types=1);
-
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
-
-$configFile = __DIR__ . '/config.php';
-if (!is_file($configFile)) {
-    http_response_code(503);
-    echo json_encode(['error' => 'Database configuration is missing.']);
-    exit;
-}
-
-try {
-    $config = require $configFile;
-} catch (Throwable $e) {
-    respond(500, ['error' => 'Database configuration file is invalid.']);
-}
-if (!is_array($config) || !isset($config['host'], $config['name'], $config['user'], $config['pass'])) {
-    respond(500, ['error' => 'Database configuration file is incomplete.']);
-}
-$collections = [
-    'spa_clients', 'spa_services', 'spa_invoices', 'spa_receipts', 'spa_categories',
-    'spa_cities', 'spa_states', 'spa_users', 'spa_business', 'ph_items',
-    'ph_item_categories', 'ph_suppliers', 'ph_moves', 'ph_receipts',
-    'ae_proc_categories', 'ae_procedures', 'ae_appointments', 'ae_consultations',
-    'ae_quotations', 'ae_sessions', 'ae_invoices', 'ae_consents', 'dept_openings', 'dept_usage'
-];
-
-function respond(int $status, array $body): void {
-    http_response_code($status);
-    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-try {
-    $pdo = new PDO(
-        'mysql:host=' . $config['host'] . ';dbname=' . $config['name'] . ';charset=utf8mb4',
-        $config['user'],
-        $config['pass'],
-        [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_PERSISTENT => true]
-    );
-    $pdo->exec('CREATE TABLE IF NOT EXISTS docs (
-        collection VARCHAR(64) NOT NULL,
-        id VARCHAR(100) NOT NULL,
-        data LONGTEXT NOT NULL,
-        updated_at DATETIME(3) NOT NULL,
-        PRIMARY KEY (collection, id),
-        KEY updated_at (updated_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-} catch (Throwable $e) {
-    error_log('Clinic Flow database connection failed: ' . $e->getMessage());
-    $code = $e instanceof PDOException ? (string) $e->getCode() : 'server';
-    respond(500, ['error' => 'Database connection failed (code ' . $code . ').']);
-}
-
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$input = [];
-if ($method !== 'GET') {
-    $input = json_decode((string) file_get_contents('php://input'), true);
-    if (!is_array($input)) respond(400, ['error' => 'Invalid JSON request body.']);
-}
-$collection = $method === 'GET' ? ($_GET['collection'] ?? '') : ($input['collection'] ?? '');
-if (!is_string($collection) || !in_array($collection, $collections, true)) {
-    respond(400, ['error' => 'Unknown collection.']);
-}
-
-if ($method === 'GET') {
-    $stmt = $pdo->prepare('SELECT id, data FROM docs WHERE collection = ? ORDER BY updated_at ASC');
-    $stmt->execute([$collection]);
-    $records = [];
-    foreach ($stmt as $row) {
-        $record = json_decode($row['data'], true);
-        if (is_array($record)) {
-            if ($collection === 'spa_users') unset($record['passwordHash']);
-            $record['id'] = $row['id'];
-            $records[] = $record;
-        }
-    }
-    respond(200, ['records' => $records]);
-}
-
-if ($method === 'POST') {
-    $id = $input['id'] ?? '';
-    $data = $input['data'] ?? null;
-    if (!is_string($id) || $id === '' || strlen($id) > 100 || !is_array($data)) {
-        respond(400, ['error' => 'Invalid record.']);
-    }
-    if ($collection === 'spa_users') {
-        $password = $data['password'] ?? '';
-        unset($data['password']);
-        if (is_string($password) && $password !== '') {
-            $data['passwordHash'] = password_hash($password, PASSWORD_DEFAULT);
-        } else {
-            $old = $pdo->prepare('SELECT data FROM docs WHERE collection = ? AND id = ?');
-            $old->execute([$collection, $id]);
-            $previous = $old->fetchColumn();
-            $previousData = is_string($previous) ? json_decode($previous, true) : null;
-            if (is_array($previousData) && isset($previousData['passwordHash'])) {
-                $data['passwordHash'] = $previousData['passwordHash'];
-            }
-        }
-    }
-    $stmt = $pdo->prepare('INSERT INTO docs (collection, id, data, updated_at) VALUES (?, ?, ?, NOW(3)) ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = NOW(3)');
-    $stmt->execute([$collection, $id, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
-    $responseRecord = $data;
-    unset($responseRecord['passwordHash']);
-    $responseRecord['id'] = $id;
-    respond(200, ['ok' => true, 'record' => $responseRecord]);
-}
-
-if ($method === 'DELETE') {
-    $id = $input['id'] ?? '';
-    if (!is_string($id) || $id === '') respond(400, ['error' => 'Invalid record id.']);
-    $stmt = $pdo->prepare('DELETE FROM docs WHERE collection = ? AND id = ?');
-    $stmt->execute([$collection, $id]);
-    respond(200, ['ok' => true]);
-}
-
-respond(405, ['error' => 'Method not allowed.']);
+header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store');
+session_name('clinic_flow_session'); session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']); session_start();
+function respond(int $s,array $b):void{http_response_code($s);echo json_encode($b,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
+function body():array{$x=json_decode((string)file_get_contents('php://input'),true);return is_array($x)?$x:[];}
+function clean(array $u):array{unset($u['passwordHash']);return $u;}
+$cf=__DIR__.'/config.php';if(!is_file($cf))respond(503,['error'=>'Database configuration is missing.']);
+try{$cfg=require $cf;$pdo=new PDO('mysql:host='.$cfg['host'].';dbname='.$cfg['name'].';charset=utf8mb4',$cfg['user'],$cfg['pass'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_PERSISTENT=>true]);$pdo->exec('CREATE TABLE IF NOT EXISTS docs (collection VARCHAR(64) NOT NULL,id VARCHAR(100) NOT NULL,data LONGTEXT NOT NULL,updated_at DATETIME(3) NOT NULL,PRIMARY KEY(collection,id),KEY updated_at(updated_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');}catch(Throwable $e){error_log($e->getMessage());respond(500,['error'=>'Database connection failed.']);}
+$cols=['spa_clients','spa_services','spa_invoices','spa_receipts','spa_categories','spa_cities','spa_states','spa_users','spa_business','ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage'];$method=$_SERVER['REQUEST_METHOD']??'GET';$in=$method==='GET'?[]:body();$action=$method==='GET'?($_GET['action']??'collection'):($in['action']??'collection');
+function findUser(PDO $p,string $key):?array{$q=$p->prepare('SELECT id,data FROM docs WHERE collection=?');$q->execute(['spa_users']);foreach($q as $r){$u=json_decode($r['data'],true);if(is_array($u)&&($u['id']===$key||strcasecmp((string)($u['userId']??''),$key)===0)){$u['id']=$r['id'];return $u;}}return null;}
+function me(PDO $p):array{$id=$_SESSION['user_id']??'';$last=(int)($_SESSION['last_seen']??0);if(!$id||time()-$last>28800){session_unset();session_destroy();respond(401,['error'=>'Session expired.']);}$u=findUser($p,(string)$id);if(!$u||($u['status']??'Active')!=='Active'){session_unset();session_destroy();respond(403,['error'=>'Account is inactive.']);}$_SESSION['last_seen']=time();return $u;}
+function admin(array $u):bool{return($u['role']??'')==='Admin';}function manager(array $u):bool{return in_array(($u['role']??''),['Admin','Manager'],true);}function roleDept(array $u):string{return['Spa'=>'spa','Aesthetics'=>'aes','Pharmacy'=>'pha'][$u['role']??'']??'';}
+function allowed(array $u,string $c,string $method):bool{if(manager($u))return true;$d=roleDept($u);if(!$d)return false;if(in_array($c,['spa_clients','spa_cities','spa_states','spa_business'],true))return $method==='GET'||$c!=='spa_business';if($c==='spa_users')return $method==='GET';if($c==='ph_items'&&$d==='spa')return $method==='GET';if($d==='spa')return in_array($c,['spa_services','spa_invoices','spa_receipts','spa_categories','dept_openings','dept_usage'],true);if($d==='aes')return in_array($c,['ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage','ph_items'],true);if($d==='pha')return in_array($c,['ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','spa_receipts'],true);return false;}
+function save(PDO $p,string $c,string $id,array $d):void{$q=$p->prepare('INSERT INTO docs(collection,id,data,updated_at)VALUES(?,?,?,NOW(3)) ON DUPLICATE KEY UPDATE data=VALUES(data),updated_at=NOW(3)');$q->execute([$c,$id,json_encode($d,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)]);}
+if($action==='login'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=findUser($pdo,trim((string)($in['userId']??'')));if(!$u||($u['status']??'Active')!=='Active'||empty($u['passwordHash'])||!password_verify((string)($in['password']??''),(string)$u['passwordHash']))respond(401,['error'=>'Invalid User ID or password.']);session_regenerate_id(true);$_SESSION['user_id']=$u['id'];$_SESSION['last_seen']=time();respond(200,['user'=>clean($u)]);}
+if($action==='logout'){session_unset();session_destroy();respond(200,['ok'=>true]);}
+if($action==='me'){respond(200,['user'=>clean(me($pdo))]);}
+if($action==='change_password'){$u=me($pdo);$next=(string)($in['newPassword']??'');if(strlen($next)<8||!password_verify((string)($in['oldPassword']??''),(string)($u['passwordHash']??'')))respond(400,['error'=>'Password change failed.']);$u['passwordHash']=password_hash($next,PASSWORD_DEFAULT);$u['mustChangePassword']=false;save($pdo,'spa_users',$u['id'],$u);respond(200,['ok'=>true]);}
+if($action==='reset_password'){$actor=me($pdo);$target=findUser($pdo,(string)($in['userId']??''));$next=(string)($in['newPassword']??'');if(!manager($actor)||!$target||strlen($next)<8)respond(403,['error'=>'Not permitted.']);if(!admin($actor)&&($target['role']??'')==='Admin')respond(403,['error'=>'Managers cannot modify Admin accounts.']);$target['passwordHash']=password_hash($next,PASSWORD_DEFAULT);$target['mustChangePassword']=true;save($pdo,'spa_users',$target['id'],$target);respond(200,['ok'=>true]);}
+$user=me($pdo);$c=$method==='GET'?($_GET['collection']??''):($in['collection']??'');if(!is_string($c)||!in_array($c,$cols,true))respond(400,['error'=>'Unknown collection.']);if(!allowed($user,$c,$method))respond(403,['error'=>'Not permitted for your role.']);
+if($method==='GET'){$q=$pdo->prepare('SELECT id,data FROM docs WHERE collection=? ORDER BY updated_at ASC');$q->execute([$c]);$out=[];foreach($q as $r){$d=json_decode($r['data'],true);if(!is_array($d))continue;$d['id']=$r['id'];if($c==='spa_users'){unset($d['passwordHash'],$d['mustChangePassword']);if(!manager($user))$d=array_intersect_key($d,array_flip(['id','name','role','status']));}$out[]=$d;}respond(200,['records'=>$out]);}
+if($method==='POST'){$id=(string)($in['id']??'');$d=$in['data']??null;if($id===''||!is_array($d))respond(400,['error'=>'Invalid record.']);if($c==='spa_business'&&!admin($user))respond(403,['error'=>'Only Admin can change Business Details.']);if($c==='spa_users'){if(!manager($user))respond(403,['error'=>'Not permitted.']);$old=findUser($pdo,$id);$role=(string)($d['role']??($old['role']??''));if(!in_array($role,['Admin','Manager','Aesthetics','Spa','Pharmacy'],true))respond(400,['error'=>'Choose a valid role.']);if(!admin($user)&&(($old['role']??'')==='Admin'||$role==='Admin'))respond(403,['error'=>'Managers cannot modify Admin accounts.']);$pass=(string)($d['password']??'');unset($d['password']);if($pass!==''){if(strlen($pass)<8)respond(400,['error'=>'Password must be at least 8 characters.']);$d['passwordHash']=password_hash($pass,PASSWORD_DEFAULT);$d['mustChangePassword']=$old?true:false;}elseif($old&&isset($old['passwordHash']))$d['passwordHash']=$old['passwordHash'];else respond(400,['error'=>'Password is required for a new user.']);if(!isset($d['mustChangePassword']))$d['mustChangePassword']=$old['mustChangePassword']??false;}save($pdo,$c,$id,$d);$res=$d;unset($res['passwordHash'],$res['mustChangePassword']);$res['id']=$id;respond(200,['ok'=>true,'record'=>$res]);}
+if($method==='DELETE'){if(!manager($user))respond(403,['error'=>'Only Admin or Manager can delete records.']);$id=(string)($in['id']??'');$target=$c==='spa_users'?findUser($pdo,$id):null;if($target&&!admin($user)&&($target['role']??'')==='Admin')respond(403,['error'=>'Managers cannot modify Admin accounts.']);$q=$pdo->prepare('DELETE FROM docs WHERE collection=? AND id=?');$q->execute([$c,$id]);respond(200,['ok'=>true]);}respond(405,['error'=>'Method not allowed.']);
