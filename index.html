@@ -1584,15 +1584,17 @@ function viewClient(id){
     var recs=S.receipts.filter(function(r){return r.clientId===id}).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||(+y.seq||0)-(+x.seq||0)});
     m.innerHTML='<h2>'+esc(c.name)+'</h2><div class="doc-head"><dl class="kv"><dt>Phone</dt><dd>'+esc(c.phone)+'</dd>'+(c.email?'<dt>Email</dt><dd>'+esc(c.email)+'</dd>':'')+(c.gender?'<dt>Gender</dt><dd>'+esc(c.gender)+'</dd>':'')+(c.dob?'<dt>Birthday</dt><dd>'+fmtDate(c.dob)+'</dd>':'')+(c.anniv?'<dt>Anniversary</dt><dd>'+fmtDate(c.anniv)+'</dd>':'')+(c.address?'<dt>Address</dt><dd style="white-space:pre-line">'+esc(c.address)+'</dd>':'')+(cityLabel(c.cityId).city?'<dt>City</dt><dd>'+esc(cityLabel(c.cityId).city)+'</dd><dt>State</dt><dd>'+esc(cityLabel(c.cityId).state)+'</dd>':'')+'</dl>'+
       (dept!=='spa'?'</div>':'<dl class="kv"><dt>Visits</dt><dd class="num">'+inv.length+'</dd>'+((+c.openingBal||0)>0?'<dt>Opening balance</dt><dd class="num">'+money(c.openingBal)+' <span class="sub">'+(c.obType==='Advance'?'advance':'receivable')+'</span></dd>':'')+'<dt>Billed</dt><dd class="num">'+money(a.billed)+'</dd><dt>Received</dt><dd class="num">'+money(a.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(a)+'</dd></dl></div>')+
-      (dept!=='spa'?'':(inv.length?'<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+inv.map(function(i){var x=invInfo(i,pm);return '<tr><td><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td class="num">'+money(i.total)+'</td><td class="num">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No invoices for this client yet.</p>')+
+      (dept!=='spa'?'':clientMemSection(id))+
+      (dept!=='spa'?'':(inv.length?'<h3 class="sec-h">Invoices</h3><div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+inv.map(function(i){var x=invInfo(i,pm);return '<tr><td><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td class="num">'+money(i.total)+'</td><td class="num">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No invoices for this client yet.</p>')+
       '<h3 class="sec-h">Payments</h3>'+(recs.length?'<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Towards</th><th>Mode</th><th class="num">Amount</th></tr></thead><tbody>'+recs.map(function(r){return '<tr><td>'+esc(r.no)+'</td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'<span class="pill off">Advance / on account</span>')+'</td><td>'+esc(r.mode)+'</td><td class="num">'+money(r.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No payments from this client yet.</p>'))+
       (dept!=='spa'?(function(){var pa=phClientAccount(id);return '<dl class="kv" style="margin-top:4px"><dt>Billed (all modules)</dt><dd class="num">'+money(pa.billed)+'</dd><dt>Paid / credit</dt><dd class="num">'+money(pa.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(pa)+'</dd></dl>'})():'')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-ledger="'+esc(id)+'">Ledger</button><button class="btn w" data-edit>Edit client</button>'+(dept==='spa'?'<button class="btn w" data-rcv>Record payment</button><button class="btn primary w" data-new>New invoice</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-ledger="'+esc(id)+'">Ledger</button><button class="btn w" data-edit>Edit client</button>'+(dept==='spa'&&!readOnly&&S.memPlans.length?'<button class="btn w" data-sellmem>Sell membership</button>':'')+(dept==='spa'?'<button class="btn w" data-rcv>Record payment</button><button class="btn primary w" data-new>New invoice</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-edit]').onclick=function(){editClient(id)};
     if(dept==='spa'){
       m.querySelector('[data-new]').onclick=function(){closeModal();draft=newDraft();draft.clientId=id;go('invoice-form')};
       m.querySelector('[data-rcv]').onclick=function(){recordPayment(null,id)};
+      var sm=m.querySelector('[data-sellmem]'); if(sm) sm.onclick=function(){sellMembership(id)};
     }
     bindCommon();
   };
@@ -4900,6 +4902,16 @@ function clientMems(cid,date){
     .sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')});
 }
 function memLabel(m){return (m.planName||'Membership')+' · '+m.no}
+/* Memberships section on the client details screen */
+function clientMemSection(cid){
+  var list=S.members.filter(function(m){return m.clientId===cid}).map(function(m){return {m:m,x:memInfo(m)}})
+    .sort(function(a,b){var o={Active:0,'Used up':1,Expired:2};return (o[a.x.status]-o[b.x.status])||(b.m.date||'').localeCompare(a.m.date||'')});
+  if(!list.length) return '';
+  return '<h3 class="sec-h">Memberships</h3><div class="tbl"><table><thead><tr><th>Membership</th><th>Plan</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
+    list.map(function(r){var m=r.m,x=r.x,exp=x.status==='Expired';return '<tr><td class="nowrap"><button class="link" data-mem="'+esc(m.id)+'">'+esc(m.no)+'</button></td><td>'+esc(m.planName)+'</td><td class="num">'+money(m.value)+'</td>'+
+      '<td class="num"><strong>'+money(exp?0:x.bal)+'</strong>'+(exp&&x.bal>0.004?'<div class="sub">'+money(x.bal)+' lapsed</div>':'')+'</td><td class="nowrap">'+fmtDate(m.expiry)+'</td><td><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span></td></tr>'}).join('')+
+    '</tbody></table></div>';
+}
 /* memberships sold before service lists existed cover every service */
 function memCovers(m,serviceId){return !Array.isArray(m.serviceIds)||m.serviceIds.indexOf(serviceId)>=0}
 function memCoverNames(ids){if(!Array.isArray(ids))return 'All Spa services';return ids.map(function(id){var sv=findIn('services',id);return sv?sv.name:''}).filter(Boolean).join(', ')}
