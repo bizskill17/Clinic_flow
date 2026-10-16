@@ -874,18 +874,18 @@ function prescription(J,ctx){
   if(!meds.length){font(d,'normal',9,MUTED);d.text('No medicines prescribed.',L,y+1.5);y+=7}
   else y+=2;
   if(meds.length){
-    var M={n:L+3,name:L+10,dose:L+W*0.55,dur:L+W*0.82};
-    var th=function(yy){d.setFillColor.apply(d,ACC);d.roundedRect(L,yy-4.8,W,7.4,1.5,1.5,'F');font(d,'bold',7.6,[255,255,255]);d.text('#',M.n,yy);d.text('MEDICINE',M.name,yy);d.text('DOSE',M.dose,yy);d.text('DURATION',M.dur,yy);return yy+7.2};
+    var M={n:L+3,name:L+10,dose:L+W*0.5,food:L+W*0.63,dur:L+W*0.82};
+    var th=function(yy){d.setFillColor.apply(d,ACC);d.roundedRect(L,yy-4.8,W,7.4,1.5,1.5,'F');font(d,'bold',7.6,[255,255,255]);d.text('#',M.n,yy);d.text('MEDICINE',M.name,yy);d.text('DOSE',M.dose,yy);d.text('FOOD',M.food,yy);d.text('DURATION',M.dur,yy);return yy+7.2};
     y=th(y);
     meds.forEach(function(m,ix){
       font(d,'normal',9.4);
-      var nm=d.splitTextToSize(m.name||'',M.dose-M.name-4), ds2=d.splitTextToSize(m.dose||'—',M.dur-M.dose-4), du=d.splitTextToSize(m.duration||'—',R-M.dur-3);
-      var h=Math.max(nm.length,ds2.length,du.length)*4.3+3.6;
+      var nm=d.splitTextToSize(m.name||'',M.dose-M.name-4), ds2=d.splitTextToSize(m.dose||'—',M.food-M.dose-3), fo=d.splitTextToSize(m.food||'—',M.dur-M.food-3), du=d.splitTextToSize(m.duration||'—',R-M.dur-3);
+      var h=Math.max(nm.length,ds2.length,fo.length,du.length)*4.3+3.6;
       y=ensure(d,y,h+2,th);
       if(ix%2===1){d.setFillColor.apply(d,FILL);d.rect(L,y-4.4,W,h,'F')}
       font(d,'bold',9.4,ACC);d.text(String(ix+1),M.n,y);
       font(d,'bold',9.4,INK);nm.forEach(function(t,k){d.text(t,M.name,y+k*4.3)});
-      font(d,'normal',9.4,INK);ds2.forEach(function(t,k){d.text(t,M.dose,y+k*4.3)});du.forEach(function(t,k){d.text(t,M.dur,y+k*4.3)});
+      font(d,'normal',9.4,INK);ds2.forEach(function(t,k){d.text(t,M.dose,y+k*4.3)});fo.forEach(function(t,k){d.text(t,M.food,y+k*4.3)});du.forEach(function(t,k){d.text(t,M.dur,y+k*4.3)});
       y+=h;
     });
     d.setDrawColor.apply(d,LINE);d.setLineWidth(0.3);d.line(L,y-4.4,R,y-4.4);
@@ -1101,7 +1101,7 @@ function consent(J,ctx){
   var ly=y+Math.max(sh,18)+2;
   d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(L,ly,L+80,ly);
   font(d,'bold',9.5,INK);d.text(c.signedBy||'',L,ly+5);
-  font(d,'normal',8,MUTED);d.text('Signature'+(c.relation&&c.relation!=='Self'?' ('+c.relation+' of the client)':' of the client'),L,ly+9.2);
+  font(d,'normal',8,MUTED);d.text('Signature of the client',L,ly+9.2);
   if(ctx.stamp){d.text('Signed electronically on '+ctx.stamp,L,ly+13.4)}
   if(c.witness){d.setDrawColor.apply(d,INK);d.line(R-70,ly,R,ly);font(d,'bold',9.5,INK);d.text(c.witness,R,ly+5,{align:'right'});font(d,'normal',8,MUTED);d.text('Witness',R,ly+9.2,{align:'right'})}
   var pages=d.getNumberOfPages();
@@ -3333,7 +3333,8 @@ function editAppt(id,preset){
    ========================================================= */
 var conDraft=null, conMode='list', conF={q:'',from:'',to:''}, conCombos=[];
 var AP_ACTIVE=['Booked','Confirmed','Arrived'];
-function conBlankMed(){return {itemId:'',name:'',dose:'',duration:''}}
+var DOSES=['OD','BD','TDS'], FOODS=['Before Food','After Food'];
+function conBlankMed(){return {itemId:'',name:'',dose:'',food:'',duration:''}}
 function conBlankProc(){return {procId:'',name:'',sessions:1}}
 function conNew(){return {id:null,date:todayStr(),clientId:'',apptId:'',diagnosis:'',observations:'',rxDiag:true,rxObs:true,rxProcs:true,meds:[conBlankMed()],procs:[conBlankProc()],consumables:[]}}
 function apptLabel(a){return a.no+' · '+fmtDate(a.date)+' · '+fmtTime(apFrom(a))+' to '+fmtTime(apTo(a))+' · '+(a.type==='Procedure'?apWhat(a):'Consultation')+(apStaffNames(a)?' · '+apStaffNames(a):'')+' · '+a.status}
@@ -3350,7 +3351,7 @@ function conListMount(){
   $('#cn-from').onchange=function(e){conF.from=e.target.value;up()};
   $('#cn-to').onchange=function(e){conF.to=e.target.value;up()};
   $('#cn-new').onclick=function(){conDraft=conNew();conMode='form';go(current)};
-  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.duration].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
+  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
 }
 function conFiltered(){
   var q=norm(conF.q);
@@ -3380,7 +3381,7 @@ function conListUpdate(){
 function conEdit(id){
   var c=findIn('aeCons',id); if(!c) return;
   conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
-    meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',duration:m.duration||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables)};
+    meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables)};
   if(!conDraft.meds.length) conDraft.meds=[conBlankMed()];
   if(!conDraft.procs.length) conDraft.procs=[conBlankProc()];
   conMode='form'; closeModal(); if(current!=='ae-consultations') go('ae-consultations'); else go(current);
@@ -3401,7 +3402,7 @@ function conFormMount(){
     '<div class="field span2"><label for="cf-client2">Client <span class="req">*</span></label><div id="cf-client-host"></div></div>'+
     '<div class="field span2"><label for="cf-appt">Appointment <span class="req">*</span></label><select id="cf-appt"></select><p class="hint" id="cf-appt-hint" style="margin:4px 0 0"></p></div>'+
     '<div class="field span2"><label for="cf-diag">Diagnosis</label><textarea id="cf-diag" rows="3">'+esc(d.diagnosis)+'</textarea><label class="check" style="margin-top:4px"><input type="checkbox" id="cf-rxdiag"'+(d.rxDiag===false?'':' checked')+'> Show diagnosis on the prescription PDF</label></div>'+
-    '<div class="field span2"><label for="cf-obs">Observations</label><textarea id="cf-obs" rows="3">'+esc(d.observations)+'</textarea><label class="check" style="margin-top:4px"><input type="checkbox" id="cf-rxobs"'+(d.rxObs===false?'':' checked')+'> Show observations on the prescription PDF</label></div>'+
+    '<div class="field span2"><label for="cf-obs">Observations</label><textarea id="cf-obs" rows="3">'+esc(d.observations)+'</textarea></div>'+
     '</div>'+
     '<h3 class="sec-h">Medicines prescribed</h3><div id="cf-meds" class="lines"></div><div style="margin-top:10px"><button type="button" class="btn" id="cf-addmed">'+PLUS+' Add medicine</button></div>'+
     '<h3 class="sec-h">Procedures recommended</h3><div id="cf-procs" class="lines"></div><div style="margin-top:10px"><button type="button" class="btn" id="cf-addproc">'+PLUS+' Add procedure</button></div><label class="check" style="margin-top:10px"><input type="checkbox" id="cf-rxprocs"'+(d.rxProcs===false?'':' checked')+'> Show procedures on the prescription PDF</label>'+
@@ -3412,7 +3413,6 @@ function conFormMount(){
   $('#cf-diag').oninput=function(e){d.diagnosis=e.target.value};
   $('#cf-obs').oninput=function(e){d.observations=e.target.value};
   $('#cf-rxdiag').onchange=function(e){d.rxDiag=e.target.checked};
-  $('#cf-rxobs').onchange=function(e){d.rxObs=e.target.checked};
   $('#cf-rxprocs').onchange=function(e){d.rxProcs=e.target.checked};
   conCombos.push(combo($('#cf-client-host'),{id:'cf-client2',label:'Client',placeholder:'Type to search name or phone',value:d.clientId,
     options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=S.aeAppts.filter(function(a){return a.clientId===c.id&&AP_ACTIVE.indexOf(a.status)>=0}).length;return [c.id,c.name,c.phone+(n?' · '+n+' active appointment'+(n===1?'':'s'):'')]})},
@@ -3450,10 +3450,11 @@ function conFormUpdate(){
 function conRenderMeds(){
   var d=conDraft, box=$('#cf-meds'); if(!box) return;
   conCombos=conCombos.filter(function(c){return c.part!=='med'});
-  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,1.3fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
+  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
     '<div class="field"><label for="cm-item-'+i+'">Medicine</label><div class="h-med"></div></div>'+
-    '<div class="field"><label for="cm-dose-'+i+'">Dose</label><input type="text" id="cm-dose-'+i+'" class="cm-dose" maxlength="80" value="'+esc(m.dose)+'" placeholder="e.g. 1-0-1 after food" autocomplete="off"></div>'+
-    '<div class="field"><label for="cm-dur-'+i+'">Duration</label><input type="text" id="cm-dur-'+i+'" class="cm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
+    '<div class="field"><label for="cm-dose-'+i+'">Dose <span class="req">*</span></label><select id="cm-dose-'+i+'" class="cm-dose">'+optList([['','Select']].concat(DOSES.indexOf(m.dose)<0&&m.dose?[m.dose]:[]).concat(DOSES),m.dose||'')+'</select></div>'+
+    '<div class="field"><label for="cm-food-'+i+'">Food</label><select id="cm-food-'+i+'" class="cm-food">'+optList([['','Select']].concat(FOODS),m.food||'')+'</select></div>'+
+    '<div class="field"><label for="cm-dur-'+i+'">Duration <span class="req">*</span></label><input type="text" id="cm-dur-'+i+'" class="cm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
     '<button type="button" class="icon-btn cm-del" aria-label="Remove medicine '+(i+1)+'">×</button></div></div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, m=d.meds[i];
@@ -3461,7 +3462,8 @@ function conRenderMeds(){
       options:function(){var bm=phBatches();return S.phItems.filter(function(x){return x.status!=='Inactive'||x.id===m.itemId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,phStockRec(bm,x.id).qty+' in stock']})},
       missing:function(){return m.name},onChange:function(v){var it=phItem(v);m.itemId=v;m.name=it?it.name:'';var n=$('#cm-dose-'+i);if(n)n.focus()}});
     cb.part='med'; conCombos.push(cb);
-    row.querySelector('.cm-dose').oninput=function(e){m.dose=e.target.value};
+    row.querySelector('.cm-dose').onchange=function(e){m.dose=e.target.value};
+    row.querySelector('.cm-food').onchange=function(e){m.food=e.target.value};
     row.querySelector('.cm-dur').oninput=function(e){m.duration=e.target.value};
     row.querySelector('.cm-del').onclick=function(){d.meds.splice(i,1);if(!d.meds.length)d.meds.push(conBlankMed());conRenderMeds()};
   });
@@ -3494,13 +3496,13 @@ function conSave(){
   if(a.clientId!==c.id) return show('The selected appointment belongs to another client.');
   if(!d.date) return show('Choose the date.');
   var meds=d.meds.filter(function(m){return m.itemId});
-  for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Enter the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
+  for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Choose the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
   var procs=d.procs.filter(function(p){return p.procId});
   for(var j=0;j<procs.length;j++){var sN=+procs[j].sessions;if(!(sN>=1)||Math.round(sN)!==sN) return show('Sessions for '+procs[j].name+' must be a whole number of at least 1.')}
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeCons);
   var obj={id:d.id||newId('cn'),seq:seq,no:editing?d.no:'CON-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',apptId:a.id,apptNo:a.no,staffIds:apStaff(a),doctor:apStaffNames(a),
     diagnosis:String(d.diagnosis||'').trim(),observations:String(d.observations||'').trim(),rxDiag:d.rxDiag!==false,rxObs:d.rxObs!==false,rxProcs:d.rxProcs!==false,
-    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),duration:String(m.duration).trim()}}),
+    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
     procs:procs.map(function(p){var pr=findIn('aeProcs',p.procId)||{};return {procId:p.procId,name:p.name,sessions:+p.sessions,price:+pr.price||0,gst:+pr.gst||0}}),
     consumables:cleanCons(d.consumables),
     createdAt:d.createdAt||now,updatedAt:now};
@@ -3517,8 +3519,8 @@ function viewCon(id,fallback){
     var c=findIn('aeCons',id)||fallback; if(!c){closeModal();return}
     var txt=function(t){return t?'<div style="white-space:pre-line">'+esc(t)+'</div>':'<span class="sub">—</span>'};
     m.innerHTML='<h2>Consultation '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(c.date)+'</dd><dt>Appointment</dt><dd>'+esc(c.apptNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(c.doctor||'—')+'</dd></dl></div>'+
-      '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations'+(c.rxObs===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.observations)+'</div></div>'+
-      '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
+      '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
+      '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.sessions+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>Consultation PDF</button><button class="btn" data-rx>Prescription PDF</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
@@ -3531,7 +3533,7 @@ function viewCon(id,fallback){
 function conPdf(c,mode){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{}, rx=mode==='prescription';
-  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:c.rxObs!==false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});saveFile(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});saveFile(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -3562,8 +3564,7 @@ function openConsent(quoteId,lineKey,onDone){
     '<div class="actions" role="group" aria-label="How" style="margin-bottom:12px"><button type="button" class="btn primary" data-tab="sign">Sign on screen</button><button type="button" class="btn" data-tab="upload">Upload signed form</button></div>'+
     '<form id="csf" novalidate><div id="cs-sign"><div class="consent-text">'+esc(text)+'</div>'+
     '<label class="check" style="margin:12px 0"><input type="checkbox" id="cs-agree"> The client has read and agrees to the above</label>'+
-    '<div class="f-grid"><div class="field"><label for="cs-name">Signed by <span class="req">*</span></label><input type="text" id="cs-name" maxlength="80" value="'+esc(cl.name||'')+'" autocomplete="off"></div>'+
-    '<div class="field"><label for="cs-rel">Relationship to client</label><select id="cs-rel">'+optList(['Self','Parent / guardian','Spouse','Other'],'Self')+'</select></div>'+
+    '<div class="f-grid"><input type="hidden" id="cs-name" value="'+esc(cl.name||'')+'">'+
     '<div class="field"><label for="cs-wit">Witness (staff)</label><select id="cs-wit">'+optList([['','None']].concat(userOptions('')),'')+'</select></div></div>'+
     '<div class="field" style="margin-top:12px"><label>Signature <span class="req">*</span></label><div class="sig-wrap"><canvas id="cs-pad" aria-label="Signature pad: sign with finger, stylus or mouse"></canvas><span class="sig-hint" id="cs-hint">Sign here</span></div><div style="margin-top:6px"><button type="button" class="btn sm" id="cs-clear">Clear signature</button></div></div></div>'+
     '<div id="cs-upload" hidden><div class="f-grid"><div class="field span2"><label for="cs-file">Signed consent form (PDF, JPG or PNG) <span class="req">*</span></label><input type="file" id="cs-file" accept="application/pdf,image/jpeg,image/png"><p class="hint" id="cs-fstate" style="margin:4px 0 0"></p></div>'+
@@ -3600,7 +3601,7 @@ function openConsent(quoteId,lineKey,onDone){
       var tw=x1-x0+1,th=y1-y0+1,sc=Math.min(1,500/tw,180/th),c2=document.createElement('canvas');c2.width=Math.max(1,Math.round(tw*sc));c2.height=Math.max(1,Math.round(th*sc));
       c2.getContext('2d').drawImage(pad,x0,y0,tw,th,0,0,c2.width,c2.height);
       var wit=q$('#cs-wit').value;
-      finish(Object.assign(base,{method:'signed',text:text,signedBy:nm,relation:q$('#cs-rel').value,witnessId:wit,witness:userName(wit)||'',date:todayStr(),signedAt:now,signature:{data:c2.toDataURL('image/png'),w:c2.width,h:c2.height}}));
+      finish(Object.assign(base,{method:'signed',text:text,signedBy:nm,relation:'Self',witnessId:wit,witness:userName(wit)||'',date:todayStr(),signedAt:now,signature:{data:c2.toDataURL('image/png'),w:c2.width,h:c2.height}}));
     } else {
       if(!st.file) return show('Choose the signed consent form file.');
       var ty=st.file.type==='application/pdf'?'application/pdf':(/^image\/(jpeg|png)$/.test(st.file.type)?st.file.type:'');
@@ -3621,7 +3622,7 @@ function viewConsent(id){
     var c=findIn('aeConsents',id); if(!c){closeModal();return}
     var signed=c.method==='signed', src=c.file?blobUrl(c.file.id,c.file.type):'';
     m.innerHTML='<h2>Consent '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(c.procName)+'</strong> · '+esc(c.quoteNo||'')+'</dd><dt>How</dt><dd>'+(signed?'Signed on screen':'Signed form uploaded')+'</dd>'+
-      (signed?'<dt>Signed by</dt><dd>'+esc(c.signedBy)+(c.relation&&c.relation!=='Self'?' ('+esc(c.relation)+')':'')+'</dd><dt>Signed at</dt><dd>'+esc(istStamp(c.signedAt))+'</dd>'+(c.witness?'<dt>Witness</dt><dd>'+esc(c.witness)+'</dd>':''):'<dt>Date signed</dt><dd>'+fmtDate(c.date)+'</dd>')+'</dl></div>'+
+      (signed?'<dt>Signed by</dt><dd>'+esc(c.signedBy)+'</dd><dt>Signed at</dt><dd>'+esc(istStamp(c.signedAt))+'</dd>'+(c.witness?'<dt>Witness</dt><dd>'+esc(c.witness)+'</dd>':''):'<dt>Date signed</dt><dd>'+fmtDate(c.date)+'</dd>')+'</dl></div>'+
       (signed?'<div class="consent-text">'+esc(c.text)+'</div><div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
         '<p><a class="btn" href="'+esc(src)+'" target="_blank" rel="noopener">Open '+esc(c.file&&c.file.name||'signed form')+'</a></p>')+
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>Download PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
@@ -3719,7 +3720,7 @@ function sesListMount(){
   $('#se-from').onchange=function(e){sesF.from=e.target.value;up()};
   $('#se-to').onchange=function(e){sesF.to=e.target.value;up()};
   $('#se-new').onclick=function(){sesOpenForm(null)};
-  $('#se-export').onclick=function(){saveFile('sessions-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Quotation','Procedure','Session','Performed by','Appointment','Procedure notes','Outcome notes','Medicines','Photos']].concat(sesFiltered().map(function(s){return [s.no,s.date,s.clientName,s.clientPhone||'',s.quoteNo||'',s.procName||'',sesOrdinal(s),s.performedBy||'',s.apptNo||'',s.procNotes||'',s.outcomeNotes||'',(s.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.duration].filter(Boolean).join(', ')+')'}).join('; '),Object.keys(s.photos||{}).length]}))))};
+  $('#se-export').onclick=function(){saveFile('sessions-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Quotation','Procedure','Session','Performed by','Appointment','Procedure notes','Outcome notes','Medicines','Photos']].concat(sesFiltered().map(function(s){return [s.no,s.date,s.clientName,s.clientPhone||'',s.quoteNo||'',s.procName||'',sesOrdinal(s),s.performedBy||'',s.apptNo||'',s.procNotes||'',s.outcomeNotes||'',(s.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration].filter(Boolean).join(', ')+')'}).join('; '),Object.keys(s.photos||{}).length]}))))};
 }
 function sesListUpdate(){
   var b=$('#body',work); if(!b) return;
@@ -3761,7 +3762,7 @@ function sesEdit(id){
   var ph={}; Object.keys(s.photos||{}).forEach(function(k){ph[k]=Object.assign({},s.photos[k])});
   sesDraft={id:s.id,seq:s.seq,no:s.no,createdAt:s.createdAt,date:s.date,clientId:s.clientId,clientName:s.clientName,quoteId:s.quoteId||'',lineKey:s.quoteLineId||'',apptId:s.apptId||'',staffIds:(s.staffIds||[]).slice(),
     procNotes:s.procNotes||'',outcomeNotes:s.outcomeNotes||'',rxProc:s.rxProc!==false,rxOutcome:s.rxOutcome!==false,
-    meds:(s.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',duration:m.duration||''}}),photos:ph,consumables:copyCons(s.consumables),consTouched:true,consFor:s.quoteLineId||''};
+    meds:(s.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),photos:ph,consumables:copyCons(s.consumables),consTouched:true,consFor:s.quoteLineId||''};
   if(!sesDraft.meds.length) sesDraft.meds=[conBlankMed()];
   sesOldPhotos=[];
   sesMode='form'; closeModal(); if(current!=='ae-sessions') go('ae-sessions'); else go(current);
@@ -3875,10 +3876,11 @@ function sesRenderChips(){
 function sesRenderMeds(){
   var d=sesDraft, box=$('#sf-meds'); if(!box) return;
   sesCombos=sesCombos.filter(function(c){return c.part!=='med'});
-  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,1.3fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
+  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
     '<div class="field"><label for="sm-item-'+i+'">Medicine</label><div class="h-med"></div></div>'+
-    '<div class="field"><label for="sm-dose-'+i+'">Dose</label><input type="text" id="sm-dose-'+i+'" class="sm-dose" maxlength="80" value="'+esc(m.dose)+'" placeholder="e.g. 1-0-1 after food" autocomplete="off"></div>'+
-    '<div class="field"><label for="sm-dur-'+i+'">Duration</label><input type="text" id="sm-dur-'+i+'" class="sm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
+    '<div class="field"><label for="sm-dose-'+i+'">Dose <span class="req">*</span></label><select id="sm-dose-'+i+'" class="sm-dose">'+optList([['','Select']].concat(DOSES.indexOf(m.dose)<0&&m.dose?[m.dose]:[]).concat(DOSES),m.dose||'')+'</select></div>'+
+    '<div class="field"><label for="sm-food-'+i+'">Food</label><select id="sm-food-'+i+'" class="sm-food">'+optList([['','Select']].concat(FOODS),m.food||'')+'</select></div>'+
+    '<div class="field"><label for="sm-dur-'+i+'">Duration <span class="req">*</span></label><input type="text" id="sm-dur-'+i+'" class="sm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
     '<button type="button" class="icon-btn sm-del" aria-label="Remove medicine '+(i+1)+'">×</button></div></div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, m=d.meds[i];
@@ -3886,7 +3888,8 @@ function sesRenderMeds(){
       options:function(){var bm=phBatches();return S.phItems.filter(function(x){return x.status!=='Inactive'||x.id===m.itemId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,phStockRec(bm,x.id).qty+' in stock']})},
       missing:function(){return m.name},onChange:function(v){var it=phItem(v);m.itemId=v;m.name=it?it.name:'';var n=$('#sm-dose-'+i);if(n)n.focus()}});
     cb.part='med'; sesCombos.push(cb);
-    row.querySelector('.sm-dose').oninput=function(e){m.dose=e.target.value};
+    row.querySelector('.sm-dose').onchange=function(e){m.dose=e.target.value};
+    row.querySelector('.sm-food').onchange=function(e){m.food=e.target.value};
     row.querySelector('.sm-dur').oninput=function(e){m.duration=e.target.value};
     row.querySelector('.sm-del').onclick=function(){d.meds.splice(i,1);if(!d.meds.length)d.meds.push(conBlankMed());sesRenderMeds()};
   });
@@ -3959,14 +3962,14 @@ function sesSave(){
   var countAfter=st.done+(mine?0:1)-(a&&a.status==='Completed'&&!st.sessions.some(function(x){return x.apptId===a.id})?1:0);
   if(countAfter>(+ln.l.sessions||0)) return show('All '+ln.l.sessions+' sessions of '+ln.l.name+' on '+q.no+' are already recorded.');
   var meds=d.meds.filter(function(m){return m.itemId});
-  for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Enter the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
+  for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Choose the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
   var photos={}; Object.keys(d.photos).forEach(function(k2){var p=d.photos[k2];photos[k2]=p.id?{id:p.id}:{data:p.data}});
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeSessions);
   var obj={id:d.id||newId('se'),seq:seq,no:editing?d.no:'SES-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
     quoteId:q.id,quoteNo:q.no,quoteLineId:d.lineKey,procId:ln.l.procId,procName:ln.l.name,apptId:a?a.id:'',apptNo:a?a.no:'',
     staffIds:d.staffIds.slice(),performedBy:d.staffIds.map(userName).filter(Boolean).join(', '),
     procNotes:String(d.procNotes||'').trim(),outcomeNotes:String(d.outcomeNotes||'').trim(),rxProc:d.rxProc!==false,rxOutcome:d.rxOutcome!==false,
-    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),duration:String(m.duration).trim()}}),
+    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
     consumables:cleanCons(d.consumables),photos:photos,createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#ses-form [type=submit]'); btn.disabled=true;
   var old=sesOldPhotos.slice();
@@ -3985,7 +3988,7 @@ function viewSes(id,fallback){
     var ph=SES_PHOTOS.filter(function(p){return s.photos&&s.photos[p[0]]});
     m.innerHTML='<h2>Session '+esc(s.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(s.clientName)+'</strong> '+esc(s.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(s.procName||'')+'</strong> '+esc(sesOrdinal(s))+'</dd><dt>Quotation</dt><dd>'+esc(s.quoteNo||'—')+'</dd><dt>Performed on</dt><dd>'+fmtDate(s.date)+'</dd><dt>Performed by</dt><dd>'+esc(s.performedBy||'—')+'</dd><dt>Appointment</dt><dd>'+esc(s.apptNo||'—')+'</dd></dl></div>'+
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
-      '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
+      '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
       '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>Prescription PDF</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
