@@ -5313,7 +5313,7 @@ var XLSX_URL='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.j
 function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);if(!xlsxP)xlsxP=new Promise(function(res,rej){var sc=document.createElement('script');sc.src=XLSX_URL;sc.onload=function(){window.XLSX?res(window.XLSX):rej(new Error('Excel reader did not load.'))};sc.onerror=function(){xlsxP=null;rej(new Error('Excel reader could not load. Check your connection.'))};document.head.appendChild(sc)});return xlsxP}
 var YESNO=['Yes','No'];
 var IMP={
-  clients:{title:'Clients',file:'clients',prefix:'c',key:function(o){return String(o.phone||'').replace(/\D/g,'').slice(-10)},keyLabel:'phone',
+  clients:{title:'Clients',file:'clients',prefix:'c',key:function(o){var p=String(o.phone||'').replace(/\D/g,'').slice(-10);return p?p+'|'+norm(o.name):''},keyLabel:'phone and name',
     cols:[{k:'name',h:'Full name',req:1,ex:'Riya Sharma'},{k:'phone',h:'Phone',req:1,t:'phone',ex:'9876543210'},{k:'email',h:'Email',t:'email',ex:'riya@example.com'},{k:'gender',h:'Gender',t:'choice',ch:['Female','Male','Other'],ex:'Female'},
       {k:'dob',h:'Date of birth',t:'date',ex:'1990-04-25'},{k:'anniv',h:'Anniversary date',t:'date',ex:''},{k:'address',h:'Address',ex:'12 MG Road'},{k:'cityId',h:'City',t:'ref',ref:'cities',stateCol:'_state',ex:'Guwahati'},{k:'_state',h:'State',t:'helper',ex:'Assam'},
       {k:'openingBal',h:'Opening balance',t:'number',ex:'0'},{k:'obType',h:'Balance type',t:'choice',ch:['Receivable','Advance'],def:'Receivable',ex:'Receivable'}]},
