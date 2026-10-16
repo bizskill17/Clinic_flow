@@ -435,7 +435,7 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
               Service Categories</button></li>
             <li><button class="mi c3" data-key="mem-plans">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
-              Membership Plans</button></li>
+              Package Plans</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="spa-ops-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></span>
@@ -448,9 +448,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c4" data-key="invoices">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
               Invoices</button></li>
-            <li><button class="mi c3" data-key="memberships">
+            <li><button class="mi c3" data-key="packages">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.4l6-.9Z"/></svg></span>
-              Memberships</button></li>
+              Packages</button></li>
             <li><button class="mi c5" data-key="receipts">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="m9 11 2 2 4-4"/></svg></span>
               Receipts</button></li>
@@ -820,7 +820,7 @@ function invoice(J,ctx){
   // right: totals
   var TL=126,yr=y0;
   var g2=r2(i.tax/2);
-  var rows=[[ctx.inclusive?'Gross (incl. GST)':'Subtotal',inr(i.subtotal)],['Discount',i.discount?'-'+inr(i.discount):inr(0)]].concat(i.memBenefit?[['Membership benefit','-'+inr(i.memBenefit)]]:[]).concat([['Taxable value',inr(i.taxable)],['CGST',inr(g2)],['SGST',inr(r2(i.tax-g2))]]);
+  var rows=[[ctx.inclusive?'Gross (incl. GST)':'Subtotal',inr(i.subtotal)],['Discount',i.discount?'-'+inr(i.discount):inr(0)]].concat(i.memBenefit?[['Package benefit','-'+inr(i.memBenefit)]]:[]).concat([['Taxable value',inr(i.taxable)],['CGST',inr(g2)],['SGST',inr(r2(i.tax-g2))]]);
   if(i.roundOff) rows.push(['Round off',(i.roundOff>0?'+':'')+inr(i.roundOff)]);
   rows.forEach(function(r){font(d,'normal',8.8,MUTED);d.text(r[0],TL,yr);font(d,'normal',8.8);d.text(r[1],R-1.5,yr,{align:'right'});yr+=5});
   d.setDrawColor.apply(d,INK);d.setLineWidth(0.35);d.line(TL,yr-2.2,R,yr-2.2);yr+=3.6;
@@ -1158,8 +1158,8 @@ function consent(J,ctx){
 /* ctx: {biz, m:{no,date,start,expiry,planName,price,gst,value,invoiceNo}, client:{name,phone}, status, bal, used, uses:[{date,no,what,used,bal}], terms, fmtDate} */
 function membership(J,ctx){
   var d=newDoc(J), b=ctx.biz, m=ctx.m, fd=ctx.fmtDate, ACC=[63,122,99];
-  var y=header(d,b,'MEMBERSHIP',[['Membership no.',m.no],['Date',fd(m.date)]],ACC,{centerLogo:true});
-  var rows=[['Member',ctx.client.name||'']];
+  var y=header(d,b,'PACKAGE',[['Package no.',m.no],['Date',fd(m.date)]],ACC,{centerLogo:true});
+  var rows=[['Client',ctx.client.name||'']];
   if(ctx.client.phone) rows.push(['Phone',ctx.client.phone]);
   rows.push(['Plan',m.planName||''],['Valid',fd(m.start||m.date)+' to '+fd(m.expiry)]);
   if(m.invoiceNo) rows.push(['Tax invoice',m.invoiceNo]);
@@ -1188,16 +1188,16 @@ function membership(J,ctx){
     font(d,'bold',8,MUTED);d.text('TERMS',L,y);y+=4.8;
     font(d,'normal',8.6);String(ctx.terms).split(/\n/).forEach(function(p){if(!p.trim())return;d.splitTextToSize(p.trim(),R-L).forEach(function(t){y=ensure(d,y,5);d.text(t,L,y);y+=4.4})});
   }
-  footer(d,b,'This is a computer-generated membership record.');
+  footer(d,b,'This is a computer-generated package record.');
   return d.output('arraybuffer');
 }
 /* ctx: {biz, r:{no,date,memNo,memPlan,worth,balBefore,balAfter,invoiceNo}, client:{name,phone}, memInvoiceNo, items:[{name,qty,rate,disc,worth,staff}], fmtDate} */
 function redemption(J,ctx){
   var d=newDoc(J), b=ctx.biz, r=ctx.r, fd=ctx.fmtDate, ACC=[63,122,99];
-  var y=header(d,b,'MEMBERSHIP REDEMPTION',[['Slip no.',r.no],['Date',fd(r.date)]],ACC,{centerLogo:true});
-  var rows=[['Member',ctx.client.name||'']];
+  var y=header(d,b,'PACKAGE REDEMPTION',[['Slip no.',r.no],['Date',fd(r.date)]],ACC,{centerLogo:true});
+  var rows=[['Client',ctx.client.name||'']];
   if(ctx.client.phone) rows.push(['Phone',ctx.client.phone]);
-  rows.push(['Membership',(r.memNo||'')+(r.memPlan?' · '+r.memPlan:'')]);
+  rows.push(['Package',(r.memNo||'')+(r.memPlan?' · '+r.memPlan:'')]);
   rows.forEach(function(p){font(d,'normal',9.5,MUTED);d.text(p[0],L,y);font(d,'normal',9.5);d.text(String(p[1]),L+40,y);y+=6.2});
   y+=3;
   var C={n:L+1.5,s:L+8,q:120,r:142,dc:166,u:R-1.5}, SW=C.q-C.s-12;
@@ -1218,8 +1218,8 @@ function redemption(J,ctx){
   d.setDrawColor.apply(d,INK);d.setLineWidth(0.35);d.line(TL,y-2.2,R,y-2.2);y+=3.6;
   font(d,'bold',11);d.text('Balance left',TL,y);d.text(inr(r.balAfter),R-1.5,y,{align:'right'});y+=9;
   font(d,'normal',8.6,MUTED);
-  var notes=['No GST is charged on this slip. GST was charged on the membership tax invoice'+(ctx.memInvoiceNo?' '+ctx.memInvoiceNo:'')+'.'];
-  if(r.invoiceNo) notes.push('Services beyond the membership balance are billed on tax invoice '+r.invoiceNo+'.');
+  var notes=['No GST is charged on this slip. GST was charged on the package tax invoice'+(ctx.memInvoiceNo?' '+ctx.memInvoiceNo:'')+'.'];
+  if(r.invoiceNo) notes.push('Services beyond the package balance are billed on tax invoice '+r.invoiceNo+'.');
   notes.forEach(function(t){d.splitTextToSize(t,R-L).forEach(function(s2){y=ensure(d,y,5);d.text(s2,L,y);y+=4.4})});
   footer(d,b,'This is a computer-generated redemption slip, not a tax invoice.');
   return d.output('arraybuffer');
@@ -1254,7 +1254,7 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],memberships:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
 var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[]};
@@ -1459,7 +1459,7 @@ function canCancel(){return !readOnly&&(!CURRENT_USER||CURRENT_USER.role==='Admi
 function cancelBill(kind,id){
   var doc=findIn(kind,id); if(!doc) return;
   if(!canCancel()){toast('Only Admin or Manager can cancel invoices.');return}
-  if(doc.memSaleId&&findIn('members',doc.memSaleId)){toast(doc.no+' is a membership invoice. Delete the membership instead.');return}
+  if(doc.memSaleId&&findIn('members',doc.memSaleId)){toast(doc.no+' is a package invoice. Delete the package instead.');return}
   var m=openModal('<h2>Cancel '+esc(doc.no)+'?</h2><p class="hint" style="margin-top:-6px">The number stays used and the invoice is marked CANCELLED. It is removed from sales, GST and outstanding. Any payment on it becomes the client’s advance.</p>'+
     '<form id="cxf" novalidate><div class="field"><label for="cx-reason">Reason <span class="req">*</span></label><textarea id="cx-reason" rows="3" maxlength="300"></textarea></div><p class="err" id="cx-err" hidden></p>'+
     '<div class="m-actions"><button type="button" class="btn" data-x>Keep invoice</button><button type="submit" class="btn danger w">Cancel invoice</button></div></form>','--m6');
@@ -1708,7 +1708,7 @@ function viewClient(id){
       (dept!=='spa'?'':(inv.length?'<h3 class="sec-h">Invoices</h3><div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+inv.map(function(i){var x=invInfo(i,pm);return '<tr><td><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td class="num">'+money(i.total)+'</td><td class="num">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No invoices for this client yet.</p>')+
       '<h3 class="sec-h">Payments</h3>'+(recs.length?'<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Towards</th><th>Mode</th><th class="num">Amount</th></tr></thead><tbody>'+recs.map(function(r){return '<tr><td>'+esc(r.no)+'</td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'<span class="pill off">Advance / on account</span>')+'</td><td>'+esc(r.mode)+'</td><td class="num">'+money(r.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No payments from this client yet.</p>'))+
       (dept!=='spa'?(function(){var pa=phClientAccount(id);return '<dl class="kv" style="margin-top:4px"><dt>Billed (all modules)</dt><dd class="num">'+money(pa.billed)+'</dd><dt>Paid / credit</dt><dd class="num">'+money(pa.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(pa)+'</dd></dl>'})():'')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-ledger="'+esc(id)+'">Ledger</button><button class="btn w" data-edit>Edit client</button>'+(dept==='spa'&&!readOnly&&S.memPlans.length?'<button class="btn w" data-sellmem>Sell membership</button>':'')+(dept==='spa'?'<button class="btn w" data-rcv>Record payment</button><button class="btn primary w" data-new>New invoice</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-ledger="'+esc(id)+'">Ledger</button><button class="btn w" data-edit>Edit client</button>'+(dept==='spa'&&!readOnly&&S.memPlans.length?'<button class="btn w" data-sellmem>Sell package</button>':'')+(dept==='spa'?'<button class="btn w" data-rcv>Record payment</button><button class="btn primary w" data-new>New invoice</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-edit]').onclick=function(){editClient(id)};
     if(dept==='spa'){
@@ -1954,7 +1954,7 @@ function renderTotals(){
   } else {
     var ti=sumItems(sp.inv);
     el.innerHTML='<div class="r"><span>Services (before GST)</span><span>'+money(t.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(t.discount)+'</span></div>'+
-      '<div class="r"><span>From membership</span><span>− '+money(sp.used)+'</span></div><div class="r"><span class="sub">Membership balance after</span><span class="sub">'+money(sp.after)+'</span></div>'+
+      '<div class="r"><span>From package</span><span>− '+money(sp.used)+'</span></div><div class="r"><span class="sub">Package balance after</span><span class="sub">'+money(sp.after)+'</span></div>'+
       (sp.inv.length?'<div class="r" style="margin-top:6px"><strong>Tax invoice for the rest</strong><span></span></div><div class="r"><span>Taxable amount</span><span>'+money(ti.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(ti.tax)+'</span></div>'+rnd(ti)+'<div class="r big"><span>To pay</span><span>'+money(ti.total)+'</span></div>'
         :'<div class="r big"><span>To pay</span><span>'+money(0)+'</span></div><div class="r"><span class="sub">Covered fully. Only a redemption slip is saved.</span><span></span></div>');
   }
@@ -1964,13 +1964,13 @@ function renderTotals(){
   var sb=$('#f-save'); if(sb&&!draft.id) sb.textContent=full?'Save redemption':(sp&&sp.slip.length?'Save redemption + invoice':'Save invoice');
   var fno=$('#f-no'); if(fno&&!draft.id&&ready()){fno.textContent=full?'RED-'+pad(nextSeq(S.redemptions)):'INV-'+pad(nextSeq(S.invoices));var fl=fno.parentNode.querySelector('label');if(fl)fl.textContent=full?'Redemption slip':'Invoice number';var dl=document.querySelector('label[for="f-date"]');if(dl)dl.textContent=full?'Date':'Invoice date'}
   $$('#f-items .line').forEach(function(row){var it=draft.items[+row.dataset.i];
-    /* a service fully paid from the membership has no GST: hide GST and show the amount before GST */
+    /* a service fully paid from the package has no GST: hide GST and show the amount before GST */
     var sl=sp&&it?sp.slip.find(function(x){return x._src===it}):null, noTax=!!(sl&&!sl.partial), gf=row.querySelector('.it-gst'), gField=gf&&gf.closest('.field'), am=row.querySelector('.it-amt');
     if(gField) gField.hidden=noTax;
     if(am) am.textContent=money(noTax?sl.worth:lineCalc(it||{}).total);
     var tg=row.querySelector('.mem-tag');if(!tg)return;
     if(!sp||!it||!it.serviceId){tg.hidden=true;return}
-    var ok=memCovers(sp.m,it.serviceId);tg.hidden=false;tg.className='mem-tag '+(ok?'yes':'no');tg.textContent=ok?'Covered by membership':'Not covered';});
+    var ok=memCovers(sp.m,it.serviceId);tg.hidden=false;tg.className='mem-tag '+(ok?'yes':'no');tg.textContent=ok?'Covered by package':'Not covered';});
 }
 function saveInvoice(){
   var err=$('#f-err'), show=function(m){err.textContent=m;err.hidden=false;err.scrollIntoView({block:'nearest'})};
@@ -2000,7 +2000,7 @@ function saveInvoice(){
 function editInvoice(id){
   var i=invById(id); if(!i) return;
   if(i.cancelled){toast(i.no+' is cancelled and can’t be edited.');return}
-  if(i.memSaleId){toast(i.no+' is a membership invoice. To change it, delete the membership (if unused) and sell it again.');return}
+  if(i.memSaleId){toast(i.no+' is a package invoice. To change it, delete the package (if unused) and sell it again.');return}
   draft={id:i.id,seq:i.seq,no:i.no,createdAt:i.createdAt,date:i.date,clientId:i.clientId,clientName:i.clientName,roundOn:!!i.roundOn,useMem:!!i.memId,memId:i.memId||'',
     items:(i.items||[]).map(function(it){return {serviceId:it.serviceId,name:it.name,sac:it.sac||'',qty:it.qty,rate:it.rate,discPct:discPctOf(it),gst:it.gst,performedBy:it.performedBy||'',performedByName:it.performedByName||'',referredBy:it.referredBy||'',referredByName:it.referredByName||'',consumables:copyCons(it.consumables)}})};
   if(!draft.items.length) draft.items=[blankItem()];
@@ -2017,7 +2017,7 @@ SECTIONS.invoices={
     var rv=invF.view==='red';
     work.innerHTML=head('Invoices','<button class="btn" id="i-export">Export CSV</button><button class="btn primary w" id="i-new">New invoice</button>')+
       '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!rv?' primary':'')+'" data-iview="inv">Invoices</button><button class="btn'+(rv?' primary':'')+'" data-iview="red">Redemptions</button></div></div>'+
-      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="'+(rv?'Slip, client, membership or service':'Invoice number or client')+'" value="'+esc(invF.q)+'"></div><div class="field"'+(rv?' hidden':'')+'><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid'],['cancelled','Cancelled']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
+      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="'+(rv?'Slip, client, package or service':'Invoice number or client')+'" value="'+esc(invF.q)+'"></div><div class="field"'+(rv?' hidden':'')+'><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid'],['cancelled','Cancelled']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
     $$('[data-iview]',work).forEach(function(x){x.onclick=function(){invF.view=x.dataset.iview;go(current)}});
     $('#i-q').oninput=function(e){invF.q=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-status').onchange=function(e){invF.status=e.target.value;SECTIONS.invoices.update();bindCommon()};
@@ -2025,7 +2025,7 @@ SECTIONS.invoices={
     $('#i-to').onchange=function(e){invF.to=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-new').onclick=function(){draft=null;go('invoice-form')};
     $('#i-export').onclick=function(){
-      if(invF.view==='red'){saveFile('spa-redemptions-'+todayStr()+'.csv',csv([['Slip','Date','Client','Phone','Membership','Plan','Services','Used (before GST)','Balance after','Tax invoice']].concat(filteredRedemptions().map(function(r){return [r.no,r.date,r.clientName,r.clientPhone||'',r.memNo,r.memPlan||'',(r.items||[]).map(function(it){return it.name+' x'+it.qty}).join('; '),r.worth,r.balAfter,r.invoiceNo||'']}))));return}
+      if(invF.view==='red'){saveFile('spa-redemptions-'+todayStr()+'.csv',csv([['Slip','Date','Client','Phone','Package','Plan','Services','Used (before GST)','Balance after','Tax invoice']].concat(filteredRedemptions().map(function(r){return [r.no,r.date,r.clientName,r.clientPhone||'',r.memNo,r.memPlan||'',(r.items||[]).map(function(it){return it.name+' x'+it.qty}).join('; '),r.worth,r.balAfter,r.invoiceNo||'']}))));return}
       var pm=paidMap();
       saveFile('spa-invoices-'+todayStr()+'.csv',csv([['Invoice','Date','Client','Phone','Services','Subtotal','Discount','Taxable','GST','Total','Paid','Balance','Status']].concat(filteredInvoices().map(function(i){var x=invInfo(i,pm);return [i.no,i.date,i.clientName,i.clientPhone,(i.items||[]).map(function(it){return it.name+' x'+it.qty}).join('; '),i.subtotal,i.discount,i.taxable,i.tax,i.total,x.paid,Math.max(0,x.bal),x.status]}))));
     };
@@ -2035,10 +2035,10 @@ SECTIONS.invoices={
     if(!ready()){b.innerHTML=loadingHTML();return}
     if(invF.view==='red'){
       var rl=filteredRedemptions();
-      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a member uses their membership.</div>';return}
+      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
       if(!rl.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No redemption matches these filters.</div>';return}
       var W=0;
-      b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Date</th><th>Client</th><th>Membership</th><th>Services</th><th class="num">Used</th><th class="num">Balance after</th><th>Tax invoice</th></tr></thead><tbody>'+
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Date</th><th>Client</th><th>Package</th><th>Services</th><th class="num">Used</th><th class="num">Balance after</th><th>Tax invoice</th></tr></thead><tbody>'+
         rl.map(function(r){W+=+r.worth||0;return '<tr><td class="nowrap"><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button></td><td class="nowrap">'+fmtDate(r.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(r.clientId)+'">'+esc(r.clientName)+'</button></td>'+
           '<td class="nowrap"><button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button><div class="sub">'+esc(r.memPlan||'')+'</div></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td><td class="num">'+money(r.balAfter)+'</td>'+
           '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+
@@ -2080,7 +2080,7 @@ function filteredInvoices(){
 }
 function deleteInvoice(id){
   var i=invById(id); if(!i) return;
-  if(i.memSaleId&&findIn('members',i.memSaleId)){toast(i.no+' is the invoice for membership '+i.memNo+'. Delete the membership instead.');return}
+  if(i.memSaleId&&findIn('members',i.memSaleId)){toast(i.no+' is the invoice for package '+i.memNo+'. Delete the package instead.');return}
   if(S.receipts.some(function(r){return r.invoiceId===id})){toast('Receipts are recorded against '+i.no+'. Delete those receipts first.');return}
   confirmBox('Delete invoice?','Delete '+i.no+' for '+i.clientName+' ('+money(i.total)+')? This can’t be undone.','Delete invoice',function(){
     remove('invoices',id).then(function(){closeModal();toast(i.no+' deleted')}).catch(function(e){toast(errText(e))});
@@ -2097,14 +2097,14 @@ function viewInvoice(id,fallback){
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>'+
       (i.items||[]).map(function(it){var sl=it.note||staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(r2((+it.disc||0)+(+it.memDisc||0)))+(discPctOf(it)?' <span class="sub">('+esc(discPctOf(it))+'%)</span>':'')+'</td><td class="num">'+esc(it.gst)+'%</td><td class="num">'+money(it.total)+'</td></tr>'}).join('')+
       '</tbody></table></div><div class="form-bottom" style="margin-top:12px"><div>'+
-      '<div class="field" style="margin-top:8px"><label>Payments</label>'+(recs.length?recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join(''):'')+(i.redemptionId&&findIn('redemptions',i.redemptionId)?'<div class="sub">Rest of the bill used membership slip <button class="link" data-red="'+esc(i.redemptionId)+'">'+esc(i.redemptionNo)+'</button></div>':'')+(memPart>0.004?'<div class="sub">Paid from membership <button class="link" data-mem="'+esc(i.memId)+'">'+esc(i.memNo)+'</button> · <strong style="color:var(--ink)">'+money(memPart)+'</strong></div>':'')+(fromAdv>0.004?'<div class="sub">Adjusted from advance / on-account payments · <strong style="color:var(--ink)">'+money(fromAdv)+'</strong></div>':'')+(!recs.length&&fromAdv<=0.004&&memPart<=0.004?'<div class="sub">No payments yet.</div>':'')+'</div></div>'+
-      '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Membership benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
+      '<div class="field" style="margin-top:8px"><label>Payments</label>'+(recs.length?recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join(''):'')+(i.redemptionId&&findIn('redemptions',i.redemptionId)?'<div class="sub">Rest of the bill used package slip <button class="link" data-red="'+esc(i.redemptionId)+'">'+esc(i.redemptionNo)+'</button></div>':'')+(memPart>0.004?'<div class="sub">Paid from package <button class="link" data-mem="'+esc(i.memId)+'">'+esc(i.memNo)+'</button> · <strong style="color:var(--ink)">'+money(memPart)+'</strong></div>':'')+(fromAdv>0.004?'<div class="sub">Adjusted from advance / on-account payments · <strong style="color:var(--ink)">'+money(fromAdv)+'</strong></div>':'')+(!recs.length&&fromAdv<=0.004&&memPart<=0.004?'<div class="sub">No payments yet.</div>':'')+'</div></div>'+
+      '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Package benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (i.roundOff?'<div class="r"><span>Round off</span><span>'+(i.roundOff<0?'− ':'+ ')+money(Math.abs(i.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
       cancelNote(i)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
     var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('invoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
-    m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from membership '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
+    m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from package '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
     var ed=m.querySelector('[data-edit]'); if(ed) ed.onclick=function(){editInvoice(id)};
     var p=m.querySelector('[data-paynow]'); if(p) p.onclick=function(){recordPayment(id,i.clientId)};
   };
@@ -2147,7 +2147,7 @@ function receiptPdf(r){
   var inv=r.invoiceId&&invById(r.invoiceId), sale=!inv&&r.saleId&&phMove(r.saleId), aev=!inv&&!sale&&r.aeInvId&&aeInvById(r.aeInvId), c=clientById(r.clientId)||{}, al=allocate(), a=r.clientId?clientAccount(r.clientId,al):null;
   var bill=inv||sale||aev, x=inv?invInfo(inv,al.paid):(sale?phSaleInfo(sale,al):(aev?billInfo({id:aev.id,total:+aev.total||0,cancelled:aev.cancelled},al):null));
   try{
-    if(r.memId) return window.PDFKIT.receipt(J,{biz:bizCtx(),rec:Object.assign({},r,{towards:(r.memPlan?r.memPlan+' membership ':'Membership ')+(r.memNo||'')}),invDate:'',invTotal:null,invPaid:0,invBalance:0,account:null,clientPhone:c.phone||'',fmtDate:fmtDate});
+    if(r.memId) return window.PDFKIT.receipt(J,{biz:bizCtx(),rec:Object.assign({},r,{towards:(r.memPlan?r.memPlan+' package ':'Package ')+(r.memNo||'')}),invDate:'',invTotal:null,invPaid:0,invBalance:0,account:null,clientPhone:c.phone||'',fmtDate:fmtDate});
     return window.PDFKIT.receipt(J,{biz:bizCtx(),rec:Object.assign({},r,{invoiceNo:bill?bill.no:''}),invDate:bill?bill.date:'',invTotal:bill?bill.total:null,invPaid:x?x.paid:0,invBalance:x?x.bal:0,account:a,clientPhone:c.phone||'',fmtDate:fmtDate});
   }catch(e){toast('The PDF could not be created.');return null}
 }
@@ -2157,7 +2157,7 @@ function receiptPdf(r){
    ========================================================= */
 var recF={q:'',mode:'',from:'',to:''};
 function towardsCell(r){
-  if(r.memId) return (findIn('members',r.memId)?'<button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button>':esc(r.memNo||''))+' <span class="sub">Membership</span>';
+  if(r.memId) return (findIn('members',r.memId)?'<button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button>':esc(r.memNo||''))+' <span class="sub">Package</span>';
   if(r.invoiceId&&invById(r.invoiceId)) return '<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button> <span class="sub">Spa</span>';
   if(r.saleId&&phMove(r.saleId)) return '<button class="link" data-pm="'+esc(r.saleId)+'">'+esc(r.saleNo)+'</button> <span class="sub">Pharmacy</span>';
   if(r.aeInvId&&aeInvById(r.aeInvId)) return '<button class="link" data-aeinv="'+esc(r.aeInvId)+'">'+esc(r.aeInvNo)+'</button> <span class="sub">Aesthetics</span>';
@@ -2191,7 +2191,7 @@ SECTIONS.receipts={
     var find=function(key){var p=key.split(':');return {src:p[0],r:findIn(p[0],p.slice(1).join(':'))}};
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){
       var f=find(x.dataset.del),r=f.r; if(!r) return;
-      if(r.memId&&findIn('members',r.memId)){toast(r.no+' is the payment for membership '+r.memNo+'. Delete the membership instead.');return}
+      if(r.memId&&findIn('members',r.memId)){toast(r.no+' is the payment for package '+r.memNo+'. Delete the package instead.');return}
       confirmBox('Delete receipt?','Delete '+r.no+' ('+money(r.amount)+' from '+r.clientName+')? The amount will be taken off the client’s account.','Delete receipt',function(){remove(f.src,r.id).then(function(){toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})});
     }});
     $$('[data-dl]',b).forEach(function(x){x.onclick=function(){var r=find(x.dataset.dl).r;if(!r)return;var pdf=receiptPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)}});
@@ -3130,7 +3130,7 @@ function ledgerRows(dk,cid){
     if(m.type==='Return') rows.push({date:m.date,ord:3,seq:+m.seq||0,part:'Items returned'+(m.saleNo?' against '+m.saleNo:''),mod:'Pharmacy',ref:m.no,open:'pm:'+m.id,dr:0,cr:+m.total||0});
   });
   S.aeInvoices.forEach(function(v){if(v.clientId===cid)rows.push({date:v.date,ord:1,seq:+v.seq||0,part:'Invoice',mod:'Aesthetics',ref:v.no,open:'ae:'+v.id,dr:+v.total||0,cr:0})});
-  allReceipts().forEach(function(r){if(r.clientId===cid)rows.push({date:r.date,ord:2,seq:+r.seq||0,part:r.memId?'Membership '+(r.memNo||'')+' ('+r.mode+')':'Payment received ('+r.mode+')'+((r.invoiceNo||r.saleNo||r.aeInvNo)?' against '+(r.invoiceNo||r.saleNo||r.aeInvNo):' on account'),mod:'',ref:r.no,dr:0,cr:+r.amount||0})});
+  allReceipts().forEach(function(r){if(r.clientId===cid)rows.push({date:r.date,ord:2,seq:+r.seq||0,part:r.memId?'Package '+(r.memNo||'')+' ('+r.mode+')':'Payment received ('+r.mode+')'+((r.invoiceNo||r.saleNo||r.aeInvNo)?' against '+(r.invoiceNo||r.saleNo||r.aeInvNo):' on account'),mod:'',ref:r.no,dr:0,cr:+r.amount||0})});
   rows.sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||a.ord-b.ord||a.seq-b.seq});
   var bal=0; rows.forEach(function(r){bal=r2(bal+r.dr-r.cr);r.bal=bal});
   return rows;
@@ -4466,7 +4466,7 @@ function deptUsages(dk){
     S.aeCons.forEach(function(c){if((c.consumables||[]).length)out.push({date:c.date,ref:c.no,client:c.clientName,what:'Consultation',src:'Consultation',lines:c.consumables,rid:'con:'+c.id})});
   } else {
     S.invoices.forEach(function(v){if(v.cancelled)return;(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Invoice',lines:it.consumables,rid:'inv:'+v.id})})});
-    S.redemptions.forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Membership',lines:it.consumables,rid:'red:'+v.id})})});
+    S.redemptions.forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Package',lines:it.consumables,rid:'red:'+v.id})})});
   }
   S.deptUsage.forEach(function(u){if(u.dept===dk)out.push({date:u.date,ref:u.no,client:'',what:u.note||'General use',src:'General use',lines:u.lines||[],rid:'use:'+u.id,usage:u})});
   return out;
@@ -5126,8 +5126,8 @@ SECTIONS['ph-dashboard']={
 };
 
 /* =========================================================
-   SPA: Membership plans, memberships and redemptions
-   A membership is sold on a tax invoice (price + GST). Using it creates a
+   SPA: Package plans, packages and redemptions
+   A package is sold on a tax invoice (price + GST). Using it creates a
    redemption slip (RED-) with no GST; only services beyond the balance go
    on a normal tax invoice.
    ========================================================= */
@@ -5145,18 +5145,18 @@ function clientMems(cid,date){
   return S.members.filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)&&memInfo(m).bal>0.004})
     .sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')});
 }
-function memLabel(m){return (m.planName||'Membership')+' · '+m.no}
-/* Memberships section on the client details screen */
+function memLabel(m){return (m.planName||'Package')+' · '+m.no}
+/* Packages section on the client details screen */
 function clientMemSection(cid){
   var list=S.members.filter(function(m){return m.clientId===cid}).map(function(m){return {m:m,x:memInfo(m)}})
     .sort(function(a,b){var o={Active:0,'Used up':1,Expired:2};return (o[a.x.status]-o[b.x.status])||(b.m.date||'').localeCompare(a.m.date||'')});
   if(!list.length) return '';
-  return '<h3 class="sec-h">Memberships</h3><div class="tbl"><table><thead><tr><th>Membership</th><th>Plan</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
+  return '<h3 class="sec-h">Packages</h3><div class="tbl"><table><thead><tr><th>Package</th><th>Plan</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
     list.map(function(r){var m=r.m,x=r.x,exp=x.status==='Expired';return '<tr><td class="nowrap"><button class="link" data-mem="'+esc(m.id)+'">'+esc(m.no)+'</button></td><td>'+esc(m.planName)+'</td><td class="num">'+money(m.value)+'</td>'+
       '<td class="num"><strong>'+money(exp?0:x.bal)+'</strong>'+(exp&&x.bal>0.004?'<div class="sub">'+money(x.bal)+' lapsed</div>':'')+'</td><td class="nowrap">'+fmtDate(m.expiry)+'</td><td><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span></td></tr>'}).join('')+
     '</tbody></table></div>';
 }
-/* memberships sold before service lists existed cover every service */
+/* packages sold before service lists existed cover every service */
 function memCovers(m,serviceId){return !Array.isArray(m.serviceIds)||m.serviceIds.indexOf(serviceId)>=0}
 function memCoverNames(ids){if(!Array.isArray(ids))return 'All Spa services';return ids.map(function(id){var sv=findIn('services',id);return sv?sv.name:''}).filter(Boolean).join(', ')}
 /* tick-list of services with search, Select all and Clear; nothing ticked by default */
@@ -5177,7 +5177,7 @@ function svcPicker(host,get,set){
 }
 
 SECTIONS['mem-plans']=simpleMaster({
-  kind:'memPlans',prefix:'mp',title:'Membership Plans',singular:'plan',singularCap:'Plan',color:'--m3',searchPh:'Plan name',
+  kind:'memPlans',prefix:'mp',title:'Package Plans',singular:'plan',singularCap:'Plan',color:'--m3',searchPh:'Plan name',
   emptyText:'Add plans such as Silver, Gold and Platinum.',quick:{label:'Add Silver, Gold and Platinum',run:function(){memSeedPlans()}},
   fields:[
     {id:'name',label:'Plan name',req:true,max:60,span2:true},
@@ -5189,7 +5189,7 @@ SECTIONS['mem-plans']=simpleMaster({
     {id:'validityUnit',label:'Validity in',type:'select',noBlank:true,def:'Months',options:function(){return ['Months','Days']}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'serviceIds',label:'Services covered',type:'services',req:true},
-    {id:'terms',label:'Terms (printed on the membership)',type:'textarea'}],
+    {id:'terms',label:'Terms (printed on the package)',type:'textarea'}],
   cols:[{h:'Plan',text:function(r){return r.name}},{h:'Price',num:true,text:function(r){return money(+r.price||+r.paid||0)}},{h:'GST',num:true,text:function(r){return (+r.gst||0)+'%'}},
     {h:'Price incl. GST',num:true,text:function(r){return money(r2((+r.price||+r.paid||0)*(1+(+r.gst||0)/100)))}},{h:'Services worth',num:true,text:function(r){return money(r.value)}},
     {h:'Extra',num:true,text:function(r){return memExtraPct(r)+'%'}},{h:'Validity',text:function(r){return memValidityText(r)}},{h:'Services',num:true,text:function(r){return String((r.serviceIds||[]).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
@@ -5211,14 +5211,14 @@ function memSeedPlans(){
 }
 
 var memF={q:'',status:'Active',view:'members'};
-SECTIONS.memberships={
+SECTIONS.packages={
   mount:function(){
     var red=memF.view==='redemptions';
-    work.innerHTML=head('Memberships',readOnly?'':'<button class="btn primary w" id="mm-new">'+PLUS+' Sell membership</button>')+
-      '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!red?' primary':'')+'" data-mmview="members">Memberships</button><button class="btn'+(red?' primary':'')+'" data-mmview="redemptions">Redemptions</button></div></div>'+
+    work.innerHTML=head('Packages',readOnly?'':'<button class="btn primary w" id="mm-new">'+PLUS+' Sell package</button>')+
+      '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!red?' primary':'')+'" data-mmview="members">Packages</button><button class="btn'+(red?' primary':'')+'" data-mmview="redemptions">Redemptions</button></div></div>'+
       '<div class="toolbar"><div class="field grow"><label for="mm-q">Search</label><input type="search" id="mm-q" placeholder="Client, phone, plan or number" value="'+esc(memF.q)+'"></div>'+
       (red?'':'<div class="field"><label for="mm-st">Status</label><select id="mm-st">'+optList([['','All'],'Active','Used up','Expired'],memF.status)+'</select></div>')+'</div><div id="body"></div>';
-    var up=function(){SECTIONS.memberships.update();bindCommon()};
+    var up=function(){SECTIONS.packages.update();bindCommon()};
     $$('[data-mmview]',work).forEach(function(b){b.onclick=function(){memF.view=b.dataset.mmview;go(current)}});
     $('#mm-q').oninput=function(e){memF.q=e.target.value;up()};
     var ms=$('#mm-st'); if(ms) ms.onchange=function(e){memF.status=e.target.value;up()};
@@ -5230,38 +5230,38 @@ SECTIONS.memberships={
     var q=norm(memF.q);
     if(memF.view==='redemptions'){
       var rl=S.redemptions.filter(function(r){return !q||norm(r.no+' '+r.clientName+' '+(r.clientPhone||'')+' '+(r.memNo||'')+' '+(r.memPlan||'')).indexOf(q)>=0}).sort(function(a,c){return (c.date||'').localeCompare(a.date||'')||(+c.seq||0)-(+a.seq||0)});
-      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a member uses their membership.</div>';return}
+      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
       if(!rl.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No redemption matches this search.</div>';return}
-      b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Client</th><th>Membership</th><th>Services</th><th class="num">Worth used</th><th>Tax invoice</th></tr></thead><tbody>'+
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Client</th><th>Package</th><th>Services</th><th class="num">Worth used</th><th>Tax invoice</th></tr></thead><tbody>'+
         rl.map(function(r){return '<tr><td class="nowrap"><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button><div class="sub">'+fmtDate(r.date)+'</div></td><td><strong>'+esc(r.clientName)+'</strong><div class="sub">'+esc(r.clientPhone||'')+'</div></td>'+
           '<td class="nowrap"><button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button><div class="sub">'+esc(r.memPlan||'')+'</div></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td>'+
           '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(rl.length,S.redemptions.length,'redemptions')+'</p>';
       $$('[data-red]',b).forEach(function(x){x.onclick=function(){viewRedemption(x.dataset.red)}});
       return;
     }
-    if(!S.members.length){b.innerHTML='<div class="empty"><strong>No memberships yet</strong>'+(S.memPlans.length?'Use Sell membership to enrol a client.':'Add plans in Masters › Membership Plans first.')+'</div>';return}
+    if(!S.members.length){b.innerHTML='<div class="empty"><strong>No packages yet</strong>'+(S.memPlans.length?'Use Sell package to enrol a client.':'Add plans in Masters › Package Plans first.')+'</div>';return}
     var list=S.members.map(function(m){return {m:m,x:memInfo(m)}}).filter(function(r){
       if(memF.status&&r.x.status!==memF.status) return false;
       if(q&&norm(r.m.no+' '+r.m.clientName+' '+(r.m.clientPhone||'')+' '+r.m.planName).indexOf(q)<0) return false;
       return true}).sort(function(a,c){return (c.m.date||'').localeCompare(a.m.date||'')||(+c.m.seq||0)-(+a.m.seq||0)});
-    if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No membership matches these filters.</div>';return}
-    b.innerHTML='<div class="tbl"><table><thead><tr><th>Membership</th><th>Client</th><th>Plan</th><th>Invoice</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
+    if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No package matches these filters.</div>';return}
+    b.innerHTML='<div class="tbl"><table><thead><tr><th>Package</th><th>Client</th><th>Plan</th><th>Invoice</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
       list.map(function(r){var m=r.m,x=r.x,exp=x.status==='Expired';return '<tr><td class="nowrap"><button class="link" data-mem="'+esc(m.id)+'">'+esc(m.no)+'</button><div class="sub">'+fmtDate(m.date)+'</div></td>'+
         '<td><button class="link" style="color:inherit" data-client-view="'+esc(m.clientId)+'"><strong>'+esc(m.clientName)+'</strong></button><div class="sub">'+esc(m.clientPhone||'')+'</div></td>'+
         '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+money(m.value)+'</td>'+
         '<td class="num">'+money(exp?0:x.bal)+(exp&&x.bal>0.004?'<div class="sub">'+money(x.bal)+' lapsed</div>':'')+'</td>'+
         '<td class="nowrap">'+fmtDate(m.expiry)+'</td><td><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span></td></tr>'}).join('')+
-      '</tbody></table></div><p class="hint">'+countOf(list.length,S.members.length,'memberships')+'</p>';
+      '</tbody></table></div><p class="hint">'+countOf(list.length,S.members.length,'packages')+'</p>';
   }
 };
 function memPriceCalc(p,roundOn){var price=r2(+p.price||+p.paid||0),tax=r2(price*(+p.gst||0)/100),raw=r2(price+tax),ro=roundOn?r2(Math.round(raw)-raw):0;return {price:price,tax:tax,roundOff:ro,total:r2(raw+ro)}}
 function sellMembership(cid){
-  if(readOnly){toast('You need Contributor access to sell memberships.');return}
+  if(readOnly){toast('You need Contributor access to sell packages.');return}
   var plans=S.memPlans.filter(function(p){return (p.status||'Active')==='Active'}).sort(function(a,b){return (+a.price||0)-(+b.price||0)});
-  if(!plans.length){toast('Add a plan in Masters › Membership Plans first.');return}
+  if(!plans.length){toast('Add a plan in Masters › Package Plans first.');return}
   var st={clientId:cid||'',planId:plans[0].id,date:todayStr(),expiry:'',expiryTouched:false,pay:''};
   st.expiry=memExpiry(st.date,plans[0]);
-  var m=openModal('<h2>Sell membership</h2><form id="msf" novalidate><div class="f-grid">'+
+  var m=openModal('<h2>Sell package</h2><form id="msf" novalidate><div class="f-grid">'+
     '<div class="field span2"><label for="ms-client">Client <span class="req">*</span></label><div id="ms-client-host"></div></div>'+
     '<div class="field"><label for="ms-plan">Plan <span class="req">*</span></label><select id="ms-plan">'+optList(plans.map(function(p){return [p.id,p.name]}),st.planId)+'</select></div>'+
     '<div class="field"><label for="ms-date">Date</label><input type="date" id="ms-date" value="'+esc(st.date)+'"></div>'+
@@ -5269,7 +5269,7 @@ function sellMembership(cid){
     '<div class="mem-sum" id="ms-sum"></div>'+
     '<div class="pay-box"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="ms-pay">Amount (₹)</label><input type="number" id="ms-pay" min="0" step="0.01"></div><div class="field"><label for="ms-mode">Payment mode</label><select id="ms-mode">'+optList(MODES,'Cash')+'</select></div><div class="field"><label for="ms-ref">Reference</label><input type="text" id="ms-ref" autocomplete="off"></div></div></div>'+
     '<p class="err" id="ms-err" hidden></p>'+
-    '<div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save membership</button></div></form>','--m3',true,function(m2){
+    '<div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save package</button></div></form>','--m3',true,function(m2){
       combo(m2.querySelector('#ms-client-host'),{id:'ms-client',label:'Client',placeholder:'Type to search name or phone',value:st.clientId,emptyText:'No clients yet.',
         options:function(){return S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name,c.phone]})},onChange:function(v){st.clientId=v}});
     });
@@ -5285,14 +5285,14 @@ function sellMembership(cid){
   m.querySelector('#msf').onsubmit=function(e){
     e.preventDefault();
     var err=m.querySelector('#ms-err'), c=clientById(st.clientId), p=plan(), msg='', pay=r2(m.querySelector('#ms-pay').value||0);
-    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!(p.serviceIds||[]).length) msg='Choose the services this plan covers in Masters › Membership Plans first.'; else if(!st.date) msg='Choose the date.'; else if(!st.expiry||st.expiry<st.date) msg='Valid till must be on or after the date.'; else if(pay<0) msg='Payment can’t be negative.';
+    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!(p.serviceIds||[]).length) msg='Choose the services this plan covers in Masters › Package Plans first.'; else if(!st.date) msg='Choose the date.'; else if(!st.expiry||st.expiry<st.date) msg='Valid till must be on or after the date.'; else if(pay<0) msg='Payment can’t be negative.';
     if(msg){err.textContent=msg;err.hidden=false;return}
     var btn=m.querySelector('[type=submit]'); btn.disabled=true;
     var now=new Date().toISOString(), seq=nextSeq(S.members), iseq=nextSeq(S.invoices), pc=memPriceCalc(p,true);
     var mem={id:newId('mm'),seq:seq,no:'MEM-'+pad(seq),date:st.date,start:st.date,expiry:st.expiry,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
       planId:p.id,planName:p.name,price:pc.price,gst:+p.gst||0,value:r2(p.value),serviceIds:(p.serviceIds||[]).slice(),terms:p.terms||'',invoiceId:'',invoiceNo:'',createdAt:now,updatedAt:now};
     var inv={id:newId('i'),seq:iseq,no:'INV-'+pad(iseq),date:st.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,
-      items:[{serviceId:'',memItem:true,name:p.name+' Membership',note:'Services worth '+money(p.value)+' · valid '+fmtDate(st.date)+' to '+fmtDate(st.expiry)+' · '+mem.no+' · Covers: '+((p.serviceIds||[]).length<=3?memCoverNames(p.serviceIds):(p.serviceIds.length+' services, listed on the membership')),sac:p.sac||'',qty:1,rate:pc.price,discPct:0,disc:0,gst:+p.gst||0,amount:pc.price,tax:pc.tax,total:r2(pc.price+pc.tax),consumables:[]}],
+      items:[{serviceId:'',memItem:true,name:p.name+' Package',note:'Services worth '+money(p.value)+' · valid '+fmtDate(st.date)+' to '+fmtDate(st.expiry)+' · '+mem.no+' · Covers: '+((p.serviceIds||[]).length<=3?memCoverNames(p.serviceIds):(p.serviceIds.length+' services, listed on the package')),sac:p.sac||'',qty:1,rate:pc.price,discPct:0,disc:0,gst:+p.gst||0,amount:pc.price,tax:pc.tax,total:r2(pc.price+pc.tax),consumables:[]}],
       subtotal:pc.price,discount:0,taxable:pc.price,tax:pc.tax,roundOn:true,roundOff:pc.roundOff,total:pc.total,memSaleId:mem.id,memNo:mem.no,createdAt:now,updatedAt:now};
     mem.invoiceId=inv.id; mem.invoiceNo=inv.no;
     put('members',mem).then(function(){return put('invoices',inv)}).then(function(){
@@ -5305,19 +5305,19 @@ function viewMembership(id){
   var render=function(m){
     var mm=findIn('members',id); if(!mm){closeModal();return}
     var x=memInfo(mm), lapsed=x.status==='Expired'&&x.bal>0.004, bal=+mm.value||0, inv=mm.invoiceId&&invById(mm.invoiceId), ix=inv?invInfo(inv):null;
-    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd><dt>Covers</dt><dd>'+esc(memCoverNames(mm.serviceIds))+'</dd>'+
+    m.innerHTML='<h2>Package '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd><dt>Covers</dt><dd>'+esc(memCoverNames(mm.serviceIds))+'</dd>'+
       '<dt>Invoice</dt><dd>'+(inv?'<button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> · '+money(inv.total)+' '+statusPill(ix.status):esc(mm.invoiceNo||'—'))+'</dd></dl>'+
       '<div style="text-align:right"><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span><div class="big" style="margin-top:6px">'+money(lapsed?0:x.bal)+'</div><div class="sub">balance'+(lapsed?' · '+money(x.bal)+' lapsed':'')+'</div></div></div>'+
       '<div class="mem-sum"><span>Worth <strong>'+money(mm.value)+'</strong></span><span>Used <strong>'+money(x.used)+'</strong></span></div>'+
       '<h3 class="sec-h">Usage</h3>'+(x.uses.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Slip</th><th>Services</th><th class="num">Used</th><th class="num">Balance</th></tr></thead><tbody>'+
         x.uses.map(function(r){bal=r2(bal-(+r.worth||0));return '<tr><td class="nowrap">'+fmtDate(r.date)+'</td><td><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td><td class="num">'+money(bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">Not used yet.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!x.uses.length?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button>'+(!readOnly&&x.status==='Active'?'<button class="btn primary w" data-bill>Use membership</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!x.uses.length?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button>'+(!readOnly&&x.status==='Active'?'<button class="btn primary w" data-bill>Use package</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=membershipPdf(mm);if(pdf)pdfView(mm.no+'.pdf',pdf)};
     var bl=m.querySelector('[data-bill]'); if(bl) bl.onclick=function(){closeModal();draft=newDraft();draft.clientId=mm.clientId;draft.memId=mm.id;go('invoice-form')};
     var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){
       var recs=inv?S.receipts.filter(function(r){return r.invoiceId===inv.id}):[];
-      confirmBox('Delete membership?','Delete '+mm.no+' for '+mm.clientName+'? Its invoice '+(mm.invoiceNo||'')+(recs.length?' and '+recs.length+' receipt'+(recs.length===1?'':'s'):'')+' will be deleted too.','Delete',function(){
+      confirmBox('Delete package?','Delete '+mm.no+' for '+mm.clientName+'? Its invoice '+(mm.invoiceNo||'')+(recs.length?' and '+recs.length+' receipt'+(recs.length===1?'':'s'):'')+' will be deleted too.','Delete',function(){
         Promise.all(recs.map(function(r){return remove('receipts',r.id)})).then(function(){return inv?remove('invoices',inv.id):null}).then(function(){return remove('members',mm.id)}).then(function(){closeModal();toast(mm.no+' deleted')}).catch(function(e){toast(errText(e))});
       });
     };
@@ -5330,16 +5330,16 @@ function viewRedemption(id){
   var render=function(m){
     var r=findIn('redemptions',id); if(!r){closeModal();return}
     var mm=findIn('members',r.memId), inv=r.invoiceId&&invById(r.invoiceId);
-    m.innerHTML='<h2>Redemption '+esc(r.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(r.clientName)+'</strong></dd><dt>Date</dt><dd>'+fmtDate(r.date)+'</dd><dt>Membership</dt><dd>'+(mm?'<button class="link" data-mem="'+esc(mm.id)+'">'+esc(r.memNo)+'</button>':esc(r.memNo))+' · '+esc(r.memPlan||'')+'</dd>'+
+    m.innerHTML='<h2>Redemption '+esc(r.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(r.clientName)+'</strong></dd><dt>Date</dt><dd>'+fmtDate(r.date)+'</dd><dt>Package</dt><dd>'+(mm?'<button class="link" data-mem="'+esc(mm.id)+'">'+esc(r.memNo)+'</button>':esc(r.memNo))+' · '+esc(r.memPlan||'')+'</dd>'+
       (inv?'<dt>Tax invoice</dt><dd><button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> for the rest</dd>':'')+'</dl>'+
-      '<div style="text-align:right"><div class="big">'+money(r.worth)+'</div><div class="sub">used from membership</div><div class="sub">Balance after '+money(r.balAfter)+'</div></div></div>'+
+      '<div style="text-align:right"><div class="big">'+money(r.worth)+'</div><div class="sub">used from package</div><div class="sub">Balance after '+money(r.balAfter)+'</div></div></div>'+
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">Used</th></tr></thead><tbody>'+
       (r.items||[]).map(function(it){var sl=staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(it.disc)+'</td><td class="num">'+money(it.worth)+(it.partial?'<div class="sub">part</div>':'')+'</td></tr>'}).join('')+
-      '</tbody></table></div><p class="hint">No GST on this slip. GST was charged on the membership invoice'+(mm&&mm.invoiceNo?' '+esc(mm.invoiceNo):'')+'.</p>'+
+      '</tbody></table></div><p class="hint">No GST on this slip. GST was charged on the package invoice'+(mm&&mm.invoiceNo?' '+esc(mm.invoiceNo):'')+'.</p>'+
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=redemptionPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)};
-    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete redemption?','Delete '+r.no+'? '+money(r.worth)+' goes back to membership '+r.memNo+'.'+(inv?' Tax invoice '+inv.no+' is not changed.':''),'Delete',function(){remove('redemptions',r.id).then(function(){closeModal();toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})})};
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete redemption?','Delete '+r.no+'? '+money(r.worth)+' goes back to package '+r.memNo+'.'+(inv?' Tax invoice '+inv.no+' is not changed.':''),'Delete',function(){remove('redemptions',r.id).then(function(){closeModal();toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})})};
     $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
     $$('[data-mem]',m).forEach(function(b2){b2.onclick=function(){viewMembership(b2.dataset.mem)}});
   };
@@ -5349,7 +5349,7 @@ function membershipPdf(mm){
   var J=pdfLib(); if(!J) return null;
   var x=memInfo(mm), bal=+mm.value||0, plan=findIn('memPlans',mm.planId)||{};
   var uses=x.uses.map(function(r){bal=r2(bal-(+r.worth||0));return {date:r.date,no:r.no,what:(r.items||[]).map(function(it){return it.name}).join(', '),used:+r.worth||0,bal:bal}});
-  var terms=(mm.terms||plan.terms||'').trim()||('Valid for Spa services only, till '+fmtDate(mm.expiry)+'.\nAny unused balance lapses on expiry.\nFor the member’s use only. Not transferable or refundable.');
+  var terms=(mm.terms||plan.terms||'').trim()||('Valid for Spa services only, till '+fmtDate(mm.expiry)+'.\nAny unused balance lapses on expiry.\nFor the holder’s use only. Not transferable or refundable.');
   try{
     return window.PDFKIT.membership(J,{biz:bizCtx(),covers:memCoverNames(mm.serviceIds),m:mm,client:{name:mm.clientName,phone:mm.clientPhone},status:x.status,bal:x.status==='Expired'?0:x.bal,used:x.used,uses:uses,terms:terms,fmtDate:fmtDate});
   }catch(e){toast('The PDF could not be created.');return null}
@@ -5361,14 +5361,14 @@ function redemptionPdf(r){
     return window.PDFKIT.redemption(J,{biz:bizCtx(),r:r,client:{name:r.clientName,phone:r.clientPhone},memInvoiceNo:mm.invoiceNo||'',items:(r.items||[]).map(function(it){return Object.assign({},it,{staff:staffLine(it)})}),fmtDate:fmtDate});
   }catch(e){toast('The PDF could not be created.');return null}
 }
-/* ---- membership on the Invoice Form ---- */
+/* ---- package on the Invoice Form ---- */
 function memPick(){
   if(!draft||!draft.clientId||draft.id) return null;
   var opts=clientMems(draft.clientId,draft.date||todayStr());
   if(draft.memId){var f=opts.find(function(m){return m.id===draft.memId});if(f)return f}
   return opts[0]||null;
 }
-/* split the bill: what the membership covers (redemption slip) and what is left (tax invoice) */
+/* split the bill: what the package covers (redemption slip) and what is left (tax invoice) */
 function memSplit(items){
   if(!draft||draft.useMem===false) return null;
   var m=memPick(); if(!m) return null;
@@ -5379,7 +5379,7 @@ function memSplit(items){
     if(cover<=0.004){inv.push(it);return}
     rem=r2(rem-cover);
     slip.push(Object.assign({},it,{worth:cover,partial:cover<after-0.004,_src:it}));
-    if(cover<after-0.004) inv.push(Object.assign({},it,{name:it.name+' (beyond membership balance)',qty:1,rate:r2(after-cover),discPct:0,consumables:[]}));
+    if(cover<after-0.004) inv.push(Object.assign({},it,{name:it.name+' (beyond package balance)',qty:1,rate:r2(after-cover),discPct:0,consumables:[]}));
   });
   var used=r2(bal-rem);
   return {m:m,bal:bal,used:used,after:rem,slip:slip,inv:inv};
@@ -5389,8 +5389,8 @@ function memBox(){
   if(!draft||!draft.clientId||draft.id){el.innerHTML='';return}
   var opts=clientMems(draft.clientId,draft.date||todayStr()); if(!opts.length){el.innerHTML='';return}
   var m=memPick(), x=memInfo(m);
-  el.innerHTML='<div class="mem-pick"><label class="check"><input type="checkbox" id="f-usemem"'+(draft.useMem!==false?' checked':'')+'> Redeem from membership</label>'+
-    (opts.length>1?'<select id="f-memid" style="width:auto;min-height:32px;padding:4px 8px" aria-label="Membership">'+optList(opts.map(function(o){return [o.id,memLabel(o)]}),m.id)+'</select>':'<strong>'+esc(memLabel(m))+'</strong>')+
+  el.innerHTML='<div class="mem-pick"><label class="check"><input type="checkbox" id="f-usemem"'+(draft.useMem!==false?' checked':'')+'> Redeem from package</label>'+
+    (opts.length>1?'<select id="f-memid" style="width:auto;min-height:32px;padding:4px 8px" aria-label="Package">'+optList(opts.map(function(o){return [o.id,memLabel(o)]}),m.id)+'</select>':'<strong>'+esc(memLabel(m))+'</strong>')+
     '<span class="sub">Balance '+money(x.bal)+' · valid till '+fmtDate(m.expiry)+'</span></div>';
   $('#f-usemem').onchange=function(e){draft.useMem=e.target.checked;renderTotals()};
   var sel=$('#f-memid'); if(sel) sel.onchange=function(e){draft.memId=e.target.value;memBox();renderTotals()};
@@ -5399,7 +5399,7 @@ function itemRecord(it){var lc=lineCalc(it),sv=S.services.find(function(x){retur
 function saveWithMembership(sp,c,show){
   var now=new Date().toISOString(), pay=r2(draft.payAmount||0);
   if(pay<0) return show('Payment can’t be negative.');
-  if(!sp.inv.length&&pay>0) return show('Nothing to pay: the membership covers this whole bill. Clear the payment amount.');
+  if(!sp.inv.length&&pay>0) return show('Nothing to pay: the package covers this whole bill. Clear the payment amount.');
   var rseq=nextSeq(S.redemptions);
   var red={id:newId('rd'),seq:rseq,no:'RED-'+pad(rseq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',memId:sp.m.id,memNo:sp.m.no,memPlan:sp.m.planName,
     items:sp.slip.map(function(it){var rec=itemRecord(it);return {consumables:rec.consumables,serviceId:rec.serviceId,name:rec.name,qty:rec.qty,rate:rec.rate,discPct:rec.discPct,disc:rec.disc,worth:it.worth,partial:!!it.partial,performedBy:rec.performedBy,performedByName:rec.performedByName,referredBy:rec.referredBy,referredByName:rec.referredByName}}),
@@ -5425,9 +5425,9 @@ function memDashPanel(){
   var t=todayStr(), ym=t.slice(0,7), soldM=S.members.filter(function(m){return (m.date||'').slice(0,7)===ym}), held=0, exp=[];
   S.members.forEach(function(m){var x=memInfo(m);if(x.status==='Active'){held=r2(held+x.bal);if(m.expiry<=addDays(t,30))exp.push({m:m,x:x})}});
   exp.sort(function(a,b){return (a.m.expiry||'').localeCompare(b.m.expiry||'')});
-  return '<div class="panel"><h3>Memberships</h3><div class="mem-sum" style="margin:0 0 10px"><span>Sold this month <strong>'+soldM.length+'</strong></span><span>Unused balance <strong>'+money0(held)+'</strong></span></div>'+
+  return '<div class="panel"><h3>Packages</h3><div class="mem-sum" style="margin:0 0 10px"><span>Sold this month <strong>'+soldM.length+'</strong></span><span>Unused balance <strong>'+money0(held)+'</strong></span></div>'+
     (exp.length?'<div class="tbl"><table><thead><tr><th>Expiring soon</th><th>Valid till</th><th class="num">Balance</th></tr></thead><tbody>'+exp.slice(0,6).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-mem="'+esc(r.m.id)+'"><strong>'+esc(r.m.clientName)+'</strong></button><div class="sub">'+esc(r.m.planName)+' · '+esc(r.m.no)+'</div></td><td class="nowrap">'+fmtDate(r.m.expiry)+'</td><td class="num">'+money0(r.x.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None expiring in the next 30 days.</p>')+
-    '<p style="margin:8px 0 0"><button class="link" data-go="memberships">Open Memberships</button></p></div>';
+    '<p style="margin:8px 0 0"><button class="link" data-go="packages">Open Packages</button></p></div>';
 }
 
 /* =========================================================
@@ -5464,7 +5464,7 @@ var IMP={
     cols:[{k:'name',h:'Procedure name',req:1,ex:'Face Botox'},{k:'sac',h:'SAC code',t:'code',ex:'999312'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},
       {k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'},{k:'consent',h:'Consent form text',ex:''}],
     after:function(o){if(!o.consumables)o.consumables=[]}},
-  memPlans:{title:'Membership Plans',file:'membership-plans',prefix:'mp',key:function(o){return norm(o.name)},keyLabel:'name',
+  memPlans:{title:'Package Plans',file:'package-plans',prefix:'mp',key:function(o){return norm(o.name)},keyLabel:'name',
     cols:[{k:'name',h:'Plan name',req:1,ex:'Silver'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},{k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'value',h:'Services worth before GST',t:'number',req:1,ex:'16000'},
       {k:'sac',h:'SAC code',t:'code',ex:''},{k:'validity',h:'Validity period',t:'int',req:1,ex:'12'},{k:'validityUnit',h:'Validity in',t:'choice',ch:['Months','Days'],def:'Months',ex:'Months'},
       {k:'serviceIds',h:'Services covered (separate with ;)',t:'refs',ref:'services',req:1,ex:'Back Massage; Hair Spa'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'},{k:'terms',h:'Terms',ex:''}]}
@@ -5995,7 +5995,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
-  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','memberships','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','packages','receipts','outstanding','spa-inventory'];
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
