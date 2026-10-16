@@ -101,6 +101,8 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .mi:hover{background:var(--soft)}
 .mi .chip{flex:none;width:34px;height:34px;border-radius:9px;background:var(--soft);color:var(--c);display:grid;place-items:center;transition:background .15s ease,color .15s ease}
 .mi .chip svg{width:18px;height:18px}
+.nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
+.pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel,#fff);cursor:pointer;text-align:left;color:inherit;font:inherit}.pend-card .n{font-size:26px;font-weight:700;color:var(--m6)}.pend-card .l{font-size:13px;font-weight:600}.pend-card.zero .n{color:var(--muted)}.pend-card.on{border-color:var(--wc);box-shadow:0 0 0 2px var(--wc) inset}.pend-card:hover{background:var(--wsoft)}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
 .mi[aria-current="page"] .chip{background:color-mix(in srgb,var(--on-color) 22%,transparent);color:var(--on-color)}
 .mi.c0{--c:var(--m0);--soft:var(--m0-soft)}
@@ -411,6 +413,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="dashboard" aria-current="page">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
+        <li><button class="mi c6" data-key="spa-pending">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Pending Tasks<span class="nbadge" data-pend-badge hidden></span></button></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
@@ -497,6 +502,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="ae-dashboard">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
+        <li><button class="mi c6" data-key="ae-pending">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Pending Tasks<span class="nbadge" data-pend-badge hidden></span></button></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ae-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
@@ -585,6 +593,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="ph-dashboard">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
+        <li><button class="mi c6" data-key="ph-pending">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          Pending Tasks<span class="nbadge" data-pend-badge hidden></span></button></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ph-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
@@ -1243,7 +1254,7 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],memberships:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],memberships:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
 var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[]};
@@ -1504,7 +1515,7 @@ function go(key,opts){
   var c=COLORS[key]; work.style.setProperty('--wc','var('+c[0]+')'); work.style.setProperty('--wsoft','var('+c[1]+')');
   SECTIONS[key].mount(opts||{});
   if(SECTIONS[key].update) SECTIONS[key].update();
-  bindCommon();
+  bindCommon(); pendBadge();
 }
 /* home header: business name + logo. Shown from a saved copy straight away, then from live data, so the generic text never flashes */
 function brandPaint(name,src){
@@ -1527,6 +1538,7 @@ function refresh(){
   if(SECTIONS[current]&&SECTIONS[current].update) SECTIONS[current].update();
   bindCommon();
   if(modalRefresh) modalRefresh();
+  pendBadge();
 }
 function bindCommon(){
   $$('[data-go]',work).forEach(function(b){ if(b._g) return; b._g=1; b.addEventListener('click',function(){ if(b.dataset.go==='invoice-form'&&b.dataset.client){ draft=newDraft(); draft.clientId=b.dataset.client; } go(b.dataset.go); }); });
@@ -5885,6 +5897,71 @@ SECTIONS['ae-dashboard']={
   }
 };
 
+/* ---------- Pending Tasks (one per department, clickable counts) ---------- */
+var pendSel={spa:'',aes:'',pha:''};
+function pendTasks(d){
+  var t=todayStr(), out=[], al=allocate();
+  var dues=function(kind,view){return dueBills(al).filter(function(b){return b.kind===kind}).map(function(b){var x=billInfo(b,al);return {main:b.clientName,sub:(b.clientPhone||'')+' · '+b.no+' · '+fmtDate(b.date)+' · '+daysSince(b.date)+' days',amt:x.bal,btn:'View',run:function(){view(b.id)}}})};
+  if(d==='spa'){
+    out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('inv',function(id){viewInvoice(id)})});
+  }
+  if(d==='aes'){
+    var bm=aiBilledMap();
+    out.push({key:'uncon',label:'Unbilled consultations',hint:'Consultations not on any invoice yet.',rows:S.aeCons.filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
+    out.push({key:'unses',label:'Unbilled sessions',hint:'Completed sessions not on any invoice and not billed upfront.',rows:S.aeSessions.filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){return {main:s.clientName,sub:(s.no||'')+' · '+(function(){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId);return ln&&ln.l?ln.l.name:(s.procedureName||'Session')})()+' · '+fmtDate(s.date),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
+    out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('ae',function(id){viewAeInv(id)})});
+    var follow=[], consent=[];
+    S.aeQuotes.forEach(function(q){(q.lines||[]).forEach(function(l,i){
+      var st=qtLineStats(q,i); if(st.left<=0) return;
+      var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}), key=qtLineKey(q,l,i);
+      if(consentNeeded(q.id,st.key)) consent.push({main:q.clientName,sub:l.name+' · '+q.no+(up?' · appointment booked':''),btn:'Take consent',run:function(){openConsent(q.id,st.key)}});
+      if(!up){var last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
+        follow.push({main:q.clientName,sub:l.name+' · '+st.done+' of '+(+l.sessions||0)+' done · last '+(last?fmtDate(last):'—'),srt:last||q.date||'',btn:'Book',run:function(){editAppt(null,{type:'Procedure',clientId:q.clientId,clientName:q.clientName,procedureId:l.procId,procedureName:l.name,quoteId:q.id,quoteLineId:key,staffIds:qtStaff(q,key)})}})}
+    })});
+    follow.sort(function(a,b){return a.srt.localeCompare(b.srt)});
+    out.push({key:'consent',label:'Consents due',hint:'Quotation items whose consent form isn’t signed yet.',rows:consent});
+    out.push({key:'missed',label:'Missed appointments',hint:'No-shows and past appointments never completed or cancelled.',rows:S.aeAppts.filter(apMissed).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,btn:'Reschedule',run:function(){editAppt(a.id,{_resched:true,date:todayStr()})}}})});
+    out.push({key:'follow',label:'Follow-ups',hint:'Sessions left on a quotation but nothing booked.',rows:follow});
+  }
+  if(d==='pha'){
+    out.push({key:'unpaid',label:'Unpaid sales bills',hint:'Client sale bills with a balance still to collect.',rows:dues('sale',function(id){phViewMove(id)})});
+    var sb=[];
+    S.phSuppliers.forEach(function(s){phSupAlloc(s.id).bills.forEach(function(b){if(b.bal>0.004)sb.push({main:s.name,sub:b.no+(b.billNo?' · bill '+b.billNo:'')+(b.date?' · '+fmtDate(b.date)+' · '+daysSince(b.date)+' days':''),amt:b.bal,srt:b.date||'',btn:'Pay',run:function(){supPayDialog(s.id,b.opening?'':b.id)}})})});
+    sb.sort(function(a,b){return a.srt.localeCompare(b.srt)});
+    out.push({key:'supbills',label:'Supplier bills unpaid',hint:'Purchase bills not fully paid to the supplier.',rows:sb});
+    out.push({key:'low',label:'Low stock',hint:'Active items at or below their reorder level, or out of stock.',rows:phInvRows(true).filter(function(r){return r.item.status!=='Inactive'&&(r.qty<=0||r.low)}).sort(function(a,b){return a.qty-b.qty}).map(function(r){return {main:r.item.name,sub:'Stock '+r.qty+(r.reorder!=null?' · reorder at '+r.reorder:''),btn:'Ledger',ro:true,run:function(){viewItemLedger(r.item.id)}}})});
+  }
+  return out;
+}
+function pendTotal(d){try{return pendTasks(d).reduce(function(n,x){return n+x.rows.length},0)}catch(e){return 0}}
+function pendBadge(){
+  if(!dept||!ready()) return;
+  var n=pendTotal(dept);
+  $$('#nav-'+dept+' [data-pend-badge]').forEach(function(x){x.textContent=n>99?'99+':String(n);x.hidden=!n});
+}
+function pendSection(d){return {
+  mount:function(){work.innerHTML=head('Pending Tasks')+'<div id="body"></div>'},
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var tasks=pendTasks(d), sel=tasks.find(function(x){return x.key===pendSel[d]});
+    if(!sel) sel=tasks.find(function(x){return x.rows.length})||tasks[0];
+    pendSel[d]=sel.key;
+    var html='<div class="pend-grid">'+tasks.map(function(x){return '<button class="pend-card'+(x===sel?' on':'')+(x.rows.length?'':' zero')+'" data-pend="'+x.key+'"><span class="n">'+x.rows.length+'</span><span class="l">'+esc(x.label)+'</span></button>'}).join('')+'</div>';
+    html+='<div class="panel"><h3>'+esc(sel.label)+'</h3><p class="hint" style="margin:-4px 0 10px">'+esc(sel.hint)+'</p>';
+    var hasAmt=sel.rows.some(function(r){return r.amt!=null}), tot=r2(sel.rows.reduce(function(s,r){return s+(+r.amt||0)},0));
+    html+=sel.rows.length?'<div class="tbl"><table><tbody>'+sel.rows.map(function(r,i){return '<tr><td><strong>'+(r.view?'<button class="link" style="color:inherit" data-pview="'+i+'">'+esc(r.main)+'</button>':esc(r.main))+'</strong><div class="sub">'+esc(r.sub)+'</div></td>'+(hasAmt?'<td class="num due">'+(r.amt!=null?money(r.amt):'')+'</td>':'')+'<td class="num">'+(readOnly&&!r.ro?'':'<button class="btn sm w" data-prun="'+i+'">'+esc(r.btn)+'</button>')+'</td></tr>'}).join('')+
+      (hasAmt?'<tr><td><strong>Total</strong></td><td class="num"><strong>'+money(tot)+'</strong></td><td></td></tr>':'')+'</tbody></table></div>':'<p class="hint">Nothing pending here.</p>';
+    b.innerHTML=html+'</div>';
+    $$('[data-pend]',b).forEach(function(x){x.onclick=function(){pendSel[d]=x.dataset.pend;SECTIONS[current].update()}});
+    $$('[data-prun]',b).forEach(function(x){x.onclick=function(){sel.rows[+x.dataset.prun].run()}});
+    $$('[data-pview]',b).forEach(function(x){x.onclick=function(){sel.rows[+x.dataset.pview].view()}});
+  }
+}}
+SECTIONS['spa-pending']=pendSection('spa');
+SECTIONS['ae-pending']=pendSection('aes');
+SECTIONS['ph-pending']=pendSection('pha');
+
 /* ---------- shell wiring ---------- */
 var VIEWS={home:$('#view-home'),spa:$('#view-spa'),pha:$('#view-pha'),aes:$('#view-aes')}, notice=$('#notice');
 function show(view){
@@ -5918,9 +5995,9 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
-  if(CURRENT_USER.role==='Spa')return ['dashboard','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','memberships','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
-  return ['ph-dashboard','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
+  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','memberships','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
+  return ['ph-dashboard','ph-pending','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
 function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
 function applyRoleUI(){
