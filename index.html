@@ -1750,8 +1750,8 @@ SECTIONS['invoice-form']={
       '<div style="margin-top:10px"><button type="button" class="btn" id="f-additem">'+PLUS+' Add another service</button></div>'+
       '<div class="form-bottom"><div></div><div class="totals" id="f-totals"></div></div>'+
       (editing?'<p class="hint" style="margin-top:14px">Payments for this invoice are recorded in Receipts.</p>':
-      '<div class="pay-box"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="f-pay">Amount (₹)</label><input type="number" id="f-pay" min="0" step="0.01" placeholder="0.00" value="'+esc(draft.payAmount)+'"></div><div class="field"><label for="f-mode">Payment mode</label><select id="f-mode">'+optList(MODES,draft.payMode)+'</select></div><div class="field"><label for="f-ref">Reference</label><input type="text" id="f-ref" placeholder="UPI or card ref (optional)" value="'+esc(draft.payRef)+'"></div></div><div style="margin-top:10px"><button type="button" class="btn sm" id="f-full">Paid in full</button> <span class="hint">Leave it empty to bill on credit. Anything above the total is kept as an advance.</span></div></div>')+
-      '<p class="err" id="f-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary">'+(editing?'Save changes':'Save invoice')+'</button><button type="button" class="btn" id="f-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>');
+      '<div class="pay-box" id="f-paybox"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="f-pay">Amount (₹)</label><input type="number" id="f-pay" min="0" step="0.01" placeholder="0.00" value="'+esc(draft.payAmount)+'"></div><div class="field"><label for="f-mode">Payment mode</label><select id="f-mode">'+optList(MODES,draft.payMode)+'</select></div><div class="field"><label for="f-ref">Reference</label><input type="text" id="f-ref" placeholder="UPI or card ref (optional)" value="'+esc(draft.payRef)+'"></div></div><div style="margin-top:10px"><button type="button" class="btn sm" id="f-full">Paid in full</button> <span class="hint">Leave it empty to bill on credit. Anything above the total is kept as an advance.</span></div></div>')+
+      '<p class="err" id="f-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary" id="f-save">'+(editing?'Save changes':'Save invoice')+'</button><button type="button" class="btn" id="f-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>');
     if(editing) $('#f-cancel').onclick=function(){draft=null;go('invoices')};
     if(readOnly) return;
     $('#f-date').onchange=function(e){draft.date=e.target.value;memBox();renderTotals()};
@@ -1841,7 +1841,16 @@ function renderTotals(){
         :'<div class="r big"><span>To pay</span><span>'+money(0)+'</span></div><div class="r"><span class="sub">Covered fully. Only a redemption slip is saved.</span><span></span></div>');
   }
   var fr=$('#f-round'); if(fr) fr.onchange=function(e){draft.roundOn=e.target.checked;renderTotals()};
-  $$('#f-items .line').forEach(function(row){var it=draft.items[+row.dataset.i],tg=row.querySelector('.mem-tag');if(!tg)return;
+  var full=sp&&!sp.inv.length;
+  var pb=$('#f-paybox'); if(pb){pb.hidden=!!full; if(full&&draft.payAmount){draft.payAmount='';var fp=$('#f-pay');if(fp)fp.value=''}}
+  var sb=$('#f-save'); if(sb&&!draft.id) sb.textContent=full?'Save redemption':(sp&&sp.slip.length?'Save redemption + invoice':'Save invoice');
+  var fno=$('#f-no'); if(fno&&!draft.id&&ready()){fno.textContent=full?'RED-'+pad(nextSeq(S.redemptions)):'INV-'+pad(nextSeq(S.invoices));var fl=fno.parentNode.querySelector('label');if(fl)fl.textContent=full?'Redemption slip':'Invoice number';var dl=document.querySelector('label[for="f-date"]');if(dl)dl.textContent=full?'Date':'Invoice date'}
+  $$('#f-items .line').forEach(function(row){var it=draft.items[+row.dataset.i];
+    /* a service fully paid from the membership has no GST: hide GST and show the amount before GST */
+    var sl=sp&&it?sp.slip.find(function(x){return x._src===it}):null, noTax=!!(sl&&!sl.partial), gf=row.querySelector('.it-gst'), gField=gf&&gf.closest('.field'), am=row.querySelector('.it-amt');
+    if(gField) gField.hidden=noTax;
+    if(am) am.textContent=money(noTax?sl.worth:lineCalc(it||{}).total);
+    var tg=row.querySelector('.mem-tag');if(!tg)return;
     if(!sp||!it||!it.serviceId){tg.hidden=true;return}
     var ok=memCovers(sp.m,it.serviceId);tg.hidden=false;tg.className='mem-tag '+(ok?'yes':'no');tg.textContent=ok?'Covered by membership':'Not covered';});
 }
@@ -5197,7 +5206,7 @@ function memSplit(items){
     var lc=lineCalc(it), after=lc.amount, cover=memCovers(m,it.serviceId)?r2(Math.max(0,Math.min(after,rem))):0;
     if(cover<=0.004){inv.push(it);return}
     rem=r2(rem-cover);
-    slip.push(Object.assign({},it,{worth:cover,partial:cover<after-0.004}));
+    slip.push(Object.assign({},it,{worth:cover,partial:cover<after-0.004,_src:it}));
     if(cover<after-0.004) inv.push(Object.assign({},it,{name:it.name+' (beyond membership balance)',qty:1,rate:r2(after-cover),discPct:0,consumables:[]}));
   });
   var used=r2(bal-rem);
