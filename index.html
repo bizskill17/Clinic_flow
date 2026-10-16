@@ -197,6 +197,7 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .imp-steps{display:grid;gap:10px;margin:4px 0 14px}.imp-steps>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.imp-opts{flex-direction:column;align-items:flex-start!important;gap:6px!important;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 .imp-file{cursor:pointer}.imp-sum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}.imp-tbl{max-height:360px;overflow:auto}
 .count-line{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 12px;color:var(--muted);font-size:14px}.count-line strong{color:var(--ink);font-size:16px}
+.next-box{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:-4px 0 14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--m2-soft)}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -1220,6 +1221,7 @@ var loaded={clients:false,services:false,invoices:false,receipts:false,categorie
 var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
+function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
 
 function ready(){return storeMode==='local'||Object.keys(loaded).every(function(k){return loaded[k]})}
 var refreshQueued=false;
@@ -3139,23 +3141,25 @@ function apStaffNames(a){return apStaff(a).map(userName).filter(Boolean).join(',
 function endTime(a){return apTo(a)}
 var SLOT_START=8*60, SLOT_END=21*60, SLOT_STEP=15;
 function apWhat(a){return a.type==='Procedure'?(a.procedureName||(findIn('aeProcs',a.procedureId)||{}).name||'Procedure'):'Consultation'}
+function apMissed(a){return a.status==='No-show'||(a.date<todayStr()&&AP_ACTIVE.indexOf(a.status)>=0)}
 function apList(){
   var q=norm(apF.q), t=todayStr();
   return S.aeAppts.filter(function(a){
     if(apF.view==='day'&&a.date!==apF.date) return false;
     if(apF.view==='upcoming'&&(a.date<t||a.status==='Cancelled'||a.status==='Completed'||a.status==='No-show')) return false;
+    if(apF.view==='missed'&&!apMissed(a)) return false;
     if(apF.type&&a.type!==apF.type) return false;
     if(apF.status&&a.status!==apF.status) return false;
     if(apF.staff&&apStaff(a).indexOf(apF.staff)<0) return false;
     if(q&&norm(a.no+' '+a.clientName+' '+(a.clientPhone||'')+' '+apWhat(a)+' '+apStaffNames(a)).indexOf(q)<0) return false;
     return true;
-  }).sort(function(a,b){var d=(a.date||'').localeCompare(b.date||'')||toMin(apFrom(a))-toMin(apFrom(b));return apF.view==='all'?-d:d});
+  }).sort(function(a,b){var d=(a.date||'').localeCompare(b.date||'')||toMin(apFrom(a))-toMin(apFrom(b));return apF.view==='all'||apF.view==='missed'?-d:d});
 }
 SECTIONS['ae-appointments']={
   mount:function(){
     if(!apF.date) apF.date=todayStr();
     work.innerHTML=head('Appointments','<button class="btn" id="ap-export">Export CSV</button><button class="btn primary w" id="ap-new">'+PLUS+' New appointment</button>')+
-      '<div class="toolbar"><div class="actions" role="group" aria-label="View"><button class="btn'+(apF.view==='day'?' primary':'')+'" data-apview="day">Day</button><button class="btn'+(apF.view==='upcoming'?' primary':'')+'" data-apview="upcoming">Upcoming</button><button class="btn'+(apF.view==='all'?' primary':'')+'" data-apview="all">All</button></div>'+
+      '<div class="toolbar"><div class="actions" role="group" aria-label="View"><button class="btn'+(apF.view==='day'?' primary':'')+'" data-apview="day">Day</button><button class="btn'+(apF.view==='missed'?' primary':'')+'" data-apview="missed">Missed</button><button class="btn'+(apF.view==='upcoming'?' primary':'')+'" data-apview="upcoming">Upcoming</button><button class="btn'+(apF.view==='all'?' primary':'')+'" data-apview="all">All</button></div>'+
       (apF.view==='day'?'<div class="actions" role="group" aria-label="Choose day"><button class="btn" id="ap-prev" aria-label="Previous day">‹</button><input type="date" id="ap-date" value="'+esc(apF.date)+'" aria-label="Date" style="width:auto"><button class="btn" id="ap-next" aria-label="Next day">›</button><button class="btn" id="ap-today">Today</button></div>':'')+'</div>'+
       '<div class="toolbar"><div class="field grow"><label for="ap-q">Search</label><input type="search" id="ap-q" placeholder="Client, phone, procedure or staff" value="'+esc(apF.q)+'"></div>'+
       '<div class="field"><label for="ap-type">Type</label><select id="ap-type">'+optList([['','All types'],'Consultation','Procedure'],apF.type)+'</select></div>'+
@@ -3182,18 +3186,19 @@ SECTIONS['ae-appointments']={
     if(!ready()){b.innerHTML=loadingHTML();return}
     var list=apList(), html='';
     if(!S.aeAppts.length){b.innerHTML=html+'<div class="empty"><strong>No appointments yet</strong>Book a consultation or a procedure with New appointment.</div>';return}
-    if(!list.length){b.innerHTML=html+'<div class="empty"><strong>'+(apF.view==='day'?'No appointments on this day':apF.view==='all'?'No appointments':'No upcoming appointments')+'</strong>'+(apF.q||apF.type||apF.status||apF.staff?'Try clearing the filters.':'Use New appointment to book one.')+'</div>';return}
+    if(!list.length){b.innerHTML=html+'<div class="empty"><strong>'+(apF.view==='day'?'No appointments on this day':apF.view==='all'?'No appointments':apF.view==='missed'?'No missed appointments':'No upcoming appointments')+'</strong>'+(apF.q||apF.type||apF.status||apF.staff?'Try clearing the filters.':'Use New appointment to book one.')+'</div>';return}
     html+='<div class="tbl"><table class="ap-tbl"><thead><tr>'+(apF.view!=='day'?'<th>Date</th>':'')+'<th>Time (IST)</th><th>Client</th><th>Type</th><th>Doctor / staff</th><th>Status</th><th></th></tr></thead><tbody>'+
       list.map(function(a){return '<tr>'+(apF.view!=='day'?'<td class="nowrap">'+fmtDate(a.date)+'</td>':'')+'<td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong><div class="sub">to '+esc(fmtTime(apTo(a)))+'</div></td>'+
         '<td><button class="link" style="color:inherit" data-client-view="'+esc(a.clientId)+'"><strong>'+esc(a.clientName)+'</strong></button><div class="sub">'+esc(a.clientPhone||'')+'</div></td>'+
         '<td><span class="pill '+(a.type==='Procedure'?'partial':'off')+'">'+esc(a.type)+'</span>'+(a.type==='Procedure'?'<div class="sub">'+esc(apWhat(a))+'</div>':'')+(a.quoteId?'<div class="sub">'+esc(apSessionLabel(a))+'</div>':'')+'</td>'+
         '<td>'+esc(apStaffNames(a)||'—')+'</td>'+
         '<td><select class="ap-st" data-id="'+esc(a.id)+'" aria-label="Status of '+esc(a.no)+'" style="min-height:32px;padding:4px 8px;width:auto"'+(readOnly?' disabled':'')+'>'+optList(AP_STATUS,a.status)+'</select></td>'+
-        '<td><div class="row-acts w"><button class="btn sm" data-apedit="'+esc(a.id)+'">Edit</button><button class="btn sm danger" data-apdel="'+esc(a.id)+'">Delete</button></div></td></tr>'}).join('')+
+        '<td><div class="row-acts w">'+(apMissed(a)&&!readOnly?'<button class="btn sm primary" data-apres="'+esc(a.id)+'">Reschedule</button>':'')+'<button class="btn sm" data-apedit="'+esc(a.id)+'">Edit</button><button class="btn sm danger" data-apdel="'+esc(a.id)+'">Delete</button></div></td></tr>'}).join('')+
       '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,S.aeAppts.length,'appointments')+'</p>';
     b.innerHTML=html;
     $$('.ap-st',b).forEach(function(x){x.onchange=function(){var a=findIn('aeAppts',x.dataset.id);if(!a)return;var n=Object.assign({},a,{status:x.value,updatedAt:new Date().toISOString()});x.disabled=true;put('aeAppts',n).then(function(){toast(a.no+' marked '+x.value)}).catch(function(e){x.disabled=false;x.value=a.status;toast(errText(e))})}});
     $$('[data-apedit]',b).forEach(function(x){x.onclick=function(){editAppt(x.dataset.apedit)}});
+    $$('[data-apres]',b).forEach(function(x){x.onclick=function(){editAppt(x.dataset.apres,{_resched:true,date:todayStr()})}});
     $$('[data-apdel]',b).forEach(function(x){x.onclick=function(){var a=findIn('aeAppts',x.dataset.apdel);if(!a)return;var lc=S.aeCons.find(function(c){return c.apptId===a.id});if(lc){toast('Consultation '+lc.no+' is linked to '+a.no+'. Delete that consultation first.');return}
       confirmBox('Delete appointment?','Delete '+a.no+' for '+a.clientName+' on '+fmtDate(a.date)+' at '+fmtTime(apFrom(a))+'? To keep a record, set the status to Cancelled instead.','Delete',function(){remove('aeAppts',a.id).then(function(){toast(a.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
   }
@@ -3207,7 +3212,7 @@ function editAppt(id,preset){
   if(readOnly){toast('You need Contributor access to book appointments.');return}
   var base=findIn('aeAppts',id), a=Object.assign({},base||{date:apF.view==='day'?apF.date:todayStr(),type:'Consultation'},preset||{});
   var st={clientId:a.clientId||'',procedureId:a.procedureId||'',quoteKey:a.quoteId?a.quoteId+'|'+a.quoteLineId:'',quoteId:a.quoteId||'',staffIds:(a.staffIds||apStaff(a)).slice(),from:a.from||apFrom(a),to:a.to||apTo(a),pick:null};
-  openModal('<h2>'+(id?'Edit appointment '+esc(a.no):'New appointment')+'</h2><form id="apf" novalidate><div class="f-grid">'+
+  openModal('<h2>'+(id?(a._resched?'Reschedule ':'Edit appointment ')+esc(a.no):'New appointment')+'</h2><form id="apf" novalidate><div class="f-grid">'+
     '<div class="field span2"><label for="apf-client">Client <span class="req">*</span></label><div class="client-pick"><div id="apf-client-host"></div><button type="button" class="btn icon-plus" id="apf-newclient" aria-label="Add new client" title="Add new client">'+PLUS+'</button></div></div>'+
     '<div class="field" id="apf-qt-wrap"><label for="apf-qt">Quotation no</label><select id="apf-qt"></select></div>'+
     '<div class="field"><label for="apf-type">Appointment type <span class="req">*</span></label><select id="apf-type">'+optList(['Consultation','Procedure'],a.type)+'</select></div>'+
@@ -3321,7 +3326,7 @@ function editAppt(id,preset){
         var hit=apBusy(d,st.staffIds,id).filter(function(x){return toMin(f)<x.to&&toMin(t)>x.from});
         if(hit.length){var h=hit[0].appt,who=apStaff(h).filter(function(u){return st.staffIds.indexOf(u)>=0}).map(userName).join(', ');return show(who+' is already booked from '+fmtTime(apFrom(h))+' to '+fmtTime(apTo(h))+' ('+h.no+', '+h.clientName+'). Choose another time.')}
         var now=new Date().toISOString(), seq=id?base.seq:nextSeq(S.aeAppts);
-        var obj={id:id||newId('ap'),seq:seq,no:id?base.no:'APT-'+pad(seq),date:d,from:f,to:t,type:type,procedureId:type==='Procedure'?pr.id:'',procedureName:type==='Procedure'?pr.name:'',quoteId:it?it.q.id:'',quoteLineId:it?it.st.key:'',quoteNo:it?it.q.no:'',clientId:c.id,clientName:c.name,clientPhone:c.phone||'',staffIds:st.staffIds.slice(),status:base?(base.status||'Booked'):'Booked',createdAt:(base&&base.createdAt)||now,updatedAt:now};
+        var obj={id:id||newId('ap'),seq:seq,no:id?base.no:'APT-'+pad(seq),date:d,from:f,to:t,type:type,procedureId:type==='Procedure'?pr.id:'',procedureName:type==='Procedure'?pr.name:'',quoteId:it?it.q.id:'',quoteLineId:it?it.st.key:'',quoteNo:it?it.q.no:'',clientId:c.id,clientName:c.name,clientPhone:c.phone||'',staffIds:st.staffIds.slice(),status:base?(a._resched?'Booked':(base.status||'Booked')):'Booked',createdAt:(base&&base.createdAt)||now,updatedAt:now};
         var btn=q('[type=submit]');btn.disabled=true;
         put('aeAppts',obj).then(function(){closeModal();toast(obj.no+(id?' updated':' booked for '+fmtDate(d)+', '+fmtTime(f)+' to '+fmtTime(t)+' IST'));if(apF.view==='day'&&apF.date!==d){apF.date=d;if(current==='ae-appointments')go(current)}}).catch(function(e2){btn.disabled=false;show(errText(e2))});
       };
@@ -3731,7 +3736,7 @@ function sesListUpdate(){
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Procedure</th><th>Performed by</th><th class="num">Photos</th><th>Billing</th><th></th></tr></thead><tbody>'+
     list.map(function(s){var od=sesOrdinal(s), bl=sesBilling(s,bm);return '<tr><td class="nowrap"><button class="link" data-ses="'+esc(s.id)+'">'+esc(s.no)+'</button></td><td class="nowrap">'+fmtDate(s.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(s.clientId)+'">'+esc(s.clientName)+'</button><div class="sub">'+esc(s.clientPhone||'')+'</div></td>'+
       '<td>'+esc(s.procName||'')+'<div class="sub">'+esc([od,s.quoteNo].filter(Boolean).join(' · '))+'</div></td><td>'+esc(s.performedBy||'—')+'</td><td class="num">'+Object.keys(s.photos||{}).length+' / 5</td><td class="nowrap">'+(bl.billed?'<span class="pill paid">Billed</span><div class="sub">'+esc(bl.how)+'</div>':'<span class="pill unpaid">Not billed</span>')+'</td>'+
-      '<td><div class="row-acts">'+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">Prescription PDF</button><button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button><button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
+      '<td><div class="row-acts">'+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">Prescription PDF</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody></table></div><p class="hint">'+countOf(list.length,S.aeSessions.length,'sessions')+'</p>';
   $$('[data-ses]',b).forEach(function(x){x.onclick=function(){viewSes(x.dataset.ses)}});
   $$('[data-sesrx]',b).forEach(function(x){x.onclick=function(){sesPdf(findIn('aeSessions',x.dataset.sesrx))}});
@@ -3758,6 +3763,7 @@ function sesOpenForm(preset){
   sesMode='form'; closeModal(); if(current!=='ae-sessions') go('ae-sessions'); else go(current);
 }
 function sesEdit(id){
+  if(!isAdmin()){toast('Saved sessions can only be changed by an Admin.');return}
   var s=findIn('aeSessions',id); if(!s) return;
   var ph={}; Object.keys(s.photos||{}).forEach(function(k){ph[k]=Object.assign({},s.photos[k])});
   sesDraft={id:s.id,seq:s.seq,no:s.no,createdAt:s.createdAt,date:s.date,clientId:s.clientId,clientName:s.clientName,quoteId:s.quoteId||'',lineKey:s.quoteLineId||'',apptId:s.apptId||'',staffIds:(s.staffIds||[]).slice(),
@@ -3986,14 +3992,19 @@ function viewSes(id,fallback){
     var s=findIn('aeSessions',id)||fallback; if(!s){closeModal();return}
     var txt=function(t){return t?'<div style="white-space:pre-line">'+esc(t)+'</div>':'<span class="sub">—</span>'};
     var ph=SES_PHOTOS.filter(function(p){return s.photos&&s.photos[p[0]]});
-    m.innerHTML='<h2>Session '+esc(s.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(s.clientName)+'</strong> '+esc(s.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(s.procName||'')+'</strong> '+esc(sesOrdinal(s))+'</dd><dt>Quotation</dt><dd>'+esc(s.quoteNo||'—')+'</dd><dt>Performed on</dt><dd>'+fmtDate(s.date)+'</dd><dt>Performed by</dt><dd>'+esc(s.performedBy||'—')+'</dd><dt>Appointment</dt><dd>'+esc(s.apptNo||'—')+'</dd></dl></div>'+
+    var nx=S.aeAppts.filter(function(a){return a.clientId===s.clientId&&a.id!==s.apptId&&a.date>=todayStr()&&AP_ACTIVE.indexOf(a.status)>=0}).sort(function(a,b){return (a.date+apFrom(a)).localeCompare(b.date+apFrom(b))})[0];
+    var sq=findIn('aeQuotes',s.quoteId), sl=sq&&sesLine(sq,s.quoteLineId), left=sl?qtLineStats(sq,sl.i).left:0;
+    var nextBox='<div class="next-box">'+(nx?'<span class="sub">Next appointment</span> <strong>'+esc(nx.no)+' · '+fmtDate(nx.date)+' · '+esc(fmtTime(apFrom(nx)))+'</strong> <span class="sub">'+esc(apWhat(nx))+(apStaffNames(nx)?' · '+esc(apStaffNames(nx)):'')+'</span>'
+      :(left>0?'<span>No next appointment booked · '+left+' session'+(left===1?'':'s')+' left</span>'+(readOnly?'':' <button type="button" class="btn sm primary w" data-booknext>Book next session</button>'):'<span>All sessions of this procedure are completed.</span>'))+'</div>';
+    m.innerHTML='<h2>Session '+esc(s.no)+'</h2>'+nextBox+'<div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(s.clientName)+'</strong> '+esc(s.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(s.procName||'')+'</strong> '+esc(sesOrdinal(s))+'</dd><dt>Quotation</dt><dd>'+esc(s.quoteNo||'—')+'</dd><dt>Performed on</dt><dd>'+fmtDate(s.date)+'</dd><dt>Performed by</dt><dd>'+esc(s.performedBy||'—')+'</dd><dt>Appointment</dt><dd>'+esc(s.apptNo||'—')+'</dd></dl></div>'+
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>Prescription PDF</button><button class="btn w" data-edit>Edit</button></div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>Prescription PDF</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-rx]').onclick=function(){sesPdf(s)};
-    m.querySelector('[data-edit]').onclick=function(){sesEdit(id)};
+    var se=m.querySelector('[data-edit]'); if(se) se.onclick=function(){sesEdit(id)};
+    var bn=m.querySelector('[data-booknext]'); if(bn) bn.onclick=function(){var q=findIn('aeQuotes',s.quoteId);closeModal();editAppt(null,{type:'Procedure',clientId:s.clientId,clientName:s.clientName,procedureId:s.procId,procedureName:s.procName,quoteId:s.quoteId,quoteLineId:s.quoteLineId,staffIds:q?qtStaff(q,s.quoteLineId):[]})};
   };
   var m=openModal('','--m11',true); render(m); modalRefresh=function(){render(m)};
 }
