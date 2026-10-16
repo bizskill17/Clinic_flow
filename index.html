@@ -211,6 +211,7 @@ button[type=submit]:disabled::after,.btn.busy::after{content:"";position:absolut
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){button[type=submit]:disabled::after,.btn.busy::after{animation-duration:2s}}
 .pill.cancelled{background:transparent;color:var(--m6);border:1px solid var(--m6)}.cx-note{margin:12px 0 0;padding:10px 12px;border:1px solid var(--m6);border-radius:10px;color:var(--m6)}.cx-note div{color:var(--ink);margin-top:2px}
+.cons-ro{padding:3px 0}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -1921,7 +1922,7 @@ function renderItems(){
     row.querySelector('.it-pct').oninput=function(e){it.discPct=+e.target.value||0;upd()};
     row.querySelector('.it-gst').onchange=function(e){it.gst=+e.target.value||0;upd()};
     row.querySelector('.it-del').onclick=function(){draft.items.splice(i,1);if(!draft.items.length)draft.items.push(blankItem());renderItems()};
-    consBlock(row.querySelector('.h-cons'),{dk:'spa',compact:true,idp:'itc'+i,emptyText:'None.',get:function(){return it.consumables||(it.consumables=[])},set:function(a){it.consumables=a},
+    consBlock(row.querySelector('.h-cons'),{dk:'spa',compact:true,idp:'itc'+i,emptyText:'None.',locked:consLocked(draft.id&&invById(draft.id)),get:function(){return it.consumables||(it.consumables=[])},set:function(a){it.consumables=a},
       standard:function(){var sv=findIn('services',it.serviceId);return sv?sv.consumables:null},
       saved:function(){var o=draft.id&&invById(draft.id),all=[];if(o)(o.items||[]).forEach(function(x){all=all.concat(x.consumables||[])});return all}});
   });
@@ -3491,7 +3492,7 @@ function conFormMount(){
   $('#cf-reset').onclick=function(){var wasEdit=!!d.id;conDraft=wasEdit?null:conNew();if(wasEdit)conMode='list';go(current)};
   $('#con-form').onsubmit=function(e){e.preventDefault();conSave()};
   conFillAppts(); conRenderMeds(); conRenderProcs();
-  consBlock($('#cf-cons'),{dk:'aes',idp:'cfc',emptyText:'None.',get:function(){return d.consumables||(d.consumables=[])},set:function(a){d.consumables=a},
+  consBlock($('#cf-cons'),{dk:'aes',idp:'cfc',emptyText:'None.',locked:consLocked(d.id&&findIn('aeCons',d.id)),get:function(){return d.consumables||(d.consumables=[])},set:function(a){d.consumables=a},
     saved:function(){var o=d.id&&findIn('aeCons',d.id);return o?o.consumables:[]},copy:{label:'Copy from procedure',options:function(){return procCopyOptions('')}}});
 }
 function conFillAppts(){
@@ -4462,7 +4463,12 @@ function deptStock(dk){
   return map;
 }
 /* editable consumables list: change qty, remove, add, reset to standard, copy from another service/procedure */
+/* consumption can be changed only on the day it was entered (Admin any day) */
+function istDay(iso){try{return new Date(iso).toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})}catch(e){return ''}}
+function consLocked(doc){if(!doc||!doc.id||isAdmin())return false;var d=doc.createdAt?istDay(doc.createdAt):(doc.date||'');return !!d&&d!==todayStr()}
+var LOCK_NOTE='Locked: consumption can be changed only on the day it was entered. Ask an Admin.';
 function consBlock(host,o){
+  if(o.locked){var arr0=o.get()||[];host.innerHTML='<div class="cons'+(o.compact?' compact':'')+'">'+(arr0.length?arr0.map(function(l){return '<div class="cons-ro">'+esc((phItem(l.itemId)||{}).name||l.name||'')+' <span class="sub">× '+esc(l.qty)+'</span></div>'}).join(''):'<p class="hint" style="margin:0">None.</p>')+'<p class="hint" style="margin:6px 0 0">🔒 '+LOCK_NOTE+'</p></div>';return {render:function(){},refresh:function(){}}}
   var combos2=[];
   function render(){
     var arr=o.get(), st=o.noAvail?null:deptStock(o.dk), saved={};
@@ -4545,7 +4551,7 @@ function deptInvSection(dk){
         var html=gl.length?'<div class="tbl"><table><thead><tr><th>Item</th><th>Used for</th><th class="num">Times</th><th class="num">Qty used</th></tr></thead><tbody>'+
           gl.map(function(g){return '<tr><td><strong>'+esc(g.name)+'</strong></td><td>'+esc(g.what)+'</td><td class="num">'+g.n+'</td><td class="num">'+fmtSec(g.itemId,g.qty)+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty"><strong>No usage in this period</strong>Usage is recorded on '+(dk==='spa'?'invoice service lines':'sessions and consultations')+', or with Record usage.</div>';
         if(gen.length) html+='<h3 class="sec-h">General use entries</h3><div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Note</th><th>Items</th><th></th></tr></thead><tbody>'+
-          gen.map(function(u){return '<tr><td class="nowrap"><strong>'+esc(u.no)+'</strong></td><td class="nowrap">'+fmtDate(u.date)+'</td><td>'+esc(u.note||'—')+'</td><td>'+esc((u.lines||[]).map(function(l){return l.name+' × '+l.qty}).join(', '))+'</td><td><div class="row-acts">'+(readOnly?'':'<button class="btn sm w" data-guedit="'+esc(u.id)+'">Edit</button><button class="btn sm danger w" data-gudel="'+esc(u.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+'</tbody></table></div>';
+          gen.map(function(u){return '<tr><td class="nowrap"><strong>'+esc(u.no)+'</strong></td><td class="nowrap">'+fmtDate(u.date)+'</td><td>'+esc(u.note||'—')+'</td><td>'+esc((u.lines||[]).map(function(l){return l.name+' × '+l.qty}).join(', '))+'</td><td><div class="row-acts">'+(readOnly?'':consLocked(u)?'<span class="sub" title="'+esc(LOCK_NOTE)+'">🔒 Locked</span>':'<button class="btn sm w" data-guedit="'+esc(u.id)+'">Edit</button><button class="btn sm danger w" data-gudel="'+esc(u.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+'</tbody></table></div>';
         b.innerHTML=html;
         $$('[data-guedit]',b).forEach(function(x){x.onclick=function(){deptUsageDialog(dk,x.dataset.guedit)}});
         $$('[data-gudel]',b).forEach(function(x){x.onclick=function(){var u=findIn('deptUsage',x.dataset.gudel);if(!u)return;confirmBox('Delete usage entry?','Delete '+u.no+'? The quantities go back into stock.','Delete',function(){remove('deptUsage',u.id).then(function(){toast(u.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
@@ -4610,6 +4616,7 @@ function deptOpeningDialog(dk){
   };
 }
 function deptUsageDialog(dk,id){
+  if(id&&consLocked(findIn('deptUsage',id))){toast(LOCK_NOTE);return}
   var u=id?findIn('deptUsage',id):null, st={lines:u?copyCons(u.lines):[]};
   var m=openModal('<h2>'+(u?'Edit usage '+esc(u.no):'Record usage')+' · '+(dk==='spa'?'Spa':'Aesthetics')+'</h2><form id="duf" novalidate><div class="f-grid"><div class="field"><label for="du-date">Date</label><input type="date" id="du-date" value="'+esc(u?u.date:todayStr())+'"></div>'+
     '<div class="field span2"><label for="du-note">Used for</label><input type="text" id="du-note" maxlength="120" value="'+esc(u?u.note:'')+'" placeholder="e.g. Room cleaning" autocomplete="off"></div></div>'+
