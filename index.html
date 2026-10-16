@@ -210,6 +210,7 @@ button[type=submit]:disabled::after,.btn.busy::after{content:"";position:absolut
 .btn:not(.primary).busy::after,button[type=submit]:not(.primary):disabled::after{border-color:var(--ink) var(--ink) var(--ink) transparent}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){button[type=submit]:disabled::after,.btn.busy::after{animation-duration:2s}}
+.pill.cancelled{background:transparent;color:var(--m6);border:1px solid var(--m6)}.cx-note{margin:12px 0 0;padding:10px 12px;border:1px solid var(--m6);border-radius:10px;color:var(--m6)}.cx-note div{color:var(--ink);margin-top:2px}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -822,6 +823,7 @@ function invoice(J,ctx){
     recs.forEach(function(r){font(d,'normal',8.5);if(r.no){d.text(fd(r.date),L,y);d.text(r.no,L+24,y);d.text(r.mode+(r.reference?' ('+r.reference+')':''),L+46,y)}else{d.text(r.mode,L,y)}d.text(inr(r.amount),L+130,y,{align:'right'});y+=4.6});
   }
   footer(d,b,'This is a computer-generated invoice.');
+  if(i.cancelled) cancelStamp(d,i.cancelReason);
   return d.output('arraybuffer');
 }
 /* ctx: {biz, rec, invTotal, invPaid, invBalance, clientPhone, fmtDate} */
@@ -1000,6 +1002,14 @@ function quotation(J,ctx){
   return d.output('arraybuffer');
 }
 /* ctx: {biz, inv:{no,date,lines:[{name,ref,qty,rate,amount,discPct,disc,net,gst,tax,total}],amount,discount,net,tax,otherDesc,other,otherGst,otherTax,roundOff,total}, client:{name,phone,gender,age}, paid, balance, receipts:[], fmtDate} */
+/* big red CANCELLED mark on every page */
+function cancelStamp(d,reason){
+  var pages=d.getNumberOfPages();
+  for(var p=1;p<=pages;p++){d.setPage(p);
+    font(d,'bold',64,[200,40,40]);d.text('CANCELLED',105,170,{align:'center',angle:30});
+    if(reason&&p===1){font(d,'bold',9,[200,40,40]);d.text(d.splitTextToSize('Cancelled: '+reason,R-L)[0],L,262)}
+  }
+}
 function aeInvoice(J,ctx){
   var d=newDoc(J), b=ctx.biz, v=ctx.inv, fd=ctx.fmtDate;
   var ACC=[15,107,120], TINT=[234,245,246], W=R-L;
@@ -1083,6 +1093,7 @@ function aeInvoice(J,ctx){
     if(p===pages){d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text('For '+(b.name||'Your Business Name'),R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Authorised signatory',R,279,{align:'right'})}
     if(pages>1){font(d,'normal',7.5,MUTED);d.text('Page '+p+' of '+pages,(L+R)/2,288.5,{align:'center'})}
   }
+  if(v.cancelled) cancelStamp(d,v.cancelReason);
   return d.output('arraybuffer');
 }
 /* ctx: {biz, c:{no,date,procName,quoteNo,text,signedBy,relation,witness,signature:{data,w,h}}, client:{name,phone,gender,age}, stamp, fmtDate} */
@@ -1357,9 +1368,9 @@ function allocCore(invs,recs,pool){
    Bills: opening receivable, Spa invoices, Pharmacy sale bills (walk-in sales excluded).
    Credits: every receipt (Spa or Pharmacy), Pharmacy returns, and an advance opening balance. */
 function allBills(){
-  var b=allInvoices().map(function(i){return {id:i.id,clientId:i.clientId,date:i.date,seq:i.seq,total:+i.total||0,opening:!!i.opening,no:i.no,module:i.opening?'—':'Spa',kind:i.opening?'ob':'inv',clientName:i.clientName,clientPhone:i.clientPhone}});
-  S.phMoves.forEach(function(m){if(m.type==='Sale'&&m.clientId)b.push({id:m.id,clientId:m.clientId,date:m.date,seq:m.seq,total:+m.total||0,no:m.no,module:'Pharmacy',kind:'sale',clientName:m.clientName,clientPhone:m.clientPhone})});
-  S.aeInvoices.forEach(function(v){if(v.clientId)b.push({id:v.id,clientId:v.clientId,date:v.date,seq:v.seq,total:+v.total||0,no:v.no,module:'Aesthetics',kind:'ae',clientName:v.clientName,clientPhone:v.clientPhone})});
+  var b=allInvoices().filter(function(i){return !i.cancelled}).map(function(i){return {id:i.id,clientId:i.clientId,date:i.date,seq:i.seq,total:+i.total||0,opening:!!i.opening,no:i.no,module:i.opening?'—':'Spa',kind:i.opening?'ob':'inv',clientName:i.clientName,clientPhone:i.clientPhone}});
+  S.phMoves.forEach(function(m){if(m.type==='Sale'&&m.clientId&&!m.cancelled)b.push({id:m.id,clientId:m.clientId,date:m.date,seq:m.seq,total:+m.total||0,no:m.no,module:'Pharmacy',kind:'sale',clientName:m.clientName,clientPhone:m.clientPhone})});
+  S.aeInvoices.forEach(function(v){if(v.clientId&&!v.cancelled)b.push({id:v.id,clientId:v.clientId,date:v.date,seq:v.seq,total:+v.total||0,no:v.no,module:'Aesthetics',kind:'ae',clientName:v.clientName,clientPhone:v.clientPhone})});
   return b;
 }
 function allReceipts(){
@@ -1381,11 +1392,11 @@ function clientAccount(cid,al){
   S.phMoves.forEach(function(m){if(m.type==='Return'&&m.clientId===cid)received+=+m.total||0});
   return {billed:r2(billed),received:r2(received),due:r2(due),advance:r2(al.advance[cid]||0)};
 }
-function billInfo(b,al){var paid=r2((al||allocate()).paid[b.id]||0),bal=r2(b.total-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
+function billInfo(b,al){if(b&&b.cancelled)return {paid:0,bal:0,status:'cancelled'};var paid=r2((al||allocate()).paid[b.id]||0),bal=r2(b.total-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
 function countOf(n,t,noun){return n+' of '+t+' '+noun}
 function balanceCell(a){return a.due>0.004?'<span class="due">'+money(a.due)+' due</span>':(a.advance>0.004?'<span class="adv">'+money(a.advance)+' advance</span>':'<span class="sub">Settled</span>')}
-function invInfo(inv,pm){var paid=r2((pm||paidMap())[inv.id]||0);var bal=r2((+inv.total||0)-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
-function statusPill(s){return '<span class="pill '+s+'">'+({paid:'Paid',partial:'Part paid',unpaid:'Unpaid'}[s])+'</span>'}
+function invInfo(inv,pm){if(inv&&inv.cancelled)return {paid:0,bal:0,status:'cancelled'};var paid=r2((pm||paidMap())[inv.id]||0);var bal=r2((+inv.total||0)-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
+function statusPill(s){return '<span class="pill '+s+'">'+({paid:'Paid',partial:'Part paid',unpaid:'Unpaid',cancelled:'Cancelled'}[s])+'</span>'}
 /* next number = the lowest number not in use, so numbers freed by a delete are reused (1, 2, 3 … again) */
 function nextSeq(list){var used={};list.forEach(function(x){used[+x.seq||0]=1});var n=1;while(used[n])n++;return n}
 function clientById(id){return S.clients.find(function(c){return c.id===id})}
@@ -1425,6 +1436,25 @@ function pdfView(name,data){
   ov.querySelector('[data-pdl]').onclick=function(){saveFile(name,blob)};
   ov.querySelector('[data-pclose]').focus();
 }
+function canCancel(){return !readOnly&&(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')}
+/* cancel an invoice / pharmacy sale: keeps its number, removed from sales and dues; payments become advance */
+function cancelBill(kind,id){
+  var doc=findIn(kind,id); if(!doc) return;
+  if(!canCancel()){toast('Only Admin or Manager can cancel invoices.');return}
+  if(doc.memSaleId&&findIn('members',doc.memSaleId)){toast(doc.no+' is a membership invoice. Delete the membership instead.');return}
+  var m=openModal('<h2>Cancel '+esc(doc.no)+'?</h2><p class="hint" style="margin-top:-6px">The number stays used and the invoice is marked CANCELLED. It is removed from sales, GST and outstanding. Any payment on it becomes the client’s advance.</p>'+
+    '<form id="cxf" novalidate><div class="field"><label for="cx-reason">Reason <span class="req">*</span></label><textarea id="cx-reason" rows="3" maxlength="300"></textarea></div><p class="err" id="cx-err" hidden></p>'+
+    '<div class="m-actions"><button type="button" class="btn" data-x>Keep invoice</button><button type="submit" class="btn danger w">Cancel invoice</button></div></form>','--m6');
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#cxf').onsubmit=function(e){e.preventDefault();
+    var r=m.querySelector('#cx-reason').value.trim(), err=m.querySelector('#cx-err');
+    if(!r){err.textContent='Enter the reason for cancelling.';err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]');btn.disabled=true;
+    put(kind,Object.assign({},doc,{cancelled:true,cancelReason:r,cancelledAt:new Date().toISOString(),cancelledBy:CURRENT_USER?CURRENT_USER.name:'',updatedAt:new Date().toISOString()}))
+      .then(function(){closeModal();toast(doc.no+' cancelled')}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
+function cancelNote(doc){return doc&&doc.cancelled?'<div class="cx-note"><strong>CANCELLED</strong> '+(doc.cancelledAt?'on '+esc(istStamp(doc.cancelledAt)):'')+(doc.cancelledBy?' by '+esc(doc.cancelledBy):'')+(doc.cancelReason?'<div>Reason: '+esc(doc.cancelReason)+'</div>':'')+'</div>':''}
 function closeModal(){var ov=$('#modal');ov.hidden=true;ov.innerHTML='';modalOpen=false;modalRefresh=null}
 $('#modal').addEventListener('mousedown',function(e){if(e.target.id==='modal')closeModal()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modalOpen)closeModal()});
@@ -1520,8 +1550,8 @@ SECTIONS.dashboard={
       return;
     }
     var t=todayStr(), ym=t.slice(0,7), pm=paidMap();
-    var invT=S.invoices.filter(function(i){return i.date===t}), recT=S.receipts.filter(function(r){return r.date===t});
-    var invM=S.invoices.filter(function(i){return (i.date||'').slice(0,7)===ym}), recM=S.receipts.filter(function(r){return (r.date||'').slice(0,7)===ym});
+    var invT=S.invoices.filter(function(i){return i.date===t&&!i.cancelled}), recT=S.receipts.filter(function(r){return r.date===t});
+    var invM=S.invoices.filter(function(i){return (i.date||'').slice(0,7)===ym&&!i.cancelled}), recM=S.receipts.filter(function(r){return (r.date||'').slice(0,7)===ym});
     var sum=function(a,f){return r2(a.reduce(function(s,x){return s+(+x[f]||0)},0))};
     var outAmt=0,outN=0,alx=allocate(); dueBills(alx).forEach(function(i){outAmt+=billInfo(i,alx).bal;outN++});
     var monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
@@ -1533,7 +1563,7 @@ SECTIONS.dashboard={
 
     // chart: last 14 days sales
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(d))}
-    var vals=days.map(function(dd){return sum(S.invoices.filter(function(i){return i.date===dd}),'total')});
+    var vals=days.map(function(dd){return sum(S.invoices.filter(function(i){return i.date===dd&&!i.cancelled}),'total')});
     html+='<div class="panels"><div class="panel chart"><h3>Sales, last 14 days</h3>'+barChart(days,vals,t)+'</div>';
     // payment modes
     var modeTot={}; recM.forEach(function(r){modeTot[r.mode||'Other']=r2((modeTot[r.mode||'Other']||0)+(+r.amount||0))});
@@ -1950,6 +1980,7 @@ function saveInvoice(){
 }
 function editInvoice(id){
   var i=invById(id); if(!i) return;
+  if(i.cancelled){toast(i.no+' is cancelled and can’t be edited.');return}
   if(i.memSaleId){toast(i.no+' is a membership invoice. To change it, delete the membership (if unused) and sell it again.');return}
   draft={id:i.id,seq:i.seq,no:i.no,createdAt:i.createdAt,date:i.date,clientId:i.clientId,clientName:i.clientName,roundOn:!!i.roundOn,useMem:!!i.memId,memId:i.memId||'',
     items:(i.items||[]).map(function(it){return {serviceId:it.serviceId,name:it.name,sac:it.sac||'',qty:it.qty,rate:it.rate,discPct:discPctOf(it),gst:it.gst,performedBy:it.performedBy||'',performedByName:it.performedByName||'',referredBy:it.referredBy||'',referredByName:it.referredByName||'',consumables:copyCons(it.consumables)}})};
@@ -1967,7 +1998,7 @@ SECTIONS.invoices={
     var rv=invF.view==='red';
     work.innerHTML=head('Invoices','<button class="btn" id="i-export">Export CSV</button><button class="btn primary w" id="i-new">New invoice</button>')+
       '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!rv?' primary':'')+'" data-iview="inv">Invoices</button><button class="btn'+(rv?' primary':'')+'" data-iview="red">Redemptions</button></div></div>'+
-      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="'+(rv?'Slip, client, membership or service':'Invoice number or client')+'" value="'+esc(invF.q)+'"></div><div class="field"'+(rv?' hidden':'')+'><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
+      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="'+(rv?'Slip, client, membership or service':'Invoice number or client')+'" value="'+esc(invF.q)+'"></div><div class="field"'+(rv?' hidden':'')+'><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid'],['cancelled','Cancelled']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
     $$('[data-iview]',work).forEach(function(x){x.onclick=function(){invF.view=x.dataset.iview;go(current)}});
     $('#i-q').oninput=function(e){invF.q=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-status').onchange=function(e){invF.status=e.target.value;SECTIONS.invoices.update();bindCommon()};
@@ -2000,7 +2031,7 @@ SECTIONS.invoices={
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No invoice matches these filters.</div>';return}
     var T={total:0,paid:0,bal:0};
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th>Client</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead><tbody>'+
-      list.map(function(i){var x=invInfo(i,pm),hasR=x.paid>0;T.total+=+i.total||0;T.paid+=x.paid;T.bal+=Math.max(0,x.bal);
+      list.map(function(i){var x=invInfo(i,pm),hasR=x.paid>0;if(!i.cancelled)T.total+=+i.total||0;T.paid+=x.paid;T.bal+=Math.max(0,x.bal);
         return '<tr><td class="nowrap"><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(i.clientId)+'">'+esc(i.clientName)+'</button></td><td class="num">'+money(i.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
           '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+(hasR?' disabled title="Delete its receipts first"':'')+'>Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">'+money(T.total)+'</td><td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.bal)+'</td><td colspan="2"></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,S.invoices.length,'invoices')+'</p>';
@@ -2051,10 +2082,11 @@ function viewInvoice(id,fallback){
       '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Membership benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (i.roundOff?'<div class="r"><span>Round off</span><span>'+(i.roundOff<0?'− ':'+ ')+money(Math.abs(i.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button><button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      cancelNote(i)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+    var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('invoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from membership '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
-    m.querySelector('[data-edit]').onclick=function(){editInvoice(id)};
+    var ed=m.querySelector('[data-edit]'); if(ed) ed.onclick=function(){editInvoice(id)};
     var p=m.querySelector('[data-paynow]'); if(p) p.onclick=function(){recordPayment(id,i.clientId)};
   };
   var m=openModal('','--m4',true); render(m); modalRefresh=function(){render(m)};
@@ -2094,7 +2126,7 @@ function invoicePdf(i,x,recs){
 function receiptPdf(r){
   var J=pdfLib(); if(!J) return null;
   var inv=r.invoiceId&&invById(r.invoiceId), sale=!inv&&r.saleId&&phMove(r.saleId), aev=!inv&&!sale&&r.aeInvId&&aeInvById(r.aeInvId), c=clientById(r.clientId)||{}, al=allocate(), a=r.clientId?clientAccount(r.clientId,al):null;
-  var bill=inv||sale||aev, x=inv?invInfo(inv,al.paid):(sale?phSaleInfo(sale,al):(aev?billInfo({id:aev.id,total:+aev.total||0},al):null));
+  var bill=inv||sale||aev, x=inv?invInfo(inv,al.paid):(sale?phSaleInfo(sale,al):(aev?billInfo({id:aev.id,total:+aev.total||0,cancelled:aev.cancelled},al):null));
   try{
     if(r.memId) return window.PDFKIT.receipt(J,{biz:bizCtx(),rec:Object.assign({},r,{towards:(r.memPlan?r.memPlan+' membership ':'Membership ')+(r.memNo||'')}),invDate:'',invTotal:null,invPaid:0,invBalance:0,account:null,clientPhone:c.phone||'',fmtDate:fmtDate});
     return window.PDFKIT.receipt(J,{biz:bizCtx(),rec:Object.assign({},r,{invoiceNo:bill?bill.no:''}),invDate:bill?bill.date:'',invTotal:bill?bill.total:null,invPaid:x?x.paid:0,invBalance:x?x.bal:0,account:a,clientPhone:c.phone||'',fmtDate:fmtDate});
@@ -2581,7 +2613,7 @@ function phBatches(excludeId){
   function get(itemId){var k=itemId+'|ALL';return m[k]=m[k]||{key:k,itemId:itemId,batch:'ALL',mrp:0,rate:0,qty:0,lastDate:''}}
   S.phItems.forEach(function(i){var q=+i.openingQty||0,rt=+i.openingRate||0;if(q||rt){var b=get(i.id);b.qty+=q;if(rt)b.rate=rt}});
   S.phMoves.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(mv){
-    if(mv.id===excludeId) return;
+    if(mv.id===excludeId||mv.cancelled) return;
     (mv.lines||[]).forEach(function(l){
       var b=get(l.itemId), q=+l.qty||0;
       if(PH_KIND[mv.type]==='in'){b.qty+=q;if(mv.type==='Purchase'&&(mv.date||'')>=b.lastDate){b.mrp=+l.mrp||b.mrp;b.rate=+l.rate||b.rate;b.lastDate=mv.date||''}}
@@ -2617,6 +2649,7 @@ function phTotals(type,lines,roundOn,manual){
 /* pharmacy client accounts: sales are bills; receipts and returns are credits */
 function phAllocate(){return allocate()}
 function phSaleInfo(m,al){
+  if(m.cancelled) return {paid:0,bal:0,status:'cancelled'};
   var paid;
   if(m.clientId){paid=r2((al||allocate()).paid[m.id]||0)}
   else{paid=r2(allReceipts().filter(function(r){return r.saleId===m.id}).reduce(function(t,r){return t+(+r.amount||0)},0))}
@@ -2912,7 +2945,7 @@ function phListUpdate(kind){
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No entry matches these filters.</div>';return}
   var al=phAllocate(), T=0;
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Type</th><th>'+(kind==='in'?'Supplier / client':'Client / customer')+'</th><th class="num">Items</th><th class="num">Total</th>'+(kind==='out'?'<th>Payment</th>':'')+'<th></th></tr></thead><tbody>'+
-    list.map(function(m){T+=+m.total||0;var x=m.type==='Sale'?phSaleInfo(m,al):null;
+    list.map(function(m){if(!m.cancelled)T+=+m.total||0;var x=m.type==='Sale'?phSaleInfo(m,al):null;
       return '<tr><td class="nowrap"><button class="link" data-pm="'+esc(m.id)+'">'+esc(m.no)+'</button>'+(m.supplierBillNo?'<div class="sub">Bill '+esc(m.supplierBillNo)+'</div>':'')+'</td><td class="nowrap">'+fmtDate(m.date)+'</td><td><span class="pill '+PH_TYPE_PILL[m.type]+'">'+esc(m.type)+'</span></td><td>'+esc(phPartyName(m)||'—')+'</td><td class="num">'+(m.lines||[]).length+'</td><td class="num">'+money(m.total)+'</td>'+
         (kind==='out'?'<td>'+(x?statusPill(x.status)+(x.bal>0.004?' <span class="sub">'+money(x.bal)+' due</span>':''):'<span class="sub">—</span>')+'</td>':'')+
         '<td><div class="row-acts">'+(x&&x.bal>0.004&&m.clientId?'<button class="btn sm w" data-phpay="'+esc(m.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-pedit="'+esc(m.id)+'">Edit</button><button class="btn sm danger w" data-pdel="'+esc(m.id)+'">Delete</button></div></td></tr>'}).join('')+
@@ -2922,6 +2955,7 @@ function phListUpdate(kind){
 }
 function phEdit(id){
   var m=phMove(id); if(!m) return;
+  if(m.cancelled){toast(m.no+' is cancelled and can’t be edited.');return}
   phDraft[m.kind]={id:m.id,kind:m.kind,type:m.type,seq:m.seq,no:m.no,createdAt:m.createdAt,date:m.date,supplierId:m.supplierId||'',supplierName:m.supplierName||'',supplierBillNo:m.supplierBillNo||'',clientId:m.clientId||'',clientName:m.clientName||'',customerName:m.customerName||'',saleId:m.saleId||'',roundOn:!!m.roundOn,roundManual:m.roundOn?String(m.roundOff||0):null,
     lines:(m.lines||[]).map(function(l){return {itemId:l.itemId,name:l.name,hsn:l.hsn,batch:'ALL',qty:l.qty,rate:l.rate,mrp:l.mrp,gst:l.gst,discPct:l.discPct||0}})};
   if(!phDraft[m.kind].lines.length) phDraft[m.kind].lines=[phBlankLine()];
@@ -2954,9 +2988,10 @@ function phViewMove(id,fallback){
       (sale||t==='Return'?'<div class="r"><span>Amount</span><span>'+money(m.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(m.discount)+'</span></div><div class="r"><span>Amount before GST</span><span>'+money(m.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(m.tax)+'</span></div>':'')+
       (m.roundOff?'<div class="r"><span>Round off</span><span>'+(m.roundOff<0?'− ':'+ ')+money(Math.abs(m.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>'+(t==='Expiry'||t==='Damage'?'Loss at cost':(/Issue$/.test(t)?'Issued at cost':(t==='Return'?'Credit to client':'Total')))+'</span><span>'+money(m.total)+'</span></div>'+(sale?'<div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>':'')+'</div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+'<button class="btn w" data-edit>Edit</button>'+(sale&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      cancelNote(m)+'<div class="m-actions"><button class="btn" data-x>Close</button>'+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(sale&&!m.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel sale</button>':'')+(m.cancelled?'':'<button class="btn w" data-edit>Edit</button>')+(sale&&!m.cancelled&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
     m0.querySelector('[data-x]').onclick=closeModal;
-    m0.querySelector('[data-edit]').onclick=function(){phEdit(id)};
+    var ed=m0.querySelector('[data-edit]'); if(ed) ed.onclick=function(){phEdit(id)};
+    var cx=m0.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('phMoves',id)};
     var dl=m0.querySelector('[data-dl]'); if(dl) dl.onclick=function(){var pdf=phSalePdf(m,x,recs,fromAdv);if(pdf)pdfView(m.no+'.pdf',pdf)};
     var p=m0.querySelector('[data-paynow]'); if(p) p.onclick=function(){phRecordPayment(id,m.clientId)};
   };
@@ -2968,7 +3003,7 @@ function phSalePdf(m,x,recs,fromAdv){
   var items=(m.lines||[]).map(function(l){return {name:l.name,sac:l.hsn||'',qty:l.qty,rate:l.rate,disc:l.disc,discPct:l.discPct||0,amount:l.taxable,gst:l.gst,tax:l.tax,total:l.total,staff:''}});
   var rs=recs.map(function(r){return {date:r.date,no:r.no,mode:r.mode,reference:r.reference,amount:r.amount}}).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / returns',amount:fromAdv}]:[]);
   try{
-    return window.PDFKIT.invoice(J,{biz:b,codeLabel:'HSN',lineLabel:'ITEM',inv:{no:m.no,date:m.date,items:items,subtotal:m.subtotal,discount:m.discount,taxable:m.taxable,tax:m.tax,roundOff:m.roundOff||0,total:m.total},
+    return window.PDFKIT.invoice(J,{biz:b,codeLabel:'HSN',lineLabel:'ITEM',inv:{no:m.no,date:m.date,items:items,subtotal:m.subtotal,discount:m.discount,taxable:m.taxable,tax:m.tax,roundOff:m.roundOff||0,total:m.total,cancelled:!!m.cancelled,cancelReason:m.cancelReason||''},
       client:{name:m.clientName||m.customerName||'Walk-in customer',phone:m.clientPhone||'',address:c.address||'',city:loc.city,state:loc.state},placeOfSupply:b.state||loc.state||'',paid:x.paid,balance:x.bal,receipts:rs,fmtDate:fmtDate});
   }catch(e){toast('The PDF could not be created.');return null}
 }
@@ -3044,7 +3079,7 @@ function viewItemLedger(itemId){
 }
 function phInvRows(unfiltered){
   var bm=phBatches(), q=norm(phInvF.q), mv={};
-  S.phMoves.forEach(function(m){(m.lines||[]).forEach(function(l){var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
+  S.phMoves.forEach(function(m){if(m.cancelled)return;(m.lines||[]).forEach(function(l){var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
   return S.phItems.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(it){
     var sr=phStockRec(bm,it.id), x=mv[it.id]||{i:0,o:0}, reorder=it.reorder===''||it.reorder==null?null:+it.reorder;
     return {item:it,opening:+it.openingQty||0,inQty:x.i,outQty:x.o,qty:sr.qty,rate:sr.rate,mrp:sr.mrp,value:r2(sr.qty*sr.rate),mrpValue:r2(sr.qty*sr.mrp),reorder:reorder,low:reorder!=null&&sr.qty<=reorder};
@@ -4071,7 +4106,7 @@ function aeInvById(id){return findIn('aeInvoices',id)}
 /* what is already billed, optionally ignoring one invoice (the one being edited) */
 function aiBilledMap(exceptId){
   var con={},ses={},pre={};
-  S.aeInvoices.forEach(function(v){if(v.id===exceptId)return;(v.lines||[]).forEach(function(l){
+  S.aeInvoices.forEach(function(v){if(v.id===exceptId||v.cancelled)return;(v.lines||[]).forEach(function(l){
     if(l.src==='con'&&l.srcId) con[l.srcId]=v.no;
     if(l.src==='ses'&&l.srcId) ses[l.srcId]=v.no;
     if(l.src==='qt'&&l.quoteLineId){var k=l.quoteId+'|'+l.quoteLineId;pre[k]=(pre[k]||0)+(+l.qty||0)}
@@ -4118,7 +4153,7 @@ function aiFiltered(al){
   return S.aeInvoices.filter(function(v){
     if(aiF.from&&v.date<aiF.from) return false;
     if(aiF.to&&v.date>aiF.to) return false;
-    if(aiF.status&&billInfo({id:v.id,total:+v.total||0},al).status!==aiF.status) return false;
+    if(aiF.status&&billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al).status!==aiF.status) return false;
     if(q&&norm(v.no+' '+v.clientName+' '+(v.clientPhone||'')+' '+(v.lines||[]).map(function(l){return l.name+' '+(l.ref||'')}).join(' ')).indexOf(q)<0) return false;
     return true;
   }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
@@ -4133,7 +4168,7 @@ function aiListMount(){
   $('#ai-from').onchange=function(e){aiF.from=e.target.value;up()};
   $('#ai-to').onchange=function(e){aiF.to=e.target.value;up()};
   $('#ai-new').onclick=function(){aiOpenForm(null)};
-  $('#ai-export').onclick=function(){var al=allocate();saveFile('aesthetics-invoices-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Items','Amount','Discount','Taxable','GST','Other charges','GST on other charges','Round off','Total','Paid','Balance']].concat(aiFiltered(al).map(function(v){var x=billInfo({id:v.id,total:+v.total||0},al);return [v.no,v.date,v.clientName,v.clientPhone||'',(v.lines||[]).map(function(l){return l.name+' x'+l.qty+(l.ref?' ('+l.ref+')':'')}).join('; '),v.amount,v.discount,v.net,v.tax,v.other||0,v.otherTax||0,v.roundOff||0,v.total,x.paid,x.bal]}))))};
+  $('#ai-export').onclick=function(){var al=allocate();saveFile('aesthetics-invoices-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Items','Amount','Discount','Taxable','GST','Other charges','GST on other charges','Round off','Total','Paid','Balance']].concat(aiFiltered(al).map(function(v){var x=billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al);return [v.no,v.date,v.clientName,v.clientPhone||'',(v.lines||[]).map(function(l){return l.name+' x'+l.qty+(l.ref?' ('+l.ref+')':'')}).join('; '),v.amount,v.discount,v.net,v.tax,v.other||0,v.otherTax||0,v.roundOff||0,v.total,x.paid,x.bal]}))))};
 }
 function aiListUpdate(){
   var b=$('#body',work); if(!b) return;
@@ -4143,7 +4178,7 @@ function aiListUpdate(){
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No invoice matches these filters.</div>';return}
   var T=0,P=0,B=0;
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Items</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead><tbody>'+
-    list.map(function(v){var x=billInfo({id:v.id,total:+v.total||0},al);T+=+v.total||0;P+=x.paid;B+=Math.max(0,x.bal);
+    list.map(function(v){var x=billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al);if(!v.cancelled)T+=+v.total||0;P+=x.paid;B+=Math.max(0,x.bal);
       var names=(v.lines||[]).map(function(l){return l.name}), uniq=names.filter(function(n,i){return names.indexOf(n)===i});
       return '<tr><td class="nowrap"><button class="link" data-aeinv="'+esc(v.id)+'">'+esc(v.no)+'</button></td><td class="nowrap">'+fmtDate(v.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(v.clientId)+'">'+esc(v.clientName)+'</button><div class="sub">'+esc(v.clientPhone||'')+'</div></td>'+
       '<td>'+esc(uniq.slice(0,2).join(', ')+(uniq.length>2?' +'+(uniq.length-2)+' more':''))+'</td><td class="num">'+money(v.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
@@ -4170,6 +4205,7 @@ function aiOpenForm(preset){
 }
 function aiEdit(id){
   var v=aeInvById(id); if(!v) return;
+  if(v.cancelled){toast(v.no+' is cancelled and can’t be edited.');return}
   aiDraft={id:v.id,seq:v.seq,no:v.no,createdAt:v.createdAt,date:v.date,clientId:v.clientId,clientName:v.clientName,
     lines:(v.lines||[]).map(function(l){return Object.assign({},l,{lid:l.lid||newId('al')})}),
     otherDesc:v.otherDesc||'',other:v.other||'',otherGst:v.otherGst!=null?v.otherGst:18,roundOn:!!v.roundOn,roundManual:v.roundOn?String(v.roundOff||0):null,payAmount:'',payMode:'Cash',payRef:''};
@@ -4333,7 +4369,7 @@ function aiSave(){
   }).catch(function(e){btn.disabled=false;show(errText(e))});
 }
 function aiReceipts(v,al){
-  var x=billInfo({id:v.id,total:+v.total||0},al), recs=S.receipts.filter(function(r){return r.aeInvId===v.id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+  var x=billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al), recs=S.receipts.filter(function(r){return r.aeInvId===v.id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
   var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), fromAdv=r2(x.paid-Math.min(linked,x.paid));
   return {x:x,recs:recs,fromAdv:fromAdv};
 }
@@ -4352,7 +4388,8 @@ function viewAeInv(id,fallback){
       '<div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (v.roundOff?'<div class="r"><span>Round off</span><span>'+(v.roundOff<0?'− ':'+ ')+money(Math.abs(v.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(v.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(readOnly?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+      cancelNote(v)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!v.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(readOnly||v.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+    var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('aeInvoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){aiPdf(v)};
     var e=m.querySelector('[data-edit]'); if(e) e.onclick=function(){aiEdit(id)};
@@ -4404,7 +4441,7 @@ function deptUsages(dk){
     S.aeSessions.forEach(function(s){if((s.consumables||[]).length)out.push({date:s.date,ref:s.no,client:s.clientName,what:s.procName||'Session',src:'Session',lines:s.consumables,rid:'ses:'+s.id})});
     S.aeCons.forEach(function(c){if((c.consumables||[]).length)out.push({date:c.date,ref:c.no,client:c.clientName,what:'Consultation',src:'Consultation',lines:c.consumables,rid:'con:'+c.id})});
   } else {
-    S.invoices.forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Invoice',lines:it.consumables,rid:'inv:'+v.id})})});
+    S.invoices.forEach(function(v){if(v.cancelled)return;(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Invoice',lines:it.consumables,rid:'inv:'+v.id})})});
     S.redemptions.forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Membership',lines:it.consumables,rid:'red:'+v.id})})});
   }
   S.deptUsage.forEach(function(u){if(u.dept===dk)out.push({date:u.date,ref:u.no,client:'',what:u.note||'General use',src:'General use',lines:u.lines||[],rid:'use:'+u.id,usage:u})});
@@ -5014,7 +5051,7 @@ SECTIONS['ph-dashboard']={
       return;
     }
     var t=todayStr(), ym=t.slice(0,7), monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
-    var of=function(type,pred){return S.phMoves.filter(function(m){return m.type===type&&pred(m)})};
+    var of=function(type,pred){return S.phMoves.filter(function(m){return m.type===type&&!m.cancelled&&pred(m)})};
     var sum=function(a,f){return r2(a.reduce(function(x,m){return x+(+m[f||'total']||0)},0))};
     var isT=function(m){return m.date===t}, isM=function(m){return (m.date||'').slice(0,7)===ym};
     var salesT=of('Sale',isT), salesM=of('Sale',isM), retM=of('Return',isM), purM=of('Purchase',isM), lossM=S.phMoves.filter(function(m){return (m.type==='Expiry'||m.type==='Damage')&&isM(m)});
@@ -5040,7 +5077,7 @@ SECTIONS['ph-dashboard']={
       tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases')+'</div>';
     /* chart */
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var dd=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(dd))}
-    var vals=days.map(function(dd){return sum(S.phMoves.filter(function(m){return m.type==='Sale'&&m.date===dd}))});
+    var vals=days.map(function(dd){return sum(S.phMoves.filter(function(m){return m.type==='Sale'&&!m.cancelled&&m.date===dd}))});
     /* top items */
     var top={}; salesM.forEach(function(m){(m.lines||[]).forEach(function(l){var x=top[l.itemId]=top[l.itemId]||{name:l.name,q:0,a:0};x.q+=+l.qty||0;x.a=r2(x.a+(+l.total||0))})});
     var tk=Object.keys(top).sort(function(a,c){return top[c].a-top[a].a}).slice(0,6), tmax=tk.length?top[tk[0]].a||1:1;
@@ -5621,7 +5658,7 @@ SECTIONS['ae-dashboard']={
     var sesT=S.aeSessions.filter(isT), conT=S.aeCons.filter(isT);
     /* money */
     var recs=allReceipts().filter(aeRecpt), recT=recs.filter(isT), recM=recs.filter(isM);
-    var invT=S.aeInvoices.filter(isT), invM=S.aeInvoices.filter(isM);
+    var aeLive=S.aeInvoices.filter(function(v){return !v.cancelled}), invT=aeLive.filter(isT), invM=aeLive.filter(isM);
     var al=allocate(), dues=dueBills(al).filter(function(x){return x.kind==='ae'}), dueTot=0, owe={};
     dues.forEach(function(x){var bal=billInfo(x,al).bal;dueTot+=bal;var o=owe[x.clientId]=owe[x.clientId]||{id:x.clientId,name:x.clientName,phone:x.clientPhone,n:0,bal:0};o.n++;o.bal=r2(o.bal+bal)});
     var owers=Object.keys(owe).map(function(k){return owe[k]}).sort(function(a,c){return c.bal-a.bal});
