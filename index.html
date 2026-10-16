@@ -341,7 +341,7 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
 <!-- Home -->
 <div class="wrap" id="view-home">
   <header>
-    <div class="brand">
+    <div class="brand" id="brand" style="visibility:hidden">
       <div class="mark" id="brand-mark" aria-hidden="true">C</div>
       <img class="brand-logo" id="brand-logo" alt="" hidden>
       <div class="brand-name" id="brand-name">Clinic Management System</div>
@@ -1424,12 +1424,20 @@ function go(key,opts){
   if(SECTIONS[key].update) SECTIONS[key].update();
   bindCommon();
 }
+/* home header: business name + logo. Shown from a saved copy straight away, then from live data, so the generic text never flashes */
+function brandPaint(name,src){
+  var nm=$('#brand-name'), im=$('#brand-logo'), mk=$('#brand-mark'), br=$('#brand'); if(!nm) return;
+  nm.textContent=name||'Clinic Management System'; nm.classList.toggle('biz',!!name);
+  if(src){if(im.getAttribute('src')!==src)im.src=src;im.alt=(name||'')+' logo';im.hidden=false;mk.hidden=true}else{im.hidden=true;mk.hidden=false}
+  if(name) document.title=name;
+  if(br) br.style.visibility='';
+}
+(function(){try{var c=JSON.parse(localStorage.getItem('brand')||'null');if(c&&(c.name||c.src))brandPaint(c.name,c.src)}catch(e){}})();
 function brandHeader(){
+  if(!loaded.business&&storeMode!=='local') return;
   var b=biz(), lg=bizLogo(), t=lg&&logoTrim.src===lg.data&&logoTrim.out, src=t?t.data:(lg&&lg.data)||'';
-  var nm=$('#brand-name'), im=$('#brand-logo'), mk=$('#brand-mark'); if(!nm) return;
-  nm.textContent=b.name||'Clinic Management System'; nm.classList.toggle('biz',!!b.name);
-  if(src){if(im.getAttribute('src')!==src)im.src=src;im.alt=(b.name||'')+' logo';im.hidden=false;mk.hidden=true}else{im.hidden=true;mk.hidden=false}
-  if(b.name) document.title=b.name;
+  brandPaint(b.name||'',src);
+  try{localStorage.setItem('brand',JSON.stringify({name:b.name||'',src:src}))}catch(e){try{localStorage.setItem('brand',JSON.stringify({name:b.name||'',src:''}))}catch(e2){}}
 }
 function refresh(){
   trimLogo(bizLogo()); brandHeader();
