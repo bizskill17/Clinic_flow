@@ -193,6 +193,8 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .svp{border:1px solid var(--line);border-radius:10px;padding:10px}.svp-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}.svp-q{flex:1;min-width:160px}.svp-list{max-height:240px;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:2px 14px}.svp-item{display:flex;gap:8px;align-items:center;padding:4px 0}.svp-item .sub{margin-left:auto}
 .mem-pick{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--m3-soft)}
 .mem-sum{display:flex;flex-wrap:wrap;gap:6px 22px;margin:12px 0;font-size:14px;color:var(--muted)}.mem-sum strong{color:var(--ink)}
+.imp-steps{display:grid;gap:10px;margin:4px 0 14px}.imp-steps>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.imp-opts{flex-direction:column;align-items:flex-start!important;gap:6px!important;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.imp-file{cursor:pointer}.imp-sum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}.imp-tbl{max-height:360px;overflow:auto}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -1504,11 +1506,11 @@ function barChart(days,vals,today){
 var clientQ='';
 SECTIONS.clients={
   mount:function(){
-    work.innerHTML=head('Clients','<button class="btn" id="c-export">Export CSV</button><button class="btn primary w" id="c-add">Add client</button>')+
+    work.innerHTML=head('Clients',impBtn('clients')+'<button class="btn" id="c-export">Export CSV</button><button class="btn primary w" id="c-add">Add client</button>')+
       '<div class="toolbar"><div class="field grow"><label for="c-q">Search</label><input type="search" id="c-q" placeholder="Name, phone or email" value="'+esc(clientQ)+'"></div></div><div id="body"></div>';
     $('#c-q').addEventListener('input',function(e){clientQ=e.target.value;SECTIONS.clients.update();bindCommon()});
     $('#c-add').addEventListener('click',function(){editClient(null)});
-    $('#c-export').addEventListener('click',exportClients);
+    $('#c-export').addEventListener('click',exportClients);bindImport();
   },
   update:function(){
     var b=$('#body',work); if(!b) return;
@@ -1612,11 +1614,12 @@ function exportClients(){
 var svcQ='',svcCat='';
 SECTIONS.services={
   mount:function(){
-    work.innerHTML=head('Services','<button class="btn" id="s-export">Export CSV</button><button class="btn primary w" id="s-add">Add service</button>')+
+    work.innerHTML=head('Services',impBtn('services')+'<button class="btn" id="s-export">Export CSV</button><button class="btn primary w" id="s-add">Add service</button>')+
       '<div class="toolbar"><div class="field grow"><label for="s-q">Search</label><input type="search" id="s-q" placeholder="Service name" value="'+esc(svcQ)+'"></div><div class="field"><label for="s-cat">Category</label><select id="s-cat"></select></div></div><div id="body"></div>';
     $('#s-q').addEventListener('input',function(e){svcQ=e.target.value;SECTIONS.services.update()});
     $('#s-cat').addEventListener('change',function(e){svcCat=e.target.value;SECTIONS.services.update()});
     $('#s-add').addEventListener('click',function(){editService(null)});
+    bindImport();
     $('#s-export').addEventListener('click',function(){
       saveFile('spa-services-'+todayStr()+'.csv',csv([['Service','Category','SAC','Price','GST %','Price incl. GST','Status']].concat(S.services.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(s){return [s.name,catName(s),s.sac||'',s.price,s.gst,r2(s.price*(1+s.gst/100)),s.active===false?'Inactive':'Active']}))));
     });
@@ -2164,12 +2167,13 @@ function simpleMaster(cfg){
   var q='',fv='';
   var sec={
     mount:function(){
-      work.innerHTML=head(cfg.title,'<button class="btn" id="sm-export">Export CSV</button><button class="btn primary w" id="sm-add">Add '+esc(cfg.singular)+'</button>')+
+      work.innerHTML=head(cfg.title,impBtn(cfg.kind)+'<button class="btn" id="sm-export">Export CSV</button><button class="btn primary w" id="sm-add">Add '+esc(cfg.singular)+'</button>')+
         '<div class="toolbar"><div class="field grow"><label for="sm-q">Search</label><input type="search" id="sm-q" placeholder="'+esc(cfg.searchPh)+'" value="'+esc(q)+'"></div>'+
         (cfg.filter?'<div class="field"><label for="sm-f">'+esc(cfg.filter.label)+'</label><select id="sm-f"></select></div>':'')+'</div><div id="body"></div>';
       $('#sm-q').oninput=function(e){q=e.target.value;sec.update()};
       if(cfg.filter) $('#sm-f').onchange=function(e){fv=e.target.value;sec.update()};
       $('#sm-add').onclick=function(){edit(null)};
+      bindImport();
       $('#sm-export').onclick=function(){saveFile('spa-'+cfg.kind+'-'+todayStr()+'.csv',csv([cfg.cols.map(function(c){return c.h})].concat(S[cfg.kind].slice().sort(cfg.sort).map(function(r){return cfg.cols.map(function(c){return c.text(r)})}))))};
     },
     update:function(){
@@ -2709,17 +2713,75 @@ function phSave(d){
 }
 
 /* ---------- register (list) ---------- */
-var phListF={in:{q:'',type:'',from:'',to:''},out:{q:'',type:'',from:'',to:''}};
+var phListF={in:{q:'',type:'',from:'',to:'',item:'',view:phViewGet('in')},out:{q:'',type:'',from:'',to:'',item:'',view:phViewGet('out')}};
+function phViewGet(k){try{return localStorage.getItem('ph-view-'+k)||'bills'}catch(e){return 'bills'}}
+function phViewSet(k,v){try{localStorage.setItem('ph-view-'+k,v)}catch(e){}}
+/* item-level view: which columns each entry type uses (matches the item lines on its form) */
+var PH_COLS=[['qty','Qty'],['rate','Rate'],['mrp','MRP'],['discPct','Discount %'],['disc','Discount'],['taxable','Amount before GST'],['gst','GST rate'],['tax','GST'],['total','Amount']];
+var PH_TYPE_COLS={Purchase:['qty','rate','mrp','taxable','gst','tax','total'],Return:['qty','rate','discPct','disc','taxable','gst','tax','total'],Sale:['qty','rate','discPct','disc','taxable','gst','tax','total']};
+function phTypeCols(t){return PH_TYPE_COLS[t]||['qty','rate','mrp','total']}
+function phItemParty(m){var p=phPartyName(m);if(p)return p;return m.type==='Spa Issue'?'Spa':(m.type==='Aesthetics Issue'?'Aesthetics':m.type)}
+function phItemRows(kind){
+  var f=phListF[kind], q=norm(f.q), out=[];
+  S.phMoves.forEach(function(m){
+    if(m.kind!==kind) return;
+    if(f.type&&m.type!==f.type) return;
+    if(f.from&&m.date<f.from) return;
+    if(f.to&&m.date>f.to) return;
+    (m.lines||[]).forEach(function(l){
+      if(f.item&&l.itemId!==f.item) return;
+      var party=phItemParty(m);
+      if(q&&norm(m.no+' '+party+' '+(m.supplierBillNo||'')+' '+l.name).indexOf(q)<0) return;
+      out.push({m:m,l:l,party:party});
+    });
+  });
+  return out.sort(function(a,b){return (b.m.date||'').localeCompare(a.m.date||'')||(b.m.createdAt||'').localeCompare(a.m.createdAt||'')});
+}
+function phItemColsShown(kind){
+  var f=phListF[kind], types=f.type?[f.type]:(kind==='in'?['Purchase','Return']:['Sale','Expiry','Damage','Spa Issue','Aesthetics Issue']), on={};
+  types.forEach(function(t){phTypeCols(t).forEach(function(k){on[k]=1})});
+  return PH_COLS.filter(function(c){return on[c[0]]});
+}
+function phItemCell(r,k){
+  if(phTypeCols(r.m.type).indexOf(k)<0) return '';
+  var v=r.l[k];
+  if(k==='qty') return String(+v||0);
+  if(k==='discPct') return (+v||0)+'%';
+  if(k==='gst') return (+v||0)+'%';
+  if(k==='taxable'||k==='tax'||k==='disc'||k==='rate'||k==='mrp'||k==='total') return v===''||v==null?'':money(v);
+  return esc(v);
+}
+function phItemsUpdate(kind){
+  var b=$('#body',work); if(!b) return;
+  var cols=phItemColsShown(kind), rows=phItemRows(kind), sums={};
+  if(!rows.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No item line matches these filters.</div>';return}
+  rows.forEach(function(r){cols.forEach(function(c){if(['qty','disc','taxable','tax','total'].indexOf(c[0])>=0&&phTypeCols(r.m.type).indexOf(c[0])>=0)sums[c[0]]=r2((sums[c[0]]||0)+(+r.l[c[0]]||0))})});
+  b.innerHTML='<div class="tbl"><table><thead><tr><th>Date</th><th>Number</th><th>Type</th><th>'+(kind==='in'?'Supplier / client':'Party')+'</th><th>Item</th>'+cols.map(function(c){return '<th class="num">'+esc(c[1])+'</th>'}).join('')+'</tr></thead><tbody>'+
+    rows.map(function(r){return '<tr><td class="nowrap">'+fmtDate(r.m.date)+'</td><td class="nowrap"><button class="link" data-pm="'+esc(r.m.id)+'">'+esc(r.m.no)+'</button></td><td><span class="pill '+PH_TYPE_PILL[r.m.type]+'">'+esc(r.m.type)+'</span></td><td>'+esc(r.party||'—')+'</td><td><strong>'+esc(r.l.name)+'</strong></td>'+
+      cols.map(function(c){return '<td class="num nowrap">'+phItemCell(r,c[0])+'</td>'}).join('')+'</tr>'}).join('')+
+    '</tbody><tfoot><tr><td colspan="5">Total</td>'+cols.map(function(c){var v=sums[c[0]];return '<td class="num nowrap">'+(v==null?'':(c[0]==='qty'?String(v):money(v)))+'</td>'}).join('')+'</tr></tfoot></table></div><p class="hint">'+rows.length+' item line'+(rows.length===1?'':'s')+'</p>';
+}
+function phItemsCsv(kind){
+  var cols=phItemColsShown(kind);
+  return csv([['Date','Number','Type',kind==='in'?'Supplier / client':'Party','Item'].concat(cols.map(function(c){return c[1]}))].concat(phItemRows(kind).map(function(r){
+    return [r.m.date,r.m.no,r.m.type,r.party,r.l.name].concat(cols.map(function(c){return phTypeCols(r.m.type).indexOf(c[0])<0?'':(r.l[c[0]]==null?'':r.l[c[0]])}))})));
+}
 function phListMount(kind){
   var f=phListF[kind], types=kind==='in'?['Purchase','Return']:['Sale','Expiry','Damage','Spa Issue','Aesthetics Issue'], title=kind==='in'?'Item In':'Item Issue';
+  var iv=f.view==='items', used={}; S.phMoves.forEach(function(m){if(m.kind===kind)(m.lines||[]).forEach(function(l){if(l.itemId)used[l.itemId]=l.name})});
+  var itemOpts=Object.keys(used).map(function(k){var it=phItem(k);return [k,(it&&it.name)||used[k]]}).sort(function(a,c){return byText(a[1],c[1])});
   work.innerHTML=head(title,'<button class="btn" id="pl-export">Export CSV</button><button class="btn primary w" id="pl-new">'+PLUS+' New '+(kind==='in'?'item in':'item issue')+'</button>')+
-    '<div class="toolbar"><div class="field grow"><label for="pq">Search</label><input type="search" id="pq" placeholder="Number, '+(kind==='in'?'supplier, client, bill no.':'client, customer')+' or item" value="'+esc(f.q)+'"></div><div class="field"><label for="pt">Type</label><select id="pt">'+optList([['','All types']].concat(types),f.type)+'</select></div>'+dateFilters('p',f)+'</div><div id="body"></div>';
+    '<div class="toolbar"><div class="actions" role="group" aria-label="View"><button class="btn'+(!iv?' primary':'')+'" data-phview="bills">Bills</button><button class="btn'+(iv?' primary':'')+'" data-phview="items">Items</button></div></div>'+
+    '<div class="toolbar"><div class="field grow"><label for="pq">Search</label><input type="search" id="pq" placeholder="Number, '+(kind==='in'?'supplier, client, bill no.':'client, customer')+' or item" value="'+esc(f.q)+'"></div><div class="field"><label for="pt">Type</label><select id="pt">'+optList([['','All types']].concat(types),f.type)+'</select></div>'+(iv?'<div class="field"><label for="pi">Item</label><select id="pi">'+optList([['','All items']].concat(itemOpts),f.item)+'</select></div>':'')+dateFilters('p',f)+'</div><div id="body"></div>';
+  $$('[data-phview]',work).forEach(function(x){x.onclick=function(){f.view=x.dataset.phview;phViewSet(kind,f.view);go(current)}});
+  var pi=$('#pi'); if(pi) pi.onchange=function(e){f.item=e.target.value;phListUpdate(kind);bindCommon()};
   $('#pq').oninput=function(e){f.q=e.target.value;phListUpdate(kind);bindCommon()};
   $('#pt').onchange=function(e){f.type=e.target.value;phListUpdate(kind);bindCommon()};
   $('#p-from').onchange=function(e){f.from=e.target.value;phListUpdate(kind);bindCommon()};
   $('#p-to').onchange=function(e){f.to=e.target.value;phListUpdate(kind);bindCommon()};
   $('#pl-new').onclick=function(){phDraft[kind]=phNewDraft(kind,f.type||undefined);phMode[kind]='form';go(current)};
   $('#pl-export').onclick=function(){
+    if(f.view==='items'){saveFile('pharmacy-'+(kind==='in'?'item-in':'item-issue')+'-items-'+todayStr()+'.csv',phItemsCsv(kind));return}
     var al=phAllocate();
     saveFile('pharmacy-'+(kind==='in'?'item-in':'item-issue')+'-'+todayStr()+'.csv',csv([['Number','Date','Type','Party','Item','Qty','Rate','MRP','Discount %','GST %','Taxable','GST','Line total','Document total'].concat(kind==='out'?['Paid','Balance']:[])].concat(
       phFiltered(kind).reduce(function(rows,m){var x=m.type==='Sale'?phSaleInfo(m,al):null;(m.lines||[]).forEach(function(l){rows.push([m.no,m.date,m.type,phPartyName(m),l.name,l.qty,l.rate,l.mrp,l.discPct,l.gst,l.taxable,l.tax,l.total,m.total].concat(kind==='out'?[x?x.paid:'',x?Math.max(0,x.bal):'']:[]))});return rows},[]))));
@@ -2741,6 +2803,7 @@ function phListUpdate(kind){
   if(!ready()){b.innerHTML=loadingHTML();return}
   var all=S.phMoves.filter(function(m){return m.kind===kind});
   if(!all.length){b.innerHTML='<div class="empty"><strong>No entries yet</strong>'+(kind==='in'?'Record purchases from suppliers and items returned by clients.':'Record sales, expired or damaged stock, and stock issued to Spa or Aesthetics.')+'</div>';return}
+  if(phListF[kind].view==='items'){phItemsUpdate(kind);return}
   var list=phFiltered(kind);
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No entry matches these filters.</div>';return}
   var al=phAllocate(), T=0;
@@ -5185,6 +5248,224 @@ function memDashPanel(){
     (exp.length?'<div class="tbl"><table><thead><tr><th>Expiring soon</th><th>Valid till</th><th class="num">Balance</th></tr></thead><tbody>'+exp.slice(0,6).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-mem="'+esc(r.m.id)+'"><strong>'+esc(r.m.clientName)+'</strong></button><div class="sub">'+esc(r.m.planName)+' · '+esc(r.m.no)+'</div></td><td class="nowrap">'+fmtDate(r.m.expiry)+'</td><td class="num">'+money0(r.x.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None expiring in the next 30 days.</p>')+
     '<p style="margin:8px 0 0"><button class="link" data-go="memberships">Open Memberships</button></p></div>';
 }
+
+/* =========================================================
+   BULK IMPORT for masters (Excel .xlsx or .csv)
+   ========================================================= */
+var XLSX_URL='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', xlsxP=null;
+function loadXlsx(){if(window.XLSX)return Promise.resolve(window.XLSX);if(!xlsxP)xlsxP=new Promise(function(res,rej){var sc=document.createElement('script');sc.src=XLSX_URL;sc.onload=function(){window.XLSX?res(window.XLSX):rej(new Error('Excel reader did not load.'))};sc.onerror=function(){xlsxP=null;rej(new Error('Excel reader could not load. Check your connection.'))};document.head.appendChild(sc)});return xlsxP}
+var YESNO=['Yes','No'];
+var IMP={
+  clients:{title:'Clients',file:'clients',prefix:'c',key:function(o){return String(o.phone||'').replace(/\D/g,'').slice(-10)},keyLabel:'phone',
+    cols:[{k:'name',h:'Full name',req:1,ex:'Riya Sharma'},{k:'phone',h:'Phone',req:1,t:'phone',ex:'9876543210'},{k:'email',h:'Email',t:'email',ex:'riya@example.com'},{k:'gender',h:'Gender',t:'choice',ch:['Female','Male','Other'],ex:'Female'},
+      {k:'dob',h:'Date of birth',t:'date',ex:'1990-04-25'},{k:'anniv',h:'Anniversary date',t:'date',ex:''},{k:'address',h:'Address',ex:'12 MG Road'},{k:'cityId',h:'City',t:'ref',ref:'cities',stateCol:'_state',ex:'Guwahati'},{k:'_state',h:'State',t:'helper',ex:'Assam'},
+      {k:'openingBal',h:'Opening balance',t:'number',ex:'0'},{k:'obType',h:'Balance type',t:'choice',ch:['Receivable','Advance'],def:'Receivable',ex:'Receivable'}]},
+  services:{title:'Services',file:'services',prefix:'s',key:function(o){return norm(o.name)},keyLabel:'name',
+    cols:[{k:'name',h:'Service name',req:1,ex:'Back Massage'},{k:'categoryId',h:'Category',t:'ref',ref:'categories',ex:'Massages'},{k:'sac',h:'SAC code',t:'code',ex:'999722'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'1500'},
+      {k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'active',h:'Active',t:'yesno',def:true,ex:'Yes'}],
+    after:function(o){o.category=(findIn('categories',o.categoryId)||{}).name||'';if(!o.consumables)o.consumables=[]}},
+  categories:{title:'Service Categories',file:'service-categories',prefix:'cat',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Massages'}]},
+  states:{title:'States',file:'states',prefix:'st',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'State name',req:1,ex:'Assam'},{k:'code',h:'Short code',ex:'AS'}]},
+  cities:{title:'Cities',file:'cities',prefix:'ci',key:function(o){return norm(o.name)+'|'+o.stateId},keyLabel:'name and state',cols:[{k:'name',h:'City name',req:1,ex:'Guwahati'},{k:'stateId',h:'State',t:'ref',ref:'states',req:1,ex:'Assam'}]},
+  users:{title:'Users',file:'users',prefix:'u',key:function(o){return norm(o.userId)},keyLabel:'User ID',single:true,
+    cols:[{k:'name',h:'Full name',req:1,ex:'Dr Pankaj Jain'},{k:'userId',h:'User ID',req:1,ex:'DR001'},{k:'email',h:'Email',req:1,t:'email',ex:'pankaj@example.com'},{k:'password',h:'Temporary password',t:'password',ex:'Welcome@123'},
+      {k:'role',h:'Role',req:1,t:'choice',ch:['Admin','Manager','Aesthetics','Spa','Pharmacy'],ex:'Aesthetics'},{k:'phone',h:'Phone',ex:'9800000000'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
+  phCats:{title:'Item Categories',file:'item-categories',prefix:'pc',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Tablets'}]},
+  phItems:{title:'Items',file:'items',prefix:'pi',key:function(o){return norm(o.name)},keyLabel:'name',
+    cols:[{k:'name',h:'Item name',req:1,ex:'Paracetamol 500mg'},{k:'categoryId',h:'Category',t:'ref',ref:'phCats',ex:'Tablets'},{k:'unit',h:'Unit',t:'choice',ch:function(){return PH_UNITS},def:'Strip',ex:'Strip'},{k:'secQty',h:'Secondary qty per unit',t:'int',ex:'10'},
+      {k:'hsn',h:'HSN code',t:'code',ex:'3004'},{k:'gst',h:'GST rate',t:'gst',def:12,ex:'12'},{k:'reorder',h:'Reorder level',t:'int',ex:'20'},{k:'openingQty',h:'Opening quantity',t:'int',def:0,ex:'50'},{k:'openingRate',h:'Opening rate before GST',t:'number',ex:'18.50'},
+      {k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
+  phSuppliers:{title:'Suppliers',file:'suppliers',prefix:'sp',key:function(o){return norm(o.name)},keyLabel:'name',
+    cols:[{k:'name',h:'Supplier name',req:1,ex:'ABC Pharma'},{k:'contact',h:'Contact person',ex:'Rahul'},{k:'phone',h:'Phone',ex:'9811111111'},{k:'email',h:'Email',t:'email',ex:''},{k:'gstin',h:'GSTIN',t:'upper',ex:'18ABCDE1234F1Z5'},
+      {k:'address',h:'Address',ex:'Fancy Bazaar'},{k:'cityId',h:'City',t:'ref',ref:'cities',stateCol:'_state',ex:'Guwahati'},{k:'_state',h:'State',t:'helper',ex:'Assam'},{k:'openingBal',h:'Opening balance',t:'number',neg:1,ex:'0'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
+  aeCats:{title:'Procedure Categories',file:'procedure-categories',prefix:'ac',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Injectables'}]},
+  aeProcs:{title:'Procedures',file:'procedures',prefix:'ap',key:function(o){return norm(o.name)},keyLabel:'name',
+    cols:[{k:'name',h:'Procedure name',req:1,ex:'Face Botox'},{k:'categoryId',h:'Category',t:'ref',ref:'aeCats',ex:'Injectables'},{k:'sac',h:'SAC code',t:'code',ex:'999312'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},
+      {k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'},{k:'consent',h:'Consent form text',ex:''}],
+    after:function(o){if(!o.consumables)o.consumables=[]}},
+  memPlans:{title:'Membership Plans',file:'membership-plans',prefix:'mp',key:function(o){return norm(o.name)},keyLabel:'name',
+    cols:[{k:'name',h:'Plan name',req:1,ex:'Silver'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},{k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'value',h:'Services worth before GST',t:'number',req:1,ex:'16000'},
+      {k:'sac',h:'SAC code',t:'code',ex:''},{k:'validity',h:'Validity period',t:'int',req:1,ex:'12'},{k:'validityUnit',h:'Validity in',t:'choice',ch:['Months','Days'],def:'Months',ex:'Months'},
+      {k:'serviceIds',h:'Services covered (separate with ;)',t:'refs',ref:'services',req:1,ex:'Back Massage; Hair Spa'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'},{k:'terms',h:'Terms',ex:''}]}
+};
+var REF_NAME={cities:'city',states:'state',categories:'service category',phCats:'item category',aeCats:'procedure category',services:'service'};
+var REF_PLURAL={cities:'cities',states:'states',categories:'service categories',phCats:'item categories',aeCats:'procedure categories',services:'services'};
+function impTemplate(kind){
+  var c=IMP[kind];
+  loadXlsx().then(function(X){
+    var ws=X.utils.aoa_to_sheet([c.cols.map(function(x){return x.h}),c.cols.map(function(x){return x.ex||''})]);
+    ws['!cols']=c.cols.map(function(x){return {wch:Math.max(14,x.h.length+2)}});
+    var wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,c.title.slice(0,31));
+    saveFile(c.file+'-import-template.xlsx',new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  }).catch(function(){ /* Excel library unavailable: give a CSV template, which Excel opens too */
+    saveFile(c.file+'-import-template.csv',csv([c.cols.map(function(x){return x.h}),c.cols.map(function(x){return x.ex||''})]));
+  });
+}
+function impDate(v){
+  if(v instanceof Date&&!isNaN(v)){var d=new Date(v.getTime()+12*3600e3);return ds(d)}
+  var s2=String(v).trim(), m;
+  if((m=s2.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  if((m=s2.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/))) return m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2);
+  return null;
+}
+function impValidDate(d){var x=parseD(d);return x&&!isNaN(x)&&ds(x)===d}
+function parseCsv(text){
+  text=String(text).replace(/^\uFEFF/,'');
+  var rows=[],row=[],f='',q=false;
+  for(var i=0;i<text.length;i++){var ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','){row.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}
+    else f+=ch}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows;
+}
+function impReadFile(file){
+  if(/\.csv$/i.test(file.name)) return file.text().then(parseCsv);
+  return loadXlsx().then(function(X){return file.arrayBuffer().then(function(buf){
+    var wb=X.read(buf,{type:'array',cellDates:true});
+    var ws=wb.Sheets[wb.SheetNames[0]]; if(!ws) return [];
+    return X.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+  })});
+}
+/* turn sheet rows into checked import rows */
+function impAnalyse(kind,aoa,opt){
+  var c=IMP[kind], hdr=(aoa[0]||[]).map(function(h){return norm(String(h).replace(/\*/g,''))}), idx={}, missingCols=[];
+  c.cols.forEach(function(col){var i=hdr.indexOf(norm(col.h));if(i<0)i=hdr.indexOf(norm(col.k));idx[col.k]=i;if(i<0&&col.req)missingCols.push(col.h)});
+  if(missingCols.length) return {fatal:'These columns are missing: '+missingCols.join(', ')+'. Download the template and use its headings.'};
+  var existing={}; S[kind].forEach(function(r){var k=c.key(r);if(k)existing[k]=r});
+  var create={}, seen={}, rows=[];
+  function refFind(ref,name,extra){
+    var n=norm(name), hit=S[ref].find(function(x){return norm(x.name)===n&&(!extra||extra(x))});
+    if(hit) return hit.id;
+    var pend=(create[ref]||[]).find(function(x){return norm(x.name)===n&&(!extra||extra(x))});
+    return pend?pend.id:'';
+  }
+  function refCreate(ref,obj){(create[ref]=create[ref]||[]).push(obj);return obj.id}
+  for(var r=1;r<aoa.length;r++){
+    var raw=aoa[r]; if(!raw||!raw.some(function(v){return String(v).trim()!==''})) continue;
+    var cell=function(k){var i=idx[k];if(i==null||i<0)return '';var v=raw[i];return v instanceof Date?v:String(v==null?'':v).trim()};
+    var o={}, errs=[], given={};
+    c.cols.forEach(function(col){
+      if(col.t==='helper') return;
+      var v=cell(col.k), empty=v===''||v==null;
+      if(empty){if(col.req&&!(col.t==='password'))errs.push(col.h+' is missing');return}
+      given[col.k]=1;
+      var t=col.t||'text';
+      if(t==='text') o[col.k]=String(v);
+      else if(t==='upper') o[col.k]=String(v).toUpperCase();
+      else if(t==='code'){var cd=String(v).replace(/\s/g,'');if(!/^\d{4,8}$/.test(cd))errs.push(col.h+' should be 4 to 8 digits');else o[col.k]=cd}
+      else if(t==='phone'){var dg=String(v).replace(/\D/g,'');if(dg.length<7)errs.push('Phone looks wrong');else o[col.k]=String(v).replace(/\.0+$/,'')}
+      else if(t==='email'){if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))errs.push(col.h+' looks wrong');else o[col.k]=String(v)}
+      else if(t==='password'){if(String(v).length<8)errs.push('Password must be at least 8 characters');else o[col.k]=String(v)}
+      else if(t==='number'||t==='int'){var n=+String(v).replace(/[,₹\s]/g,'');if(isNaN(n))errs.push(col.h+' must be a number');else if(n<0&&!col.neg)errs.push(col.h+' can’t be negative');else o[col.k]=t==='int'?Math.round(n):r2(n)}
+      else if(t==='gst'){var g=+String(v).replace('%','');if(GST_RATES.indexOf(g)<0)errs.push('GST must be '+GST_RATES.join(', '));else o[col.k]=g}
+      else if(t==='yesno'){var yn=norm(String(v));if(['yes','y','true','1'].indexOf(yn)>=0)o[col.k]=true;else if(['no','n','false','0'].indexOf(yn)>=0)o[col.k]=false;else errs.push(col.h+' must be Yes or No')}
+      else if(t==='choice'){var ch=typeof col.ch==='function'?col.ch():col.ch, f=ch.find(function(x){return norm(x)===norm(String(v))});if(!f)errs.push(col.h+' must be one of: '+ch.join(', '));else o[col.k]=f}
+      else if(t==='date'){var dd=impDate(v);if(!dd||!impValidDate(dd))errs.push(col.h+' is not a date (use YYYY-MM-DD or DD-MM-YYYY)');else o[col.k]=dd}
+      else if(t==='ref'){
+        var name=String(v), extra=null, stName=col.stateCol?cell(col.stateCol):'', stId='';
+        if(col.ref==='cities'&&stName){stId=refFind('states',stName);extra=function(x){return !stId||x.stateId===stId}}
+        var id=refFind(col.ref,name,extra);
+        if(!id&&opt.create){
+          if(col.ref==='cities'){
+            if(!stName) errs.push('City “'+name+'” not found. Add its State in the State column so it can be created');
+            else{if(!stId)stId=refCreate('states',{id:newId('st'),name:stName,code:''});id=refCreate('cities',{id:newId('ci'),name:name,stateId:stId})}
+          } else id=refCreate(col.ref,{id:newId(col.ref==='states'?'st':'cat'),name:name});
+        }
+        if(!id&&!errs.some(function(e){return e.indexOf(name)>=0}))errs.push((REF_NAME[col.ref]||col.ref).replace(/^./,function(x){return x.toUpperCase()})+' “'+name+'” not found');
+        if(id)o[col.k]=id;
+      }
+      else if(t==='refs'){
+        var ids=[];String(v).split(/[;\n]/).map(function(x){return x.trim()}).filter(Boolean).forEach(function(nm){var hit=refFind(col.ref,nm);if(hit)ids.push(hit);else errs.push((REF_NAME[col.ref]||col.ref)+' “'+nm+'” not found')});
+        o[col.k]=ids;
+      }
+    });
+    var key=c.key(Object.assign({},o)), ex=key?existing[key]:null, st='new', msg='';
+    if(c.single&&!ex&&!o.password&&!errs.length) errs.push('Temporary password is needed for a new user');
+    if(key&&seen[key]){errs.push('Same '+c.keyLabel+' as row '+seen[key])} else if(key) seen[key]=r+1;
+    if(errs.length){st='error';msg=errs.join('; ')}
+    else if(ex){if(opt.mode==='update'){st='update'}else{st='skip';msg='Already exists (same '+c.keyLabel+')'}}
+    rows.push({row:r+1,raw:raw,o:o,given:given,ex:ex,st:st,msg:msg});
+  }
+  return {rows:rows,create:create,headers:aoa[0]||[]};
+}
+function impBuild(kind,row){
+  var c=IMP[kind], now=new Date().toISOString(), obj;
+  if(row.ex){obj=Object.assign({},row.ex);Object.keys(row.given).forEach(function(k){obj[k]=row.o[k]});obj.updatedAt=now}
+  else{obj={id:newId(c.prefix)};c.cols.forEach(function(col){if(col.t==='helper')return;if(col.k in row.o)obj[col.k]=row.o[col.k];else if(col.def!==undefined)obj[col.k]=col.def;else if(col.t==='refs')obj[col.k]=[];else if(col.t==='number'||col.t==='int')obj[col.k]=col.k==='openingQty'?0:'';else obj[col.k]=''});obj.createdAt=now;obj.updatedAt=now}
+  if(kind==='phItems'&&obj.secQty==='')delete obj.secQty;
+  if(kind==='users'){if(!row.ex)obj.mustChangePassword=true;if(!row.o.password)delete obj.password}
+  if(c.after)c.after(obj);
+  return obj;
+}
+/* save many records: one request per 300 on the server, otherwise one by one */
+function bulkPut(kind,objs){
+  if(!objs.length) return Promise.resolve();
+  if(!window.claude&&storeMode==='live'&&kind!=='users'){
+    var chunks=[];for(var i=0;i<objs.length;i+=300)chunks.push(objs.slice(i,i+300));
+    return chunks.reduce(function(p,ch){return p.then(function(){
+      return fetch('api/index.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bulk',collection:COL[kind],records:ch.map(function(o){var d=Object.assign({},o);delete d.id;return {id:o.id,data:d}})})})
+        .then(function(r){return r.json().catch(function(){return {}}).then(function(x){if(!r.ok)throw new Error(x.error||'Import failed.');
+          ch.forEach(function(o){var l=S[kind],k=l.findIndex(function(z){return z.id===o.id});if(k>=0)l[k]=o;else l.push(o)});scheduleRefresh()})});
+    })},Promise.resolve());
+  }
+  return objs.reduce(function(p,o){return p.then(function(){return put(kind,o)})},Promise.resolve());
+}
+function openImport(kind){
+  if(readOnly){toast('You need Contributor access to import.');return}
+  var c=IMP[kind], hasRef=c.cols.some(function(x){return x.t==='ref'}), st={mode:'add',create:true,aoa:null,res:null,fileName:'',busy:false};
+  var m=openModal('<h2>Import '+esc(c.title.toLowerCase())+'</h2>'+
+    '<div class="imp-steps"><div><strong>1.</strong> Download the template, fill it in Excel and save it. <button type="button" class="btn sm" data-tpl>Download template</button></div>'+
+    '<div><strong>2.</strong> Choose the file (.xlsx or .csv). <label class="btn sm imp-file">Choose file<input type="file" accept=".xlsx,.xls,.csv" hidden></label> <span class="sub" data-fname></span></div>'+
+    '<div class="imp-opts"><label class="check"><input type="radio" name="impm" value="add" checked> Add new only</label><label class="check"><input type="radio" name="impm" value="update"> Add new + update matching (same '+esc(c.keyLabel)+')</label>'+
+    (hasRef?'<label class="check"><input type="checkbox" data-create checked> Create missing '+esc(c.cols.filter(function(x){return x.t==='ref'}).map(function(x){return x.ref==='cities'?'cities and states':REF_PLURAL[x.ref]}).join(', '))+'</label>':'')+'</div></div>'+
+    '<div data-prev></div><p class="err" data-err hidden></p>'+
+    '<div class="m-actions"><button type="button" class="btn" data-x>Close</button><button type="button" class="btn" data-errs hidden>Download error rows</button><button type="button" class="btn primary w" data-go disabled>Import</button></div>','--m2',true);
+  var err=m.querySelector('[data-err]'), prev=m.querySelector('[data-prev]'), go=m.querySelector('[data-go]'), eb=m.querySelector('[data-errs]');
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('[data-tpl]').onclick=function(){impTemplate(kind)};
+  function analyse(){
+    if(!st.aoa) return;
+    st.res=impAnalyse(kind,st.aoa,{mode:st.mode,create:st.create});
+    if(st.res.fatal){prev.innerHTML='';err.textContent=st.res.fatal;err.hidden=false;go.disabled=true;eb.hidden=true;return}
+    err.hidden=true;
+    var n={new:0,update:0,skip:0,error:0}; st.res.rows.forEach(function(r){n[r.st]++});
+    var cr=Object.keys(st.res.create).map(function(k){var n2=st.res.create[k].length;return n2+' '+(n2===1?REF_NAME[k]:REF_PLURAL[k])}).join(', ');
+    var show=c.cols.filter(function(x){return x.t!=='helper'}).slice(0,3);
+    prev.innerHTML='<div class="imp-sum"><span class="pill paid">'+n.new+' new</span><span class="pill partial">'+n.update+' to update</span><span class="pill off">'+n.skip+' skipped</span><span class="pill unpaid">'+n.error+' with errors</span>'+(cr?'<span class="sub">Will also create '+esc(cr)+'</span>':'')+'</div>'+
+      (st.res.rows.length?'<div class="tbl imp-tbl"><table><thead><tr><th class="num">Row</th><th>Status</th>'+show.map(function(x){return '<th>'+esc(x.h)+'</th>'}).join('')+'<th>Note</th></tr></thead><tbody>'+
+      st.res.rows.slice(0,300).map(function(r){var lab={new:['paid','New'],update:['partial','Update'],skip:['off','Skip'],error:['unpaid','Error']}[r.st];
+        return '<tr><td class="num">'+r.row+'</td><td><span class="pill '+lab[0]+'">'+lab[1]+'</span></td>'+show.map(function(x){var i=st.aoa[0].map(function(h){return norm(String(h).replace(/\*/g,''))}).indexOf(norm(x.h));var v=i>=0?r.raw[i]:'';return '<td>'+esc(v instanceof Date?ds(v):String(v))+'</td>'}).join('')+'<td class="'+(r.st==='error'?'due':'sub')+'">'+esc(r.msg)+'</td></tr>'}).join('')+
+      '</tbody></table></div>'+(st.res.rows.length>300?'<p class="hint">Showing the first 300 of '+st.res.rows.length+' rows.</p>':''):'<p class="hint">The file has no data rows.</p>');
+    var todo=n.new+n.update; go.disabled=!todo; go.textContent=todo?'Import '+todo+' row'+(todo===1?'':'s'):'Import'; eb.hidden=!n.error;
+  }
+  $$('input[name=impm]',m).forEach(function(x){x.onchange=function(){st.mode=x.value;analyse()}});
+  var cb=m.querySelector('[data-create]'); if(cb) cb.onchange=function(){st.create=cb.checked;analyse()};
+  m.querySelector('.imp-file input').onchange=function(e){
+    var f=e.target.files&&e.target.files[0]; if(!f) return;
+    m.querySelector('[data-fname]').textContent=f.name; st.fileName=f.name; prev.innerHTML='<p class="hint">Reading…</p>';
+    impReadFile(f).then(function(aoa){st.aoa=aoa;analyse()}).catch(function(e2){prev.innerHTML='';err.textContent=e2&&e2.message?e2.message:'The file could not be read.';err.hidden=false});
+    e.target.value='';
+  };
+  eb.onclick=function(){
+    var bad=st.res.rows.filter(function(r){return r.st==='error'});
+    saveFile(c.file+'-import-errors.csv',csv([st.res.headers.concat(['Error'])].concat(bad.map(function(r){return r.raw.map(function(v){return v instanceof Date?ds(v):v}).concat([r.msg])}))));
+  };
+  go.onclick=function(){
+    if(st.busy||!st.res) return; st.busy=true; go.disabled=true; go.textContent='Importing…';
+    var todo=st.res.rows.filter(function(r){return r.st==='new'||r.st==='update'}), cr=st.res.create, now=new Date().toISOString();
+    var stamp=function(o){return Object.assign({},o,{createdAt:now,updatedAt:now})};
+    bulkPut('states',(cr.states||[]).map(stamp)).then(function(){return bulkPut('cities',(cr.cities||[]).map(stamp))})
+      .then(function(){return bulkPut('categories',(cr.categories||[]).map(stamp))}).then(function(){return bulkPut('phCats',(cr.phCats||[]).map(stamp))}).then(function(){return bulkPut('aeCats',(cr.aeCats||[]).map(stamp))})
+      .then(function(){return bulkPut(kind,todo.map(function(r){return impBuild(kind,r)}))})
+      .then(function(){var a=todo.filter(function(r){return r.st==='new'}).length,u=todo.length-a;closeModal();toast(c.title+': '+a+' added'+(u?', '+u+' updated':''))})
+      .catch(function(e2){st.busy=false;go.disabled=false;go.textContent='Import';err.textContent=(e2&&e2.message?e2.message:'Import failed.')+' Rows saved before the error are kept; import the file again with “Add new only” to finish.';err.hidden=false});
+  };
+}
+function impBtn(kind){return IMP[kind]&&!readOnly?'<button class="btn" data-import="'+kind+'">Import</button>':''}
+function bindImport(){$$('[data-import]',work).forEach(function(b){b.onclick=function(){openImport(b.dataset.import)}})}
 
 /* ---------- birthdays & anniversaries in the next 7 days ---------- */
 function waLink(phone,text){var d=String(phone||'').replace(/\D/g,'');if(d.length===10)d='91'+d;else if(d.length===11&&d[0]==='0')d='91'+d.slice(1);return d.length>=11?'https://wa.me/'+d+'?text='+encodeURIComponent(text):''}
