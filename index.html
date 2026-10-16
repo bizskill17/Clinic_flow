@@ -620,6 +620,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c5" data-key="ph-receipts">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="m9 11 2 2 4-4"/></svg></span>
               Receipts</button></li>
+            <li><button class="mi c13" data-key="ph-sup-pay">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h3"/></svg></span>
+              Supplier Payments</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="ph-reports-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
@@ -629,6 +632,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c6" data-key="ph-outstanding">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
               Outstanding</button></li>
+            <li><button class="mi c13" data-key="ph-payable">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
+              Payable to Suppliers</button></li>
             <li><button class="mi c7" data-key="ph-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
@@ -1237,12 +1243,12 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'mem-plans':['--m3','--m3-soft'],memberships:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],memberships:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
-var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[]};
-var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false};
-var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions'};
+var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[]};
+var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false};
+var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
 function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
@@ -1286,7 +1292,7 @@ function permittedKeys(){
   var common=['clients','cities','states','users','business'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions']);
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
-  return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts']);
+  return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
 }
 function initMySqlStore(){
   var keys=permittedKeys();
@@ -2659,9 +2665,10 @@ function phSaleInfo(m,al){
 }
 function phClientAccount(cid,al){return clientAccount(cid,al)}
 function phSupplierPayable(sid){
-  var s=findIn('phSuppliers',sid)||{}, ob=+s.openingBal||0, pur=0;
+  var s=findIn('phSuppliers',sid)||{}, ob=+s.openingBal||0, pur=0, paid=0;
   S.phMoves.forEach(function(m){if(m.type==='Purchase'&&m.supplierId===sid)pur+=+m.total||0});
-  return {opening:r2(ob),purchases:r2(pur),net:r2(ob+pur)};
+  S.phPays.forEach(function(p){if(p.supplierId===sid)paid+=+p.amount||0});
+  return {opening:r2(ob),purchases:r2(pur),paid:r2(paid),net:r2(ob+pur-paid)};
 }
 
 /* ---------- shared entry form for Item In / Item Issue ---------- */
@@ -2677,7 +2684,7 @@ function phEntryMount(kind){
   phCombos=[];
   if(readOnly){work.innerHTML=head(title,'')+'<div class="empty"><strong>View only</strong>You need Contributor access to add entries.</div>';return}
   var party='';
-  if(d.type==='Purchase') party='<div class="field"><label for="pe-sup">Supplier <span class="req">*</span></label><div id="pe-sup-host"></div></div><div class="field"><label for="pe-billno">Supplier bill no.</label><input type="text" id="pe-billno" maxlength="40" value="'+esc(d.supplierBillNo)+'" autocomplete="off"></div>';
+  if(d.type==='Purchase') party='<div class="field"><label for="pe-sup">Supplier <span class="req">*</span></label><div id="pe-sup-host"></div></div><div class="field"><label for="pe-billno">Supplier bill no.</label><input type="text" id="pe-billno" maxlength="40" value="'+esc(d.supplierBillNo)+'" autocomplete="off"></div><div class="field span2"><label>Supplier bill copy</label><div id="pe-billfile"></div></div>';
   else if(d.type==='Sale') party='<div class="field"><label for="pe-client">Client</label><div class="client-pick"><div id="pe-client-host"></div><button type="button" class="btn icon-plus" id="pe-newclient" aria-label="Add new client" title="Add new client">'+PLUS+'</button></div><p class="hint" id="pe-acct" style="margin:6px 0 0"></p></div><div class="field" id="pe-walkin-wrap"><label for="pe-walkin">Walk-in customer name</label><input type="text" id="pe-walkin" maxlength="80" value="'+esc(d.customerName)+'" autocomplete="off"></div>';
   else if(d.type==='Return') party='<div class="field"><label for="pe-client">Client <span class="req">*</span></label><div id="pe-client-host"></div></div><div class="field"><label for="pe-sale">Against sale bill</label><select id="pe-sale"></select></div>';
   work.innerHTML=head(editing?'Edit '+d.no:title,'<button class="btn" id="pe-back">Back to list</button>')+
@@ -2698,6 +2705,7 @@ function phEntryMount(kind){
       options:function(){return S.phSuppliers.filter(function(x){return x.status!=='Inactive'||x.id===d.supplierId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,cityLabel(x.cityId).city]})},
       missing:function(){return d.supplierName||''},onChange:function(v){d.supplierId=v}}));
     $('#pe-billno').oninput=function(e){d.supplierBillNo=e.target.value};
+    pdfField($('#pe-billfile'),function(){return d.billFile||null},function(v){d.billFile=v},{images:true});
   }
   if(d.type==='Sale'||d.type==='Return'){
     var cc=combo($('#pe-client-host'),{id:'pe-client',label:'Client',placeholder:d.type==='Sale'?'Type to search, or leave empty for walk-in':'Type to search name or phone',value:d.clientId,allowEmpty:d.type==='Sale',
@@ -2838,7 +2846,7 @@ function phSave(d){
   var num=editing?{seq:d.seq,no:d.no}:phNextNo(t);
   var saved=lines.map(function(l){var c=phCalc(t,l);return {itemId:l.itemId,name:l.name,hsn:(phItem(l.itemId)||{}).hsn||l.hsn||'',batch:'ALL',qty:+l.qty,rate:r2(l.rate),mrp:r2(l.mrp),gst:+l.gst||0,discPct:r2(l.discPct||0),disc:c.disc,taxable:c.taxable,tax:c.tax,total:c.total}});
   var doc={id:d.id||newId('pm'),kind:PH_KIND[t],type:t,seq:num.seq,no:num.no,date:d.date,lines:saved,subtotal:tot.subtotal,discount:tot.discount,taxable:tot.taxable,tax:tot.tax,roundOn:!!d.roundOn,roundOff:tot.roundOff,total:tot.total,createdAt:d.createdAt||now,updatedAt:now};
-  if(t==='Purchase'){doc.supplierId=sup.id;doc.supplierName=sup.name;doc.supplierBillNo=String(d.supplierBillNo||'').trim()}
+  if(t==='Purchase'){doc.supplierId=sup.id;doc.supplierName=sup.name;doc.supplierBillNo=String(d.supplierBillNo||'').trim();doc.billFile=d.billFile||null}
   if(t==='Sale'||t==='Return'){doc.clientId=cl?cl.id:'';doc.clientName=cl?cl.name:'';doc.clientPhone=cl?cl.phone:'';doc.customerName=cl?'':String(d.customerName||'').trim()}
   if(t==='Return'){doc.saleId=d.saleId||'';var sm=phMove(d.saleId);doc.saleNo=sm?sm.no:''}
   var btn=$('#pe-form [type=submit]'); btn.disabled=true;
@@ -2947,7 +2955,7 @@ function phListUpdate(kind){
   var al=phAllocate(), T=0;
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Type</th><th>'+(kind==='in'?'Supplier / client':'Client / customer')+'</th><th class="num">Items</th><th class="num">Total</th>'+(kind==='out'?'<th>Payment</th>':'')+'<th></th></tr></thead><tbody>'+
     list.map(function(m){if(!m.cancelled)T+=+m.total||0;var x=m.type==='Sale'?phSaleInfo(m,al):null;
-      return '<tr><td class="nowrap"><button class="link" data-pm="'+esc(m.id)+'">'+esc(m.no)+'</button>'+(m.supplierBillNo?'<div class="sub">Bill '+esc(m.supplierBillNo)+'</div>':'')+'</td><td class="nowrap">'+fmtDate(m.date)+'</td><td><span class="pill '+PH_TYPE_PILL[m.type]+'">'+esc(m.type)+'</span></td><td>'+esc(phPartyName(m)||'—')+'</td><td class="num">'+(m.lines||[]).length+'</td><td class="num">'+money(m.total)+'</td>'+
+      return '<tr><td class="nowrap"><button class="link" data-pm="'+esc(m.id)+'">'+esc(m.no)+'</button>'+(m.supplierBillNo?'<div class="sub">Bill '+esc(m.supplierBillNo)+'</div>':'')+(m.billFile&&m.billFile.id?' <a class="btn sm" href="'+esc(blobUrl(m.billFile.id,m.billFile.type))+'" target="_blank" rel="noopener" title="View supplier bill" aria-label="View supplier bill">'+EYE+'</a>':'')+'</td><td class="nowrap">'+fmtDate(m.date)+'</td><td><span class="pill '+PH_TYPE_PILL[m.type]+'">'+esc(m.type)+'</span></td><td>'+esc(phPartyName(m)||'—')+'</td><td class="num">'+(m.lines||[]).length+'</td><td class="num">'+money(m.total)+'</td>'+
         (kind==='out'?'<td>'+(x?statusPill(x.status)+(x.bal>0.004?' <span class="sub">'+money(x.bal)+' due</span>':''):'<span class="sub">—</span>')+'</td>':'')+
         '<td><div class="row-acts">'+(x&&x.bal>0.004&&m.clientId?'<button class="btn sm w" data-phpay="'+esc(m.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-pedit="'+esc(m.id)+'">Edit</button><button class="btn sm danger w" data-pdel="'+esc(m.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody><tfoot><tr><td colspan="5">Total</td><td class="num">'+money(T)+'</td>'+(kind==='out'?'<td></td>':'')+'<td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,all.length,'entries')+'</p>';
@@ -2957,7 +2965,7 @@ function phListUpdate(kind){
 function phEdit(id){
   var m=phMove(id); if(!m) return;
   if(m.cancelled){toast(m.no+' is cancelled and can’t be edited.');return}
-  phDraft[m.kind]={id:m.id,kind:m.kind,type:m.type,seq:m.seq,no:m.no,createdAt:m.createdAt,date:m.date,supplierId:m.supplierId||'',supplierName:m.supplierName||'',supplierBillNo:m.supplierBillNo||'',clientId:m.clientId||'',clientName:m.clientName||'',customerName:m.customerName||'',saleId:m.saleId||'',roundOn:!!m.roundOn,roundManual:m.roundOn?String(m.roundOff||0):null,
+  phDraft[m.kind]={id:m.id,kind:m.kind,type:m.type,seq:m.seq,no:m.no,createdAt:m.createdAt,date:m.date,supplierId:m.supplierId||'',supplierName:m.supplierName||'',supplierBillNo:m.supplierBillNo||'',billFile:m.billFile||null,clientId:m.clientId||'',clientName:m.clientName||'',customerName:m.customerName||'',saleId:m.saleId||'',roundOn:!!m.roundOn,roundManual:m.roundOn?String(m.roundOff||0):null,
     lines:(m.lines||[]).map(function(l){return {itemId:l.itemId,name:l.name,hsn:l.hsn,batch:'ALL',qty:l.qty,rate:l.rate,mrp:l.mrp,gst:l.gst,discPct:l.discPct||0}})};
   if(!phDraft[m.kind].lines.length) phDraft[m.kind].lines=[phBlankLine()];
   phMode[m.kind]='form'; closeModal();
@@ -2979,7 +2987,7 @@ function phViewMove(id,fallback){
     var recs=sale?allReceipts().filter(function(r){return r.saleId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}):[];
     var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), fromAdv=sale?r2(x.paid-Math.min(linked,x.paid)):0;
     var cols=t==='Purchase'?['Item','Qty','Rate','MRP','GST','Amount']:(sale||t==='Return'?['Item','Qty','Rate','Discount','Amount before GST','GST','Amount']:['Item','Qty','Cost rate','MRP','',/Issue$/.test(t)?'Issued at cost':'Loss at cost']);
-    m0.innerHTML='<h2>'+esc(t)+' '+esc(m.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Date</dt><dd>'+fmtDate(m.date)+'</dd>'+(phPartyName(m)?'<dt>'+(t==='Purchase'?'Supplier':'Client')+'</dt><dd><strong>'+esc(phPartyName(m))+'</strong></dd>':'')+(m.supplierBillNo?'<dt>Supplier bill</dt><dd>'+esc(m.supplierBillNo)+'</dd>':'')+(m.saleNo?'<dt>Against sale</dt><dd>'+esc(m.saleNo)+'</dd>':'')+'</dl>'+
+    m0.innerHTML='<h2>'+esc(t)+' '+esc(m.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Date</dt><dd>'+fmtDate(m.date)+'</dd>'+(phPartyName(m)?'<dt>'+(t==='Purchase'?'Supplier':'Client')+'</dt><dd><strong>'+esc(phPartyName(m))+'</strong></dd>':'')+(m.billFile&&m.billFile.id?'<dt>Bill copy</dt><dd><a href="'+esc(blobUrl(m.billFile.id,m.billFile.type))+'" target="_blank" rel="noopener">'+EYE+' View supplier bill</a></dd>':'')+(t==='Purchase'?(function(){var bb=phBillBal(m);return bb?'<dt>Paid</dt><dd>'+money(bb.paid)+(bb.bal>0.004?' · <span class="due">due '+money(bb.bal)+'</span>':' · <span class="pill paid">Paid</span>')+'</dd>':''})():'')+(m.supplierBillNo?'<dt>Supplier bill</dt><dd>'+esc(m.supplierBillNo)+'</dd>':'')+(m.saleNo?'<dt>Against sale</dt><dd>'+esc(m.saleNo)+'</dd>':'')+'</dl>'+
       '<div style="text-align:right">'+(sale?statusPill(x.status):'<span class="pill '+PH_TYPE_PILL[t]+'">'+esc(t)+'</span>')+'<div class="big" style="margin-top:6px">'+money(m.total)+'</div>'+(sale&&x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr>'+cols.map(function(c,ix){return '<th'+(ix>=1?' class="num"':'')+'>'+c+'</th>'}).join('')+'</tr></thead><tbody>'+
       (m.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.qty+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+(t==='Purchase'?money(l.mrp):(sale||t==='Return'?money(l.disc)+(l.discPct?' <span class="sub">('+esc(l.discPct)+'%)</span>':'')+'</td><td class="num">'+money(l.taxable):(l.mrp?money(l.mrp):'—')))+'</td><td class="num">'+(t==='Expiry'||t==='Damage'?'':esc(l.gst)+'%'+(sale||t==='Return'?' <span class="sub">'+money(l.tax)+'</span>':''))+'</td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
@@ -2989,10 +2997,11 @@ function phViewMove(id,fallback){
       (sale||t==='Return'?'<div class="r"><span>Amount</span><span>'+money(m.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(m.discount)+'</span></div><div class="r"><span>Amount before GST</span><span>'+money(m.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(m.tax)+'</span></div>':'')+
       (m.roundOff?'<div class="r"><span>Round off</span><span>'+(m.roundOff<0?'− ':'+ ')+money(Math.abs(m.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>'+(t==='Expiry'||t==='Damage'?'Loss at cost':(/Issue$/.test(t)?'Issued at cost':(t==='Return'?'Credit to client':'Total')))+'</span><span>'+money(m.total)+'</span></div>'+(sale?'<div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>':'')+'</div></div>'+
-      cancelNote(m)+'<div class="m-actions"><button class="btn" data-x>Close</button>'+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(sale&&!m.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel sale</button>':'')+(m.cancelled?'':'<button class="btn w" data-edit>Edit</button>')+(sale&&!m.cancelled&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      cancelNote(m)+'<div class="m-actions"><button class="btn" data-x>Close</button>'+(t==='Purchase'&&!readOnly&&(phBillBal(m)||{}).bal>0.004?'<button class="btn primary w" data-paysup>Pay supplier</button>':'')+''+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(sale&&!m.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel sale</button>':'')+(m.cancelled?'':'<button class="btn w" data-edit>Edit</button>')+(sale&&!m.cancelled&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
     m0.querySelector('[data-x]').onclick=closeModal;
     var ed=m0.querySelector('[data-edit]'); if(ed) ed.onclick=function(){phEdit(id)};
     var cx=m0.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('phMoves',id)};
+    var ps=m0.querySelector('[data-paysup]'); if(ps) ps.onclick=function(){supPayDialog(m.supplierId,m.id)};
     var dl=m0.querySelector('[data-dl]'); if(dl) dl.onclick=function(){var pdf=phSalePdf(m,x,recs,fromAdv);if(pdf)pdfView(m.no+'.pdf',pdf)};
     var p=m0.querySelector('[data-paynow]'); if(p) p.onclick=function(){phRecordPayment(id,m.clientId)};
   };
@@ -3730,23 +3739,25 @@ var serverAssets={
   delete:function(id){return fetch('api/index.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'file_delete',id:id})}).then(function(r){if(!r.ok)throw new Error('Delete failed.')})}
 };
 /* PDF upload box: shows the file, with Replace and Remove */
-function pdfField(host,get,set){
+function pdfField(host,get,set,opt){
+  opt=opt||{};
   function render(){
     var f=get();
-    host.innerHTML='<div class="pdf-box">'+(f?'<a class="pdf-name" href="'+esc(blobUrl(f.id,'application/pdf'))+'" target="_blank" rel="noopener">'+esc(f.name||'Document.pdf')+'</a><span class="sub">'+(f.size?Math.max(1,Math.round(f.size/1024))+' KB':'')+'</span>':'')+
-      '<button type="button" class="btn sm" data-pick>'+(f?'Replace':PLUS+' Upload PDF')+'</button>'+(f?'<button type="button" class="btn sm danger" data-rm>Remove</button>':'')+
-      '<input type="file" accept="application/pdf,.pdf" hidden><span class="pdf-msg sub" aria-live="polite"></span></div>';
+    host.innerHTML='<div class="pdf-box">'+(f?'<a class="pdf-name" href="'+esc(blobUrl(f.id,f.type||'application/pdf'))+'" target="_blank" rel="noopener">'+esc(f.name||'Document.pdf')+'</a><span class="sub">'+(f.size?Math.max(1,Math.round(f.size/1024))+' KB':'')+'</span>':'')+
+      '<button type="button" class="btn sm" data-pick>'+(f?'Replace':PLUS+(opt.images?' Upload PDF or photo':' Upload PDF'))+'</button>'+(f?'<button type="button" class="btn sm danger" data-rm>Remove</button>':'')+
+      '<input type="file" accept="'+(opt.images?'application/pdf,.pdf,image/jpeg,image/png':'application/pdf,.pdf')+'" hidden><span class="pdf-msg sub" aria-live="polite"></span></div>';
     var inp=host.querySelector('input[type=file]'), msg=host.querySelector('.pdf-msg');
     host.querySelector('[data-pick]').onclick=function(){if(readOnly){toast('You need Contributor access to upload files.');return}inp.click()};
     var rm=host.querySelector('[data-rm]'); if(rm) rm.onclick=function(){set(null);render()};
     inp.onchange=function(){
       var file=inp.files&&inp.files[0]; if(!file) return;
-      if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name)){msg.textContent='Choose a PDF file.';return}
-      if(file.size>15*1024*1024){msg.textContent='The PDF must be 15 MB or smaller.';return}
+      var ftype=/pdf$/i.test(file.type)||/\.pdf$/i.test(file.name)?'application/pdf':(opt.images&&/^image\/(jpeg|png)$/.test(file.type)?file.type:'');
+      if(!ftype){msg.textContent=opt.images?'Choose a PDF, JPG or PNG file.':'Choose a PDF file.';return}
+      if(file.size>15*1024*1024){msg.textContent='The file must be 15 MB or smaller.';return}
       msg.textContent='Uploading…'; host.querySelectorAll('button').forEach(function(b){b.disabled=true});
       getAssets().then(function(a){
         if(!a) throw new Error('File upload is not available here.');
-        return a.upload(file,{type:'application/pdf'}).then(function(up){set({id:up.id,name:file.name,size:file.size,type:'application/pdf',uploadedAt:new Date().toISOString()});render()});
+        return a.upload(file,{type:ftype}).then(function(up){set({id:up.id,name:file.name,size:file.size,type:ftype,uploadedAt:new Date().toISOString()});render()});
       }).catch(function(e){render();host.querySelector('.pdf-msg').textContent=e&&e.message?e.message:'Upload failed. Try again.'});
     };
   }
@@ -5625,6 +5636,156 @@ function openImport(kind){
 function impBtn(kind){return IMP[kind]&&!readOnly?'<button class="btn" data-import="'+kind+'">Import</button>':''}
 function bindImport(){$$('[data-import]',work).forEach(function(b){b.onclick=function(){openImport(b.dataset.import)}})}
 
+/* =========================================================
+   PHARMACY: supplier payments and payables
+   ========================================================= */
+/* bill-wise balances for one supplier: payments against a bill settle it first, the rest settles the oldest bills */
+function phSupAlloc(sid){
+  var s=findIn('phSuppliers',sid)||{}, bills=[];
+  if((+s.openingBal||0)>0) bills.push({id:'ob:'+sid,no:'Opening balance',date:'',total:r2(s.openingBal),paid:0,opening:true});
+  S.phMoves.filter(function(m){return m.type==='Purchase'&&m.supplierId===sid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
+    .forEach(function(m){bills.push({id:m.id,no:m.no,date:m.date,total:r2(m.total),paid:0,billNo:m.supplierBillNo||''})});
+  var map={}; bills.forEach(function(b){map[b.id]=b});
+  var pays=S.phPays.filter(function(p){return p.supplierId===sid}), pool=0, paidTot=0;
+  pays.forEach(function(p){var amt=+p.amount||0;paidTot+=amt;var b=p.purchaseId&&map[p.purchaseId];if(b){var use=Math.min(amt,Math.max(0,r2(b.total-b.paid)));b.paid=r2(b.paid+use);amt=r2(amt-use)}pool=r2(pool+amt)});
+  bills.forEach(function(b){var room=r2(b.total-b.paid);if(room>0&&pool>0){var use=Math.min(room,pool);b.paid=r2(b.paid+use);pool=r2(pool-use)}b.bal=r2(b.total-b.paid)});
+  var neg=(+s.openingBal||0)<0?r2(+s.openingBal):0;
+  return {bills:bills,paid:r2(paidTot),advance:r2(pool),net:r2(bills.reduce(function(t,b){return t+b.total},0)+neg-paidTot)};
+}
+function phBillBal(m){if(!m||m.type!=='Purchase')return null;var a=phSupAlloc(m.supplierId);return a.bills.find(function(b){return b.id===m.id})||null}
+function supPayDialog(sid,purchaseId){
+  if(readOnly){toast('You need Contributor access to record payments.');return}
+  var st={sid:sid||'',pid:purchaseId||''};
+  var m=openModal('<h2>Pay supplier</h2><form id="spf" novalidate><div class="f-grid">'+
+    '<div class="field span2"><label for="sp-sup">Supplier <span class="req">*</span></label><div id="sp-sup-host"></div></div>'+
+    '<div class="field span2"><label for="sp-bill">Against bill</label><select id="sp-bill"></select></div>'+
+    '<div class="field"><label for="sp-date">Date</label><input type="date" id="sp-date" value="'+todayStr()+'"></div>'+
+    '<div class="field"><label for="sp-amt">Amount (₹) <span class="req">*</span></label><input type="number" id="sp-amt" min="0" step="0.01"></div>'+
+    '<div class="field"><label for="sp-mode">Mode</label><select id="sp-mode">'+optList(MODES,'Bank transfer')+'</select></div>'+
+    '<div class="field"><label for="sp-ref">Reference</label><input type="text" id="sp-ref" maxlength="60" autocomplete="off" placeholder="UTR / cheque no."></div>'+
+    '<div class="field span2"><label for="sp-note">Note</label><input type="text" id="sp-note" maxlength="120" autocomplete="off"></div></div>'+
+    '<p class="hint" id="sp-due"></p><p class="err" id="sp-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save payment</button></div></form>','--m13',false,function(m2){
+      combo(m2.querySelector('#sp-sup-host'),{id:'sp-sup',label:'Supplier',placeholder:'Type to search suppliers',value:st.sid,emptyText:'Add suppliers in Masters › Suppliers',
+        options:function(){return S.phSuppliers.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name]})},onChange:function(v){st.sid=v;st.pid='';bills()}});
+    });
+  function bills(){
+    var sel=m.querySelector('#sp-bill'), a=st.sid?phSupAlloc(st.sid):null, open=a?a.bills.filter(function(b){return b.bal>0.004&&!b.opening}):[];
+    sel.innerHTML=optList([['','On account (oldest bills first)']].concat(open.map(function(b){return [b.id,b.no+(b.billNo?' · bill '+b.billNo:'')+' · '+fmtDate(b.date)+' · due '+money(b.bal)]})),st.pid);
+    m.querySelector('#sp-due').innerHTML=a?'Total payable to this supplier: <strong>'+money(Math.max(0,a.net))+'</strong>':'';
+    var b=open.find(function(x){return x.id===st.pid}); if(b) m.querySelector('#sp-amt').value=b.bal;
+  }
+  bills();
+  m.querySelector('#sp-bill').onchange=function(e){st.pid=e.target.value;bills()};
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#spf').onsubmit=function(e){e.preventDefault();
+    var err=m.querySelector('#sp-err'), sup=findIn('phSuppliers',st.sid), amt=r2(m.querySelector('#sp-amt').value||0), d=m.querySelector('#sp-date').value, msg='';
+    if(!sup) msg='Choose the supplier.'; else if(!(amt>0)) msg='Enter an amount greater than zero.'; else if(!d) msg='Choose the date.';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]');btn.disabled=true;
+    var seq=nextSeq(S.phPays), pm=st.pid&&phMove(st.pid);
+    var obj={id:newId('sp'),seq:seq,no:'SPY-'+pad(seq),date:d,supplierId:sup.id,supplierName:sup.name,purchaseId:pm?pm.id:'',purchaseNo:pm?pm.no:'',amount:amt,mode:m.querySelector('#sp-mode').value,reference:m.querySelector('#sp-ref').value.trim(),note:m.querySelector('#sp-note').value.trim(),createdAt:new Date().toISOString()};
+    put('phPays',obj).then(function(){closeModal();toast(obj.no+' saved: '+money(amt)+' to '+sup.name)}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
+function supLedger(sid){
+  var render=function(m){
+    var s=findIn('phSuppliers',sid)||{}, a=phSupAlloc(sid), rows=[];
+    if(+s.openingBal) rows.push({date:'',ref:'',part:'Opening balance',dr:0,cr:+s.openingBal,ord:0});
+    S.phMoves.forEach(function(x){if(x.type==='Purchase'&&x.supplierId===sid)rows.push({date:x.date,ref:x.no,part:'Purchase'+(x.supplierBillNo?' · bill '+x.supplierBillNo:''),dr:0,cr:+x.total||0,ord:1,seq:x.seq})});
+    S.phPays.forEach(function(p){if(p.supplierId===sid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.purchaseNo?' against '+p.purchaseNo:''),dr:+p.amount||0,cr:0,ord:2,seq:p.seq})});
+    rows.sort(function(x,y){return (x.date||'').localeCompare(y.date||'')||x.ord-y.ord||(x.seq||0)-(y.seq||0)});
+    var bal=0; rows.forEach(function(r){bal=r2(bal+r.cr-r.dr);r.bal=bal});
+    m.innerHTML='<h2>'+esc(s.name||'Supplier')+' · ledger</h2><div class="mem-sum" style="margin-top:-4px"><span>Purchases <strong>'+money(rows.reduce(function(t,r){return t+r.cr},0))+'</strong></span><span>Paid <strong>'+money(a.paid)+'</strong></span><span>Balance payable <strong>'+money(Math.max(0,a.net))+'</strong></span>'+(a.advance>0.004?'<span>Advance with supplier <strong>'+money(a.advance)+'</strong></span>':'')+'</div>'+
+      (rows.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Particulars</th><th>Ref</th><th class="num">Purchase</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+
+      rows.map(function(r){return '<tr><td class="nowrap">'+(r.date?fmtDate(r.date):'—')+'</td><td>'+esc(r.part)+'</td><td class="nowrap">'+esc(r.ref||'—')+'</td><td class="num">'+(r.cr?money(r.cr):'')+'</td><td class="num">'+(r.dr?money(r.dr):'')+'</td><td class="num">'+money(r.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No entries yet.</p>')+
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-csv>Export CSV</button>'+(readOnly?'':'<button class="btn primary w" data-pay>Record payment</button>')+'</div>';
+    m.querySelector('[data-x]').onclick=closeModal;
+    m.querySelector('[data-csv]').onclick=function(){saveFile('supplier-ledger-'+(s.name||'').replace(/\W+/g,'-')+'.csv',csv([['Date','Particulars','Ref','Purchase','Paid','Balance']].concat(rows.map(function(r){return [r.date,r.part,r.ref,r.cr||'',r.dr||'',r.bal]}))))};
+    var pb=m.querySelector('[data-pay]'); if(pb) pb.onclick=function(){supPayDialog(sid,'')};
+  };
+  var m=openModal('','--m13',true); render(m); modalRefresh=function(){render(m)};
+}
+var spF={q:'',from:'',to:''};
+SECTIONS['ph-sup-pay']={
+  mount:function(){
+    work.innerHTML=head('Supplier Payments','<button class="btn" id="sp-export">Export CSV</button>'+(readOnly?'':'<button class="btn primary w" id="sp-new">'+PLUS+' Pay supplier</button>'))+
+      '<div class="toolbar"><div class="field grow"><label for="sp-q">Search</label><input type="search" id="sp-q" placeholder="Supplier, number, bill or reference" value="'+esc(spF.q)+'"></div>'+dateFilters('spd',spF)+'</div><div id="body"></div>';
+    var up=function(){SECTIONS['ph-sup-pay'].update();bindCommon()};
+    $('#sp-q').oninput=function(e){spF.q=e.target.value;up()};
+    $('#spd-from').onchange=function(e){spF.from=e.target.value;up()};
+    $('#spd-to').onchange=function(e){spF.to=e.target.value;up()};
+    var nb=$('#sp-new'); if(nb) nb.onclick=function(){supPayDialog('','')};
+    $('#sp-export').onclick=function(){saveFile('supplier-payments-'+todayStr()+'.csv',csv([['Number','Date','Supplier','Against','Mode','Reference','Note','Amount']].concat(spList().map(function(p){return [p.no,p.date,p.supplierName,p.purchaseNo||'On account',p.mode,p.reference||'',p.note||'',p.amount]}))))};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    if(!S.phPays.length){b.innerHTML='<div class="empty"><strong>No supplier payments yet</strong>Use Pay supplier to record a payment.</div>';return}
+    var list=spList(), T=0;
+    if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No payment matches these filters.</div>';return}
+    b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Supplier</th><th>Against</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
+      list.map(function(p){T+=+p.amount||0;return '<tr><td class="nowrap"><strong>'+esc(p.no)+'</strong></td><td class="nowrap">'+fmtDate(p.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-supled="'+esc(p.supplierId)+'">'+esc(p.supplierName)+'</button></td><td class="nowrap">'+(p.purchaseId&&phMove(p.purchaseId)?'<button class="link" data-pm="'+esc(p.purchaseId)+'">'+esc(p.purchaseNo)+'</button>':'<span class="pill off">On account</span>')+'</td><td>'+esc(p.mode)+'</td><td>'+esc(p.reference||'')+(p.note?'<div class="sub">'+esc(p.note)+'</div>':'')+'</td><td class="num">'+money(p.amount)+'</td>'+
+        '<td>'+(readOnly?'':'<button class="btn sm danger" data-spdel="'+esc(p.id)+'">Delete</button>')+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.phPays.length,'payments')+'</p>';
+    $$('[data-supled]',b).forEach(function(x){x.onclick=function(){supLedger(x.dataset.supled)}});
+    $$('[data-spdel]',b).forEach(function(x){x.onclick=function(){var p=findIn('phPays',x.dataset.spdel);if(!p)return;confirmBox('Delete payment?','Delete '+p.no+' ('+money(p.amount)+' to '+p.supplierName+')?','Delete',function(){remove('phPays',p.id).then(function(){toast(p.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+  }
+};
+function spList(){
+  var q=norm(spF.q);
+  return S.phPays.filter(function(p){
+    if(q&&norm(p.no+' '+p.supplierName+' '+(p.purchaseNo||'')+' '+(p.reference||'')+' '+(p.note||'')).indexOf(q)<0) return false;
+    if(spF.from&&p.date<spF.from) return false;
+    if(spF.to&&p.date>spF.to) return false;
+    return true;
+  }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
+}
+var pyF={view:'supplier',q:''};
+SECTIONS['ph-payable']={
+  mount:function(){
+    var bv=pyF.view==='bill';
+    work.innerHTML=head('Payable to Suppliers','<button class="btn" id="py-export">Export CSV</button>'+(readOnly?'':'<button class="btn primary w" id="py-pay">'+PLUS+' Pay supplier</button>'))+
+      '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!bv?' primary':'')+'" data-pyview="supplier">By supplier</button><button class="btn'+(bv?' primary':'')+'" data-pyview="bill">By bill</button></div></div>'+
+      '<div class="toolbar"><div class="field grow"><label for="py-q">Search</label><input type="search" id="py-q" placeholder="Supplier'+(bv?', number or bill no.':'')+'" value="'+esc(pyF.q)+'"></div></div><div id="body"></div>';
+    var up=function(){SECTIONS['ph-payable'].update();bindCommon()};
+    $$('[data-pyview]',work).forEach(function(x){x.onclick=function(){pyF.view=x.dataset.pyview;go(current)}});
+    $('#py-q').oninput=function(e){pyF.q=e.target.value;up()};
+    var pb=$('#py-pay'); if(pb) pb.onclick=function(){supPayDialog('','')};
+    $('#py-export').onclick=function(){
+      var r=pyRows();
+      saveFile('payable-'+(pyF.view==='bill'?'by-bill':'by-supplier')+'-'+todayStr()+'.csv',csv(pyF.view==='bill'?[['Supplier','Number','Supplier bill','Date','Days','Total','Paid','Balance']].concat(r.map(function(x){return [x.s.name,x.b.no,x.b.billNo||'',x.b.date,x.b.date?daysSince(x.b.date):'',x.b.total,x.b.paid,x.b.bal]})):[['Supplier','Phone','Bills due','Purchases','Paid','Balance']].concat(r.map(function(x){return [x.s.name,x.s.phone||'',x.n,x.pur,x.a.paid,Math.max(0,x.a.net)]}))));
+    };
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var rows=pyRows(), T=0;
+    if(!rows.length){b.innerHTML='<div class="empty"><strong>Nothing payable</strong>All supplier bills are paid.</div>';return}
+    if(pyF.view==='bill'){
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Supplier</th><th>Number</th><th>Date</th><th>Overdue</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
+        rows.map(function(x){T+=x.b.bal;return '<tr><td><button class="link" style="color:inherit;font-weight:500" data-supled="'+esc(x.s.id)+'">'+esc(x.s.name)+'</button></td><td class="nowrap">'+(x.b.opening?'<span class="pill off">Opening balance</span>':'<button class="link" data-pm="'+esc(x.b.id)+'">'+esc(x.b.no)+'</button>'+(x.b.billNo?'<div class="sub">Bill '+esc(x.b.billNo)+'</div>':''))+'</td><td class="nowrap">'+(x.b.date?fmtDate(x.b.date):'—')+'</td><td>'+(x.b.date?agePill(daysSince(x.b.date)):'')+'</td><td class="num">'+money(x.b.total)+'</td><td class="num">'+money(x.b.paid)+'</td><td class="num due">'+money(x.b.bal)+'</td>'+
+          '<td>'+(readOnly?'':'<button class="btn sm w" data-pybill="'+esc(x.s.id+'|'+(x.b.opening?'':x.b.id))+'">Pay</button>')+'</td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div>';
+    } else {
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Supplier</th><th class="num">Bills due</th><th class="num">Purchases</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
+        rows.map(function(x){var bal=Math.max(0,x.a.net);T+=bal;return '<tr><td><button class="link" style="color:inherit;font-weight:500" data-supled="'+esc(x.s.id)+'">'+esc(x.s.name)+'</button><div class="sub">'+esc(x.s.phone||'')+'</div></td><td class="num">'+x.n+'</td><td class="num">'+money(x.pur)+'</td><td class="num">'+money(x.a.paid)+'</td><td class="num due">'+money(bal)+'</td>'+
+          '<td><div class="row-acts"><button class="btn sm" data-supled="'+esc(x.s.id)+'">Ledger</button>'+(readOnly?'':'<button class="btn sm w" data-pybill="'+esc(x.s.id)+'|">Pay</button>')+'</div></td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div>';
+    }
+    $$('[data-supled]',b).forEach(function(x){x.onclick=function(){supLedger(x.dataset.supled)}});
+    $$('[data-pybill]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.pybill.split('|');supPayDialog(p[0],p[1])}});
+  }
+};
+function pyRows(){
+  var q=norm(pyF.q), out=[];
+  S.phSuppliers.forEach(function(s){
+    var a=phSupAlloc(s.id), due=a.bills.filter(function(b){return b.bal>0.004});
+    if(pyF.view==='bill'){due.forEach(function(b){if(q&&norm(s.name+' '+b.no+' '+(b.billNo||'')).indexOf(q)<0)return;out.push({s:s,b:b})})}
+    else if(a.net>0.004&&(!q||norm(s.name).indexOf(q)>=0)) out.push({s:s,a:a,n:due.length,pur:r2(a.bills.reduce(function(t,b){return t+b.total},0))});
+  });
+  return pyF.view==='bill'?out.sort(function(x,y){return (x.b.date||'').localeCompare(y.b.date||'')}):out.sort(function(x,y){return y.a.net-x.a.net});
+}
+
 /* ---------- birthdays & anniversaries in the next 7 days ---------- */
 function waLink(phone,text){var d=String(phone||'').replace(/\D/g,'');if(d.length===10)d='91'+d;else if(d.length===11&&d[0]==='0')d='91'+d.slice(1);return d.length>=11?'https://wa.me/'+d+'?text='+encodeURIComponent(text):''}
 function occasions(days){
@@ -5759,7 +5920,7 @@ function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','memberships','receipts','outstanding','spa-inventory'];
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
-  return ['ph-dashboard','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-outstanding','ph-inventory','ph-low-stock'];
+  return ['ph-dashboard','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
 function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
 function applyRoleUI(){
