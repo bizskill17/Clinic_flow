@@ -196,6 +196,7 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .mem-sum{display:flex;flex-wrap:wrap;gap:6px 22px;margin:12px 0;font-size:14px;color:var(--muted)}.mem-sum strong{color:var(--ink)}
 .imp-steps{display:grid;gap:10px;margin:4px 0 14px}.imp-steps>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.imp-opts{flex-direction:column;align-items:flex-start!important;gap:6px!important;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
 .imp-file{cursor:pointer}.imp-sum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}.imp-tbl{max-height:360px;overflow:auto}
+.count-line{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 12px;color:var(--muted);font-size:14px}.count-line strong{color:var(--ink);font-size:16px}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -395,11 +396,11 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="dashboard" aria-current="page">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
-        <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="masters-sub">
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-          <ul class="submenu" id="masters-sub">
+          <ul class="submenu" id="masters-sub" hidden>
             <li><button class="mi cg" data-key="business">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg></span>
               Business Details</button></li>
@@ -415,15 +416,6 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c3" data-key="mem-plans">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
               Membership Plans</button></li>
-            <li><button class="mi c8" data-key="cities">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
-              Cities</button></li>
-            <li><button class="mi c9" data-key="states">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-              States</button></li>
-            <li><button class="mi c10" data-key="users">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
-              Users</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="spa-ops-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></span>
@@ -448,6 +440,21 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="spa-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+          </ul></li>
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="spa-settings-sub">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          <ul class="submenu" id="spa-settings-sub" hidden>
+            <li><button class="mi c8" data-key="cities">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
+              Cities</button></li>
+            <li><button class="mi c9" data-key="states">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+              States</button></li>
+            <li><button class="mi c10" data-key="users">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
+              Users</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -475,29 +482,17 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="ae-dashboard">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
-        <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="ae-masters-sub">
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ae-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-          <ul class="submenu" id="ae-masters-sub">
+          <ul class="submenu" id="ae-masters-sub" hidden>
             <li><button class="mi cg" data-key="business">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg></span>
               Business Details</button></li>
             <li><button class="mi c1" data-key="clients">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.4 3.5 5.2"/></svg></span>
               Clients</button></li>
-            <li><button class="mi c8" data-key="cities">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
-              Cities</button></li>
-            <li><button class="mi c9" data-key="states">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-              States</button></li>
-            <li><button class="mi c10" data-key="users">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
-              Users</button></li>
-            <li><button class="mi c12" data-key="ae-proc-cats">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12l9 9-8.5 8.5Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
-              Procedure Categories</button></li>
             <li><button class="mi c11" data-key="ae-proc-master">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3Z"/><path d="M18 15l.8 2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2Z"/></svg></span>
               Procedures</button></li>
@@ -518,7 +513,7 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
               Quotations</button></li>
             <li><button class="mi c11" data-key="ae-sessions">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/></svg></span>
-              Sessions</button></li>
+              Completed Sessions</button></li>
             <li><button class="mi c7" data-key="ae-procedures">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m18 2 4 4M17 7l3-3M19 9 9.5 18.5a2.1 2.1 0 0 1-3 0l-1-1a2.1 2.1 0 0 1 0-3L15 5"/><path d="m9 11 4 4M5 19l-3 3M14 4l6 6"/></svg></span>
               Sessions Tracker</button></li>
@@ -534,6 +529,21 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="ae-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+          </ul></li>
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="aes-settings-sub">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          <ul class="submenu" id="aes-settings-sub" hidden>
+            <li><button class="mi c8" data-key="cities">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
+              Cities</button></li>
+            <li><button class="mi c9" data-key="states">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+              States</button></li>
+            <li><button class="mi c10" data-key="users">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
+              Users</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -560,26 +570,17 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
         <li><button class="mi c0" data-key="ph-dashboard">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
           Dashboard</button></li>
-        <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="ph-masters-sub">
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ph-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
           Masters
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
-          <ul class="submenu" id="ph-masters-sub">
+          <ul class="submenu" id="ph-masters-sub" hidden>
             <li><button class="mi cg" data-key="business">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg></span>
               Business Details</button></li>
             <li><button class="mi c1" data-key="clients">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .7 3.2 2.4 3.5 5.2"/></svg></span>
               Clients</button></li>
-            <li><button class="mi c8" data-key="cities">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
-              Cities</button></li>
-            <li><button class="mi c9" data-key="states">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
-              States</button></li>
-            <li><button class="mi c10" data-key="users">
-              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
-              Users</button></li>
             <li><button class="mi c11" data-key="ph-items">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="6" rx="3" transform="rotate(-45 12 12)"/><path d="M9.2 9.2l5.6 5.6"/></svg></span>
               Items</button></li>
@@ -619,6 +620,21 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c3" data-key="ph-low-stock">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
               Low Stock</button></li>
+          </ul></li>
+        <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="pha-settings-sub">
+          <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          Settings
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          <ul class="submenu" id="pha-settings-sub" hidden>
+            <li><button class="mi c8" data-key="cities">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13"/><path d="M13 11h3M13 15h3"/></svg></span>
+              Cities</button></li>
+            <li><button class="mi c9" data-key="states">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2Z"/><path d="M9 4v14M15 6v14"/></svg></span>
+              States</button></li>
+            <li><button class="mi c10" data-key="users">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
+              Users</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -1544,7 +1560,8 @@ SECTIONS.clients={
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No client matches “'+esc(clientQ)+'”.</div>';return}
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Name</th><th>Phone</th><th>City</th>'+(dept==='spa'?'<th>Last visit</th><th class="num">Visits</th><th class="num">Billed</th><th class="num">Received</th><th class="num">Balance</th>':'<th>Email</th>')+'<th></th></tr></thead><tbody>'+
       list.map(function(c){var s=st[c.id];return '<tr><td><button class="link" data-client-view="'+esc(c.id)+'">'+esc(c.name)+'</button>'+(c.email?'<div class="sub">'+esc(c.email)+'</div>':'')+'</td><td class="nowrap">'+esc(c.phone)+'</td><td>'+(function(){var l=cityLabel(c.cityId);return l.city?esc(l.city)+(l.state?'<div class="sub">'+esc(l.state)+'</div>':''):'<span class="sub">—</span>'})()+'</td>'+(dept==='spa'?'<td class="nowrap">'+(s.last?fmtDate(s.last):'<span class="sub">None</span>')+'</td><td class="num">'+s.n+'</td><td class="num">'+money(s.billed)+'</td><td class="num">'+money(s.received)+'</td><td class="num">'+balanceCell(s.acct)+'</td>':'<td>'+(c.email?esc(c.email):'<span class="sub">—</span>')+'</td>')+'<td><div class="row-acts w"><button class="btn sm" data-edit="'+esc(c.id)+'">Edit</button><button class="btn sm danger" data-del="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
-      '</tbody></table></div><p class="hint">'+list.length+' of '+S.clients.length+' clients</p>';
+      '</tbody></table></div>';
+    b.insertAdjacentHTML('afterbegin','<div class="count-line"><span>Total clients <strong>'+S.clients.length.toLocaleString('en-IN')+'</strong></span>'+(q?'<span>Matching “'+esc(clientQ)+'” <strong>'+list.length.toLocaleString('en-IN')+'</strong></span>':'')+'</div>');
     $$('[data-edit]',b).forEach(function(x){x.onclick=function(){editClient(x.dataset.edit)}});
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){deleteClient(x.dataset.del)}});
   }
@@ -3077,10 +3094,9 @@ SECTIONS['ae-proc-cats']=simpleMaster({
 });
 SECTIONS['ae-proc-master']=simpleMaster({
   kind:'aeProcs',prefix:'ap',title:'Procedures',singular:'procedure',singularCap:'Procedure',color:'--m11',searchPh:'Procedure name or SAC',wide:true,
-  emptyText:'Add the procedures you offer with their price and GST. Add procedure categories first so you can group them.',
+  emptyText:'Add the procedures you offer with their price and GST.',
   fields:[
     {id:'name',label:'Procedure name',req:true,max:120,span2:true},
-    {id:'categoryId',label:'Category',type:'select',placeholder:function(){return S.aeCats.length?'Select a category':'No categories yet (add in Masters › Procedure Categories)'},options:function(){return S.aeCats.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name]})}},
     {id:'sac',label:'SAC code',max:8},
     {id:'price',label:'Price before GST (₹)',type:'number',req:true},
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
@@ -3088,11 +3104,10 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'consent',label:'Consent form text',type:'textarea'},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
-  cols:[{h:'Procedure',text:function(r){return r.name}},{h:'Category',text:function(r){return aeCatName(r.categoryId)}},{h:'SAC',text:function(r){return r.sac||''}},
+  cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
     {h:'Price',num:true,text:function(r){return r.price===''||r.price==null?'':money(r.price)}},{h:'GST',num:true,text:function(r){return (r.gst==null?'':r.gst+'%')}},
     {h:'Price incl. GST',num:true,text:function(r){return r.price===''||r.price==null?'':money((+r.price)*(1+(+r.gst||0)/100))}},{h:'Status',text:function(r){return r.status||'Active'}}],
-  filter:{label:'Category',all:'All categories',options:function(){return S.aeCats.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name]})},test:function(r,v){return r.categoryId===v}},
-  search:function(r){return r.name+' '+(r.sac||'')},sort:function(a,b){return byText(aeCatName(a.categoryId),aeCatName(b.categoryId))||byText(a.name,b.name)},
+  search:function(r){return r.name+' '+(r.sac||'')},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){
     o.gst=+o.gst||0;
     if(o.sac&&!/^\d{4,8}$/.test(o.sac)) return 'SAC code should be 4 to 8 digits.';
@@ -3697,7 +3712,7 @@ function sesFiltered(){
   }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
 }
 function sesListMount(){
-  work.innerHTML=head('Sessions','<button class="btn" id="se-export">Export CSV</button><button class="btn primary w" id="se-new">'+PLUS+' New session</button>')+
+  work.innerHTML=head('Completed Sessions','<button class="btn" id="se-export">Export CSV</button><button class="btn primary w" id="se-new">'+PLUS+' New session</button>')+
     '<div class="toolbar"><div class="field grow"><label for="se-q">Search</label><input type="search" id="se-q" placeholder="Client, procedure, quotation or staff" value="'+esc(sesF.q)+'"></div>'+dateFilters('se',sesF)+'</div><div id="body"></div>';
   var up=function(){sesListUpdate();bindCommon()};
   $('#se-q').oninput=function(e){sesF.q=e.target.value;up()};
@@ -5337,7 +5352,7 @@ var IMP={
       {k:'address',h:'Address',ex:'Fancy Bazaar'},{k:'cityId',h:'City',t:'ref',ref:'cities',stateCol:'_state',ex:'Guwahati'},{k:'_state',h:'State',t:'helper',ex:'Assam'},{k:'openingBal',h:'Opening balance',t:'number',neg:1,ex:'0'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
   aeCats:{title:'Procedure Categories',file:'procedure-categories',prefix:'ac',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Injectables'}]},
   aeProcs:{title:'Procedures',file:'procedures',prefix:'ap',key:function(o){return norm(o.name)},keyLabel:'name',
-    cols:[{k:'name',h:'Procedure name',req:1,ex:'Face Botox'},{k:'categoryId',h:'Category',t:'ref',ref:'aeCats',ex:'Injectables'},{k:'sac',h:'SAC code',t:'code',ex:'999312'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},
+    cols:[{k:'name',h:'Procedure name',req:1,ex:'Face Botox'},{k:'sac',h:'SAC code',t:'code',ex:'999312'},{k:'price',h:'Price before GST',t:'number',req:1,ex:'12000'},
       {k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'},{k:'consent',h:'Consent form text',ex:''}],
     after:function(o){if(!o.consumables)o.consumables=[]}},
   memPlans:{title:'Membership Plans',file:'membership-plans',prefix:'mp',key:function(o){return norm(o.name)},keyLabel:'name',
@@ -5631,7 +5646,9 @@ function show(view){
   window.scrollTo(0,0); closeModal();
   if(view==='spa'||view==='pha'||view==='aes'){
     $$('.work').forEach(function(w){w.innerHTML=''});
-    dept=view; work=$('#work-'+view); go(lastKey[view]);
+    dept=view; work=$('#work-'+view);
+    $$('#nav-'+view+' .mgroup').forEach(function(g){var id=g.getAttribute('aria-controls'),open=/-ops-sub$/.test(id)||id==='ph-reports-sub';g.setAttribute('aria-expanded',String(open));var sub=$('#'+id);if(sub)sub.hidden=!open});
+    go({spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[view]);
   }
 }
 $('#btn-spa').onclick=function(){notice.hidden=true;show('spa')};
@@ -5655,7 +5672,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','memberships','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','clients','cities','states','ae-proc-cats','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
+  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-outstanding','ph-inventory','ph-low-stock'];
 }
 function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
