@@ -1891,18 +1891,22 @@ function editInvoice(id){
 /* =========================================================
    INVOICES
    ========================================================= */
-var invF={q:'',status:'',from:'',to:''};
+var invF={q:'',status:'',from:'',to:'',view:'inv'};
 function dateFilters(prefix,f){return '<div class="field"><label for="'+prefix+'-from">From</label><input type="date" id="'+prefix+'-from" value="'+esc(f.from)+'"></div><div class="field"><label for="'+prefix+'-to">To</label><input type="date" id="'+prefix+'-to" value="'+esc(f.to)+'"></div>'}
 SECTIONS.invoices={
   mount:function(){
+    var rv=invF.view==='red';
     work.innerHTML=head('Invoices','<button class="btn" id="i-export">Export CSV</button><button class="btn primary w" id="i-new">New invoice</button>')+
-      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="Invoice number or client" value="'+esc(invF.q)+'"></div><div class="field"><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
+      '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!rv?' primary':'')+'" data-iview="inv">Invoices</button><button class="btn'+(rv?' primary':'')+'" data-iview="red">Redemptions</button></div></div>'+
+      '<div class="toolbar"><div class="field grow"><label for="i-q">Search</label><input type="search" id="i-q" placeholder="'+(rv?'Slip, client, membership or service':'Invoice number or client')+'" value="'+esc(invF.q)+'"></div><div class="field"'+(rv?' hidden':'')+'><label for="i-status">Status</label><select id="i-status">'+optList([['','All'],['unpaid','Unpaid'],['partial','Part paid'],['paid','Paid']],invF.status)+'</select></div>'+dateFilters('i',invF)+'</div><div id="body"></div>';
+    $$('[data-iview]',work).forEach(function(x){x.onclick=function(){invF.view=x.dataset.iview;go(current)}});
     $('#i-q').oninput=function(e){invF.q=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-status').onchange=function(e){invF.status=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-from').onchange=function(e){invF.from=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-to').onchange=function(e){invF.to=e.target.value;SECTIONS.invoices.update();bindCommon()};
     $('#i-new').onclick=function(){draft=null;go('invoice-form')};
     $('#i-export').onclick=function(){
+      if(invF.view==='red'){saveFile('spa-redemptions-'+todayStr()+'.csv',csv([['Slip','Date','Client','Phone','Membership','Plan','Services','Used (before GST)','Balance after','Tax invoice']].concat(filteredRedemptions().map(function(r){return [r.no,r.date,r.clientName,r.clientPhone||'',r.memNo,r.memPlan||'',(r.items||[]).map(function(it){return it.name+' x'+it.qty}).join('; '),r.worth,r.balAfter,r.invoiceNo||'']}))));return}
       var pm=paidMap();
       saveFile('spa-invoices-'+todayStr()+'.csv',csv([['Invoice','Date','Client','Phone','Services','Subtotal','Discount','Taxable','GST','Total','Paid','Balance','Status']].concat(filteredInvoices().map(function(i){var x=invInfo(i,pm);return [i.no,i.date,i.clientName,i.clientPhone,(i.items||[]).map(function(it){return it.name+' x'+it.qty}).join('; '),i.subtotal,i.discount,i.taxable,i.tax,i.total,x.paid,Math.max(0,x.bal),x.status]}))));
     };
@@ -1910,6 +1914,18 @@ SECTIONS.invoices={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
+    if(invF.view==='red'){
+      var rl=filteredRedemptions();
+      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a member uses their membership.</div>';return}
+      if(!rl.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No redemption matches these filters.</div>';return}
+      var W=0;
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Date</th><th>Client</th><th>Membership</th><th>Services</th><th class="num">Used</th><th class="num">Balance after</th><th>Tax invoice</th></tr></thead><tbody>'+
+        rl.map(function(r){W+=+r.worth||0;return '<tr><td class="nowrap"><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button></td><td class="nowrap">'+fmtDate(r.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(r.clientId)+'">'+esc(r.clientName)+'</button></td>'+
+          '<td class="nowrap"><button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button><div class="sub">'+esc(r.memPlan||'')+'</div></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td><td class="num">'+money(r.balAfter)+'</td>'+
+          '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td colspan="5">Total</td><td class="num">'+money(W)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(rl.length,S.redemptions.length,'redemptions')+'</p>';
+      return;
+    }
     if(!S.invoices.length){b.innerHTML='<div class="empty"><strong>No invoices yet</strong>Create one from the Invoice Form.</div>';return}
     var pm=paidMap(), list=filteredInvoices();
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No invoice matches these filters.</div>';return}
@@ -1923,6 +1939,15 @@ SECTIONS.invoices={
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){deleteInvoice(x.dataset.del)}});
   }
 };
+function filteredRedemptions(){
+  var q=norm(invF.q);
+  return S.redemptions.filter(function(r){
+    if(q&&norm(r.no+' '+r.clientName+' '+(r.clientPhone||'')+' '+(r.memNo||'')+' '+(r.memPlan||'')+' '+(r.items||[]).map(function(it){return it.name}).join(' ')).indexOf(q)<0) return false;
+    if(invF.from&&r.date<invF.from) return false;
+    if(invF.to&&r.date>invF.to) return false;
+    return true;
+  }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
+}
 function filteredInvoices(){
   var pm=paidMap(), q=norm(invF.q);
   return S.invoices.filter(function(i){
