@@ -198,6 +198,18 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .imp-file{cursor:pointer}.imp-sum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}.imp-tbl{max-height:360px;overflow:auto}
 .count-line{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 12px;color:var(--muted);font-size:14px}.count-line strong{color:var(--ink);font-size:16px}
 .next-box{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:-4px 0 14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--m2-soft)}
+.pdfv{position:fixed;inset:0;z-index:200;background:rgba(10,16,18,.82);display:flex;flex-direction:column}
+.pdfv-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.pdfv-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pdfv-acts{display:flex;gap:8px;flex-wrap:wrap}
+.pdfv-frame{flex:1;width:100%;border:0;background:#525659}
+.pdfv{--wc:var(--m4);--wsoft:var(--m4-soft)}.pdfv a.btn{text-decoration:none;color:var(--ink)}
+.toast{z-index:300!important}
+.btn .eye{vertical-align:-3px}
+button[type=submit]:disabled,.btn.busy{position:relative;color:transparent!important;pointer-events:none}
+button[type=submit]:disabled::after,.btn.busy::after{content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid currentColor;border-color:var(--on-color,#fff) var(--on-color,#fff) var(--on-color,#fff) transparent;border-radius:50%;animation:spin .7s linear infinite}
+.btn:not(.primary).busy::after,button[type=submit]:not(.primary):disabled::after{border-color:var(--ink) var(--ink) var(--ink) transparent}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){button[type=submit]:disabled::after,.btn.busy::after{animation-duration:2s}}
 .stack{display:grid;gap:16px;align-content:start;min-width:0}
 .panel{border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;font-weight:700}
@@ -1398,6 +1410,21 @@ function openModal(html,color,wide,onMount){
   if(!m.hasAttribute('data-nofocus')){var f=m.querySelector('input:not([type=hidden]),select,textarea,button'); if(f&&!((f.tagName==='INPUT'||f.tagName==='TEXTAREA')&&f.value)) f.focus();}
   return m;
 }
+var EYE='<svg class="eye" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+/* full-page PDF preview with Download / Open / Close */
+function pdfView(name,data){
+  var blob=data instanceof Blob?data:new Blob([data],{type:'application/pdf'}), url=URL.createObjectURL(blob);
+  var old=$('#pdfv'); if(old) old.remove();
+  var ov=document.createElement('div'); ov.id='pdfv'; ov.className='pdfv'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-label',name);
+  ov.innerHTML='<div class="pdfv-bar"><strong class="pdfv-name">'+esc(name)+'</strong><span class="pdfv-acts"><a class="btn" href="'+url+'" target="_blank" rel="noopener">Open in new tab</a><button type="button" class="btn primary" data-pdl>Download</button><button type="button" class="btn" data-pclose>Close</button></span></div><iframe class="pdfv-frame" title="'+esc(name)+'" src="'+url+'#view=FitH"></iframe>';
+  document.body.appendChild(ov);
+  var close=function(){ov.remove();document.removeEventListener('keydown',esc2,true);setTimeout(function(){URL.revokeObjectURL(url)},60000)};
+  var esc2=function(e){if(e.key==='Escape'){e.stopImmediatePropagation();close()}};
+  document.addEventListener('keydown',esc2,true);
+  ov.querySelector('[data-pclose]').onclick=close;
+  ov.querySelector('[data-pdl]').onclick=function(){saveFile(name,blob)};
+  ov.querySelector('[data-pclose]').focus();
+}
 function closeModal(){var ov=$('#modal');ov.hidden=true;ov.innerHTML='';modalOpen=false;modalRefresh=null}
 $('#modal').addEventListener('mousedown',function(e){if(e.target.id==='modal')closeModal()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modalOpen)closeModal()});
@@ -1975,9 +2002,10 @@ SECTIONS.invoices={
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th>Client</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead><tbody>'+
       list.map(function(i){var x=invInfo(i,pm),hasR=x.paid>0;T.total+=+i.total||0;T.paid+=x.paid;T.bal+=Math.max(0,x.bal);
         return '<tr><td class="nowrap"><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(i.clientId)+'">'+esc(i.clientName)+'</button></td><td class="num">'+money(i.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
-          '<td><div class="row-acts">'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+(hasR?' disabled title="Delete its receipts first"':'')+'>Delete</button></div></td></tr>'}).join('')+
+          '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+(hasR?' disabled title="Delete its receipts first"':'')+'>Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">'+money(T.total)+'</td><td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.bal)+'</td><td colspan="2"></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,S.invoices.length,'invoices')+'</p>';
     $$('[data-edit]',b).forEach(function(x){x.onclick=function(){editInvoice(x.dataset.edit)}});
+    $$('[data-ipdf]',b).forEach(function(x){x.onclick=function(){viewInvoice(x.dataset.ipdf);var d=$('#modal [data-dl]');if(d)d.click()}});
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){deleteInvoice(x.dataset.del)}});
   }
 };
@@ -2023,9 +2051,9 @@ function viewInvoice(id,fallback){
       '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Membership benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (i.roundOff?'<div class="r"><span>Round off</span><span>'+(i.roundOff<0?'− ':'+ ')+money(Math.abs(i.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>Download PDF</button><button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button><button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
-    m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from membership '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)saveFile(i.no+'.pdf',pdf)};
+    m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from membership '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
     m.querySelector('[data-edit]').onclick=function(){editInvoice(id)};
     var p=m.querySelector('[data-paynow]'); if(p) p.onclick=function(){recordPayment(id,i.clientId)};
   };
@@ -2107,7 +2135,7 @@ SECTIONS.receipts={
     var tot=0, byMode={};
     list.forEach(function(r){tot+=+r.amount||0;byMode[r.mode]=(byMode[r.mode]||0)+(+r.amount||0)});
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Client</th><th>Towards</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
-      list.map(function(r){return '<tr><td class="nowrap"><strong>'+esc(r.no)+'</strong></td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+esc(r.clientName)+'</td><td class="nowrap">'+towardsCell(r)+'</td><td>'+esc(r.mode)+'</td><td>'+esc(r.reference||'')+'</td><td class="num">'+money(r.amount)+'</td><td><div class="row-acts">'+(r.clientId?'<button class="btn sm" data-ledger="'+esc(r.clientId)+'">Ledger</button>':'')+'<button class="btn sm" data-dl="'+esc(r.src+':'+r.id)+'">Download PDF</button><button class="btn sm danger w" data-del="'+esc(r.src+':'+r.id)+'">Delete</button></div></td></tr>'}).join('')+
+      list.map(function(r){return '<tr><td class="nowrap"><strong>'+esc(r.no)+'</strong></td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+esc(r.clientName)+'</td><td class="nowrap">'+towardsCell(r)+'</td><td>'+esc(r.mode)+'</td><td>'+esc(r.reference||'')+'</td><td class="num">'+money(r.amount)+'</td><td><div class="row-acts">'+(r.clientId?'<button class="btn sm" data-ledger="'+esc(r.clientId)+'">Ledger</button>':'')+'<button class="btn sm" data-dl="'+esc(r.src+':'+r.id)+'">'+EYE+' View PDF</button><button class="btn sm danger w" data-del="'+esc(r.src+':'+r.id)+'">Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(tot)+'</td><td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,allReceipts().length,'receipts')+' · '+Object.keys(byMode).map(function(k){return esc(k)+' '+money0(byMode[k])}).join(' · ')+'</p>';
     var find=function(key){var p=key.split(':');return {src:p[0],r:findIn(p[0],p.slice(1).join(':'))}};
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){
@@ -2115,7 +2143,7 @@ SECTIONS.receipts={
       if(r.memId&&findIn('members',r.memId)){toast(r.no+' is the payment for membership '+r.memNo+'. Delete the membership instead.');return}
       confirmBox('Delete receipt?','Delete '+r.no+' ('+money(r.amount)+' from '+r.clientName+')? The amount will be taken off the client’s account.','Delete receipt',function(){remove(f.src,r.id).then(function(){toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})});
     }});
-    $$('[data-dl]',b).forEach(function(x){x.onclick=function(){var r=find(x.dataset.dl).r;if(!r)return;var pdf=receiptPdf(r);if(pdf)saveFile(r.no+'.pdf',pdf)}});
+    $$('[data-dl]',b).forEach(function(x){x.onclick=function(){var r=find(x.dataset.dl).r;if(!r)return;var pdf=receiptPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)}});
   }
 };
 function filteredReceipts(){
@@ -2926,10 +2954,10 @@ function phViewMove(id,fallback){
       (sale||t==='Return'?'<div class="r"><span>Amount</span><span>'+money(m.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(m.discount)+'</span></div><div class="r"><span>Amount before GST</span><span>'+money(m.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(m.tax)+'</span></div>':'')+
       (m.roundOff?'<div class="r"><span>Round off</span><span>'+(m.roundOff<0?'− ':'+ ')+money(Math.abs(m.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>'+(t==='Expiry'||t==='Damage'?'Loss at cost':(/Issue$/.test(t)?'Issued at cost':(t==='Return'?'Credit to client':'Total')))+'</span><span>'+money(m.total)+'</span></div>'+(sale?'<div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>':'')+'</div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(sale?'<button class="btn" data-dl>Download PDF</button>':'')+'<button class="btn w" data-edit>Edit</button>'+(sale&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+'<button class="btn w" data-edit>Edit</button>'+(sale&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
     m0.querySelector('[data-x]').onclick=closeModal;
     m0.querySelector('[data-edit]').onclick=function(){phEdit(id)};
-    var dl=m0.querySelector('[data-dl]'); if(dl) dl.onclick=function(){var pdf=phSalePdf(m,x,recs,fromAdv);if(pdf)saveFile(m.no+'.pdf',pdf)};
+    var dl=m0.querySelector('[data-dl]'); if(dl) dl.onclick=function(){var pdf=phSalePdf(m,x,recs,fromAdv);if(pdf)pdfView(m.no+'.pdf',pdf)};
     var p=m0.querySelector('[data-paynow]'); if(p) p.onclick=function(){phRecordPayment(id,m.clientId)};
   };
   var m=openModal('','--'+(PH_KIND[(phMove(id)||fallback||{}).type]==='in'?'m2':'m3'),true); render(m); modalRefresh=function(){render(m)};
@@ -3374,7 +3402,7 @@ function conListUpdate(){
   var list=conFiltered();
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No consultation matches these filters.</div>';return}
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Doctor</th><th>Diagnosis</th><th class="num">Medicines</th><th class="num">Procedures</th><th></th></tr></thead><tbody>'+
-    list.map(function(c){return '<tr><td class="nowrap"><button class="link" data-con="'+esc(c.id)+'">'+esc(c.no)+'</button><div class="sub">'+esc(c.apptNo||'')+'</div></td><td class="nowrap">'+fmtDate(c.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(c.clientId)+'">'+esc(c.clientName)+'</button></td><td>'+esc(c.doctor||'—')+'</td><td>'+esc(String(c.diagnosis||'').slice(0,80))+(String(c.diagnosis||'').length>80?'…':'')+'</td><td class="num">'+(c.meds||[]).length+'</td><td class="num">'+(c.procs||[]).length+'</td><td><div class="row-acts"><button class="btn sm" data-condl="'+esc(c.id)+'">Consultation PDF</button><button class="btn sm" data-conrx="'+esc(c.id)+'">Prescription PDF</button><button class="btn sm w" data-conedit="'+esc(c.id)+'">Edit</button><button class="btn sm danger w" data-condel="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
+    list.map(function(c){return '<tr><td class="nowrap"><button class="link" data-con="'+esc(c.id)+'">'+esc(c.no)+'</button><div class="sub">'+esc(c.apptNo||'')+'</div></td><td class="nowrap">'+fmtDate(c.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(c.clientId)+'">'+esc(c.clientName)+'</button></td><td>'+esc(c.doctor||'—')+'</td><td>'+esc(String(c.diagnosis||'').slice(0,80))+(String(c.diagnosis||'').length>80?'…':'')+'</td><td class="num">'+(c.meds||[]).length+'</td><td class="num">'+(c.procs||[]).length+'</td><td><div class="row-acts"><button class="btn sm" data-condl="'+esc(c.id)+'">'+EYE+' Consultation</button><button class="btn sm" data-conrx="'+esc(c.id)+'">'+EYE+' Prescription</button><button class="btn sm w" data-conedit="'+esc(c.id)+'">Edit</button><button class="btn sm danger w" data-condel="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,S.aeCons.length,'consultations')+'</p>';
   $$('[data-con]',b).forEach(function(x){x.onclick=function(){viewCon(x.dataset.con)}});
   $$('[data-condl]',b).forEach(function(x){x.onclick=function(){conPdf(findIn('aeCons',x.dataset.condl),'consultation')}});
@@ -3527,7 +3555,7 @@ function viewCon(id,fallback){
       '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.sessions+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>Consultation PDF</button><button class="btn" data-rx>Prescription PDF</button><button class="btn w" data-edit>Edit</button></div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){conPdf(c,'consultation')};
     m.querySelector('[data-rx]').onclick=function(){conPdf(c,'prescription')};
@@ -3538,7 +3566,7 @@ function viewCon(id,fallback){
 function conPdf(c,mode){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{}, rx=mode==='prescription';
-  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});saveFile(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});pdfView(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -3630,7 +3658,7 @@ function viewConsent(id){
       (signed?'<dt>Signed by</dt><dd>'+esc(c.signedBy)+'</dd><dt>Signed at</dt><dd>'+esc(istStamp(c.signedAt))+'</dd>'+(c.witness?'<dt>Witness</dt><dd>'+esc(c.witness)+'</dd>':''):'<dt>Date signed</dt><dd>'+fmtDate(c.date)+'</dd>')+'</dl></div>'+
       (signed?'<div class="consent-text">'+esc(c.text)+'</div><div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
         '<p><a class="btn" href="'+esc(src)+'" target="_blank" rel="noopener">Open '+esc(c.file&&c.file.name||'signed form')+'</a></p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>Download PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     var dl=m.querySelector('[data-dl]'); if(dl) dl.onclick=function(){consentPdf(c)};
     var del=m.querySelector('[data-del]'); if(del) del.onclick=function(){
@@ -3645,7 +3673,7 @@ function viewConsent(id){
 function consentPdf(c){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{};
-  try{var pdf=window.PDFKIT.consent(J,{biz:bizCtx(),c:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},stamp:istStamp(c.signedAt),fmtDate:fmtDate});saveFile(c.no+'-consent.pdf',pdf)}
+  try{var pdf=window.PDFKIT.consent(J,{biz:bizCtx(),c:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},stamp:istStamp(c.signedAt),fmtDate:fmtDate});pdfView(c.no+'-consent.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -3736,7 +3764,7 @@ function sesListUpdate(){
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Procedure</th><th>Performed by</th><th class="num">Photos</th><th>Billing</th><th></th></tr></thead><tbody>'+
     list.map(function(s){var od=sesOrdinal(s), bl=sesBilling(s,bm);return '<tr><td class="nowrap"><button class="link" data-ses="'+esc(s.id)+'">'+esc(s.no)+'</button></td><td class="nowrap">'+fmtDate(s.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(s.clientId)+'">'+esc(s.clientName)+'</button><div class="sub">'+esc(s.clientPhone||'')+'</div></td>'+
       '<td>'+esc(s.procName||'')+'<div class="sub">'+esc([od,s.quoteNo].filter(Boolean).join(' · '))+'</div></td><td>'+esc(s.performedBy||'—')+'</td><td class="num">'+Object.keys(s.photos||{}).length+' / 5</td><td class="nowrap">'+(bl.billed?'<span class="pill paid">Billed</span><div class="sub">'+esc(bl.how)+'</div>':'<span class="pill unpaid">Not billed</span>')+'</td>'+
-      '<td><div class="row-acts">'+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">Prescription PDF</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
+      '<td><div class="row-acts">'+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">'+EYE+' Prescription</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody></table></div><p class="hint">'+countOf(list.length,S.aeSessions.length,'sessions')+'</p>';
   $$('[data-ses]',b).forEach(function(x){x.onclick=function(){viewSes(x.dataset.ses)}});
   $$('[data-sesrx]',b).forEach(function(x){x.onclick=function(){sesPdf(findIn('aeSessions',x.dataset.sesrx))}});
@@ -4000,7 +4028,7 @@ function viewSes(id,fallback){
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>Prescription PDF</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>'+EYE+' Prescription</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-rx]').onclick=function(){sesPdf(s)};
     var se=m.querySelector('[data-edit]'); if(se) se.onclick=function(){sesEdit(id)};
@@ -4014,7 +4042,7 @@ function sesPdf(s){
   var con={no:s.no,date:s.date,diagnosis:s.procNotes||'',observations:s.outcomeNotes||'',meds:s.meds||[],procs:[]};
   try{var pdf=window.PDFKIT.prescription(J,{mode:'prescription',showDiag:s.rxProc!==false,showObs:s.rxOutcome!==false,showProcs:false,labels:{diag:'Procedure notes',obs:'Outcome notes'},
     lead:{title:'Procedure performed',text:(s.procName||'')+(sesOrdinal(s)?'  ·  '+sesOrdinal(s):'')+(s.quoteNo?'  ·  '+s.quoteNo:'')},
-    biz:bizCtx(),con:con,client:{name:s.clientName,phone:s.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:s.performedBy||'',apptNo:s.apptNo||'',fmtDate:fmtDate});saveFile(s.no+'-prescription.pdf',pdf)}
+    biz:bizCtx(),con:con,client:{name:s.clientName,phone:s.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:s.performedBy||'',apptNo:s.apptNo||'',fmtDate:fmtDate});pdfView(s.no+'-prescription.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -4119,7 +4147,7 @@ function aiListUpdate(){
       var names=(v.lines||[]).map(function(l){return l.name}), uniq=names.filter(function(n,i){return names.indexOf(n)===i});
       return '<tr><td class="nowrap"><button class="link" data-aeinv="'+esc(v.id)+'">'+esc(v.no)+'</button></td><td class="nowrap">'+fmtDate(v.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(v.clientId)+'">'+esc(v.clientName)+'</button><div class="sub">'+esc(v.clientPhone||'')+'</div></td>'+
       '<td>'+esc(uniq.slice(0,2).join(', ')+(uniq.length>2?' +'+(uniq.length-2)+' more':''))+'</td><td class="num">'+money(v.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
-      '<td><div class="row-acts">'+(x.bal>0.004&&!readOnly?'<button class="btn sm w" data-aipay="'+esc(v.id)+'">Record payment</button>':'')+'<button class="btn sm" data-aipdf="'+esc(v.id)+'">PDF</button>'+(readOnly?'':'<button class="btn sm w" data-aiedit="'+esc(v.id)+'">Edit</button><button class="btn sm danger w" data-aidel="'+esc(v.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+
+      '<td><div class="row-acts">'+(x.bal>0.004&&!readOnly?'<button class="btn sm w" data-aipay="'+esc(v.id)+'">Record payment</button>':'')+'<button class="btn sm" data-aipdf="'+esc(v.id)+'">'+EYE+' View PDF</button>'+(readOnly?'':'<button class="btn sm w" data-aiedit="'+esc(v.id)+'">Edit</button><button class="btn sm danger w" data-aidel="'+esc(v.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+
     '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">'+money(T)+'</td><td class="num">'+money(P)+'</td><td class="num">'+money(B)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.aeInvoices.length,'invoices')+'</p>';
   $$('[data-aipay]',b).forEach(function(x){x.onclick=function(){var v=aeInvById(x.dataset.aipay);recordPayment(x.dataset.aipay,v&&v.clientId)}});
   $$('[data-aipdf]',b).forEach(function(x){x.onclick=function(){aiPdf(aeInvById(x.dataset.aipdf))}});
@@ -4324,7 +4352,7 @@ function viewAeInv(id,fallback){
       '<div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (v.roundOff?'<div class="r"><span>Round off</span><span>'+(v.roundOff<0?'− ':'+ ')+money(Math.abs(v.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(v.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>Download PDF</button>'+(readOnly?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(readOnly?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){aiPdf(v)};
     var e=m.querySelector('[data-edit]'); if(e) e.onclick=function(){aiEdit(id)};
@@ -4336,7 +4364,7 @@ function aiPdf(v){
   if(!v) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(v.clientId)||{}, al=allocate(), R=aiReceipts(v,al);
   var recs=R.recs.concat(R.fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:R.fromAdv}]:[]);
-  try{var pdf=window.PDFKIT.aeInvoice(J,{biz:bizCtx(),inv:v,client:{name:v.clientName,phone:v.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},paid:R.x.paid,balance:R.x.bal,receipts:recs,fmtDate:fmtDate});saveFile(v.no+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.aeInvoice(J,{biz:bizCtx(),inv:v,client:{name:v.clientName,phone:v.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},paid:R.x.paid,balance:R.x.bal,receipts:recs,fmtDate:fmtDate});pdfView(v.no+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -4712,7 +4740,7 @@ function qtListUpdate(){
   var T=0;
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Consultation</th><th class="num">Procedures</th><th class="num">Upcoming appointments</th><th>Sessions done</th><th class="num">Total</th><th></th></tr></thead><tbody>'+
     list.map(function(x){T+=+x.total||0;var pg=qtProgress(x);return '<tr><td class="nowrap"><button class="link" data-qt="'+esc(x.id)+'">'+esc(x.no)+'</button></td><td class="nowrap">'+fmtDate(x.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(x.clientId)+'">'+esc(x.clientName)+'</button></td><td class="nowrap">'+(findIn('aeCons',x.conId)?'<button class="link" data-con-open="'+esc(x.conId)+'">'+esc(x.conNo)+'</button>':esc(x.conNo||'—'))+'</td><td class="num">'+(x.lines||[]).length+'</td><td class="num">'+qtUpcoming(x)+'</td><td class="nowrap">'+progBar(pg.done,pg.total)+'</td><td class="num">'+money(x.total)+'</td>'+
-      '<td><div class="row-acts"><button class="btn sm w" data-qtappt="'+esc(x.id)+'">Appointment</button><button class="btn sm" data-qtpdf="'+esc(x.id)+'">PDF</button><button class="btn sm w" data-qtedit="'+esc(x.id)+'">Edit</button><button class="btn sm danger w" data-qtdel="'+esc(x.id)+'">Delete</button></div></td></tr>'}).join('')+
+      '<td><div class="row-acts"><button class="btn sm w" data-qtappt="'+esc(x.id)+'">Appointment</button><button class="btn sm" data-qtpdf="'+esc(x.id)+'">'+EYE+' View PDF</button><button class="btn sm w" data-qtedit="'+esc(x.id)+'">Edit</button><button class="btn sm danger w" data-qtdel="'+esc(x.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody><tfoot><tr><td colspan="7">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.aeQuotes.length,'quotations')+'</p>';
   $$('[data-qt]',b).forEach(function(x){x.onclick=function(){viewQt(x.dataset.qt)}});
   $$('[data-con-open]',b).forEach(function(x){x.onclick=function(){viewCon(x.dataset.conOpen)}});
@@ -4885,7 +4913,7 @@ function viewQt(id,fallback){
       (q.other?'<div class="r"><span>'+esc(q.otherDesc||'Other charges')+'</span><span>'+money(q.other)+'</span></div><div class="r"><span>GST on other charges ('+q.otherGst+'%)</span><span>'+money(q.otherTax)+'</span></div>':'')+
       (q.roundOff?'<div class="r"><span>Round off</span><span>'+(q.roundOff<0?'− ':'+ ')+money(Math.abs(q.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(q.total)+'</span></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>Download PDF</button><button class="btn w" data-edit>Edit</button></div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){qtPdf(q)};
     m.querySelector('[data-edit]').onclick=function(){qtEdit(id)};
@@ -4901,7 +4929,7 @@ function viewQt(id,fallback){
 function qtPdf(q){
   if(!q) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(q.clientId)||{};
-  try{var pdf=window.PDFKIT.quotation(J,{biz:bizCtx(),q:q,client:{name:q.clientName,phone:q.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:q.doctor||'',conNo:q.conNo||'',fmtDate:fmtDate});saveFile(q.no+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.quotation(J,{biz:bizCtx(),q:q,client:{name:q.clientName,phone:q.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:q.doctor||'',conNo:q.conNo||'',fmtDate:fmtDate});pdfView(q.no+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -5216,9 +5244,9 @@ function viewMembership(id){
       '<div class="mem-sum"><span>Worth <strong>'+money(mm.value)+'</strong></span><span>Used <strong>'+money(x.used)+'</strong></span></div>'+
       '<h3 class="sec-h">Usage</h3>'+(x.uses.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Slip</th><th>Services</th><th class="num">Used</th><th class="num">Balance</th></tr></thead><tbody>'+
         x.uses.map(function(r){bal=r2(bal-(+r.worth||0));return '<tr><td class="nowrap">'+fmtDate(r.date)+'</td><td><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td><td class="num">'+money(bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">Not used yet.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!x.uses.length?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>Download PDF</button>'+(!readOnly&&x.status==='Active'?'<button class="btn primary w" data-bill>Use membership</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!x.uses.length?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button>'+(!readOnly&&x.status==='Active'?'<button class="btn primary w" data-bill>Use membership</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
-    m.querySelector('[data-dl]').onclick=function(){var pdf=membershipPdf(mm);if(pdf)saveFile(mm.no+'.pdf',pdf)};
+    m.querySelector('[data-dl]').onclick=function(){var pdf=membershipPdf(mm);if(pdf)pdfView(mm.no+'.pdf',pdf)};
     var bl=m.querySelector('[data-bill]'); if(bl) bl.onclick=function(){closeModal();draft=newDraft();draft.clientId=mm.clientId;draft.memId=mm.id;go('invoice-form')};
     var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){
       var recs=inv?S.receipts.filter(function(r){return r.invoiceId===inv.id}):[];
@@ -5241,9 +5269,9 @@ function viewRedemption(id){
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">Used</th></tr></thead><tbody>'+
       (r.items||[]).map(function(it){var sl=staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(it.disc)+'</td><td class="num">'+money(it.worth)+(it.partial?'<div class="sub">part</div>':'')+'</td></tr>'}).join('')+
       '</tbody></table></div><p class="hint">No GST on this slip. GST was charged on the membership invoice'+(mm&&mm.invoiceNo?' '+esc(mm.invoiceNo):'')+'.</p>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>Download PDF</button></div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
-    m.querySelector('[data-dl]').onclick=function(){var pdf=redemptionPdf(r);if(pdf)saveFile(r.no+'.pdf',pdf)};
+    m.querySelector('[data-dl]').onclick=function(){var pdf=redemptionPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)};
     var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete redemption?','Delete '+r.no+'? '+money(r.worth)+' goes back to membership '+r.memNo+'.'+(inv?' Tax invoice '+inv.no+' is not changed.':''),'Delete',function(){remove('redemptions',r.id).then(function(){closeModal();toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})})};
     $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
     $$('[data-mem]',m).forEach(function(b2){b2.onclick=function(){viewMembership(b2.dataset.mem)}});
