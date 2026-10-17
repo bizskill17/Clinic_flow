@@ -450,7 +450,7 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
               Invoices</button></li>
             <li><button class="mi c3" data-key="packages">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.4l6-.9Z"/></svg></span>
-              Packages</button></li>
+              Packages Sold</button></li>
             <li><button class="mi c5" data-key="receipts">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="m9 11 2 2 4-4"/></svg></span>
               Receipts</button></li>
@@ -5214,7 +5214,7 @@ var memF={q:'',status:'Active',view:'members'};
 SECTIONS.packages={
   mount:function(){
     var red=memF.view==='redemptions';
-    work.innerHTML=head('Packages',readOnly?'':'<button class="btn primary w" id="mm-new">'+PLUS+' Sell package</button>')+
+    work.innerHTML=head('Packages Sold',readOnly?'':'<button class="btn primary w" id="mm-new">'+PLUS+' Sell package</button>')+
       '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!red?' primary':'')+'" data-mmview="members">Packages</button><button class="btn'+(red?' primary':'')+'" data-mmview="redemptions">Redemptions</button></div></div>'+
       '<div class="toolbar"><div class="field grow"><label for="mm-q">Search</label><input type="search" id="mm-q" placeholder="Client, phone, plan or number" value="'+esc(memF.q)+'"></div>'+
       (red?'':'<div class="field"><label for="mm-st">Status</label><select id="mm-st">'+optList([['','All'],'Active','Used up','Expired'],memF.status)+'</select></div>')+'</div><div id="body"></div>';
