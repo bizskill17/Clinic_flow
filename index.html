@@ -101,6 +101,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .mi:hover{background:var(--soft)}
 .mi .chip{flex:none;width:34px;height:34px;border-radius:9px;background:var(--soft);color:var(--c);display:grid;place-items:center;transition:background .15s ease,color .15s ease}
 .mi .chip svg{width:18px;height:18px}
+.it-std{display:block;font-size:12px;color:var(--m5);margin-top:3px;min-height:0}.it-std s{color:var(--muted)}.club-note{margin-top:6px;font-size:13px;color:var(--m4)}.totals .club-save span{color:var(--m5);font-weight:600}
 .nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel,#fff);cursor:pointer;text-align:left;color:inherit;font:inherit}.pend-card .n{font-size:26px;font-weight:700;color:var(--m6)}.pend-card .l{font-size:13px;font-weight:600}.pend-card.zero .n{color:var(--muted)}.pend-card.on{border-color:var(--wc);box-shadow:0 0 0 2px var(--wc) inset}.pend-card:hover{background:var(--wsoft)}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
@@ -436,6 +437,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c3" data-key="mem-plans">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
               Package Plans</button></li>
+            <li><button class="mi c4" data-key="club-plans">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"/></svg></span>
+              Membership Plans</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="spa-ops-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3M20 17H7l3 3"/></svg></span>
@@ -451,6 +455,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c3" data-key="packages">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.4l6-.9Z"/></svg></span>
               Packages Sold</button></li>
+            <li><button class="mi c4" data-key="clubs">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"/></svg></span>
+              Memberships Sold</button></li>
             <li><button class="mi c5" data-key="receipts">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="m9 11 2 2 4-4"/></svg></span>
               Receipts</button></li>
@@ -827,6 +834,7 @@ function invoice(J,ctx){
   font(d,'bold',11.5);d.text('Total',TL,yr);d.text(inr(i.total),R-1.5,yr,{align:'right'});yr+=6.4;
   font(d,'normal',8.8,MUTED);d.text('Paid',TL,yr);font(d,'normal',8.8);d.text(inr(ctx.paid),R-1.5,yr,{align:'right'});yr+=5;
   font(d,'bold',8.8);d.text('Balance due',TL,yr);d.text(inr(Math.max(0,ctx.balance)),R-1.5,yr,{align:'right'});yr+=5;
+  if(i.clubSaving>0){yr+=1;font(d,'bold',8.8,[22,120,70]);d.text('Member savings',TL,yr);d.text(inr(i.clubSaving),R-1.5,yr,{align:'right'});yr+=5}
   y=Math.max(yLeft,yr)+3;
   // amount in words
   y=ensure(d,y,12);
@@ -1254,12 +1262,12 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
-var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[]};
-var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false};
-var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments'};
+var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[]};
+var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false};
+var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
 function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
@@ -1301,7 +1309,7 @@ function authCall(action,data){
 function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
   var common=['clients','cities','states','users','business'];
-  if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions']);
+  if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
 }
@@ -1460,6 +1468,7 @@ function cancelBill(kind,id){
   var doc=findIn(kind,id); if(!doc) return;
   if(!canCancel()){toast('Only Admin or Manager can cancel invoices.');return}
   if(doc.memSaleId&&findIn('members',doc.memSaleId)){toast(doc.no+' is a package invoice. Delete the package instead.');return}
+  if(doc.clubSaleId&&findIn('clubs',doc.clubSaleId)){toast(doc.no+' is a membership invoice. Delete the membership instead.');return}
   var m=openModal('<h2>Cancel '+esc(doc.no)+'?</h2><p class="hint" style="margin-top:-6px">The number stays used and the invoice is marked CANCELLED. It is removed from sales, GST and outstanding. Any payment on it becomes the client’s advance.</p>'+
     '<form id="cxf" novalidate><div class="field"><label for="cx-reason">Reason <span class="req">*</span></label><textarea id="cx-reason" rows="3" maxlength="300"></textarea></div><p class="err" id="cx-err" hidden></p>'+
     '<div class="m-actions"><button type="button" class="btn" data-x>Keep invoice</button><button type="submit" class="btn danger w">Cancel invoice</button></div></form>','--m6');
@@ -1544,6 +1553,7 @@ function bindCommon(){
   $$('[data-go]',work).forEach(function(b){ if(b._g) return; b._g=1; b.addEventListener('click',function(){ if(b.dataset.go==='invoice-form'&&b.dataset.client){ draft=newDraft(); draft.clientId=b.dataset.client; } go(b.dataset.go); }); });
   $$('[data-inv]').forEach(function(b){ if(b._i) return; b._i=1; b.addEventListener('click',function(){ viewInvoice(b.dataset.inv); }); });
   $$('[data-red]').forEach(function(b){ if(b._rd) return; b._rd=1; b.addEventListener('click',function(){ viewRedemption(b.dataset.red); }); });
+  $$('[data-club]').forEach(function(b){ if(b._cb) return; b._cb=1; b.addEventListener('click',function(){ viewClub(b.dataset.club); }); });
   $$('[data-mem]').forEach(function(b){ if(b._mm) return; b._mm=1; b.addEventListener('click',function(){ viewMembership(b.dataset.mem); }); });
   $$('[data-aeinv]').forEach(function(b){ if(b._ai) return; b._ai=1; b.addEventListener('click',function(){ viewAeInv(b.dataset.aeinv); }); });
   $$('[data-client-view]').forEach(function(b){ if(b._c) return; b._c=1; b.addEventListener('click',function(){ viewClient(b.dataset.clientView); }); });
@@ -1704,7 +1714,7 @@ function viewClient(id){
     var recs=S.receipts.filter(function(r){return r.clientId===id}).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||(+y.seq||0)-(+x.seq||0)});
     m.innerHTML='<h2>'+esc(c.name)+'</h2><div class="doc-head"><dl class="kv"><dt>Phone</dt><dd>'+esc(c.phone)+'</dd>'+(c.email?'<dt>Email</dt><dd>'+esc(c.email)+'</dd>':'')+(c.gender?'<dt>Gender</dt><dd>'+esc(c.gender)+'</dd>':'')+(c.dob?'<dt>Birthday</dt><dd>'+fmtDate(c.dob)+'</dd>':'')+(c.anniv?'<dt>Anniversary</dt><dd>'+fmtDate(c.anniv)+'</dd>':'')+(c.address?'<dt>Address</dt><dd style="white-space:pre-line">'+esc(c.address)+'</dd>':'')+(cityLabel(c.cityId).city?'<dt>City</dt><dd>'+esc(cityLabel(c.cityId).city)+'</dd><dt>State</dt><dd>'+esc(cityLabel(c.cityId).state)+'</dd>':'')+'</dl>'+
       (dept!=='spa'?'</div>':'<dl class="kv"><dt>Visits</dt><dd class="num">'+inv.length+'</dd>'+((+c.openingBal||0)>0?'<dt>Opening balance</dt><dd class="num">'+money(c.openingBal)+' <span class="sub">'+(c.obType==='Advance'?'advance':'receivable')+'</span></dd>':'')+'<dt>Billed</dt><dd class="num">'+money(a.billed)+'</dd><dt>Received</dt><dd class="num">'+money(a.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(a)+'</dd></dl></div>')+
-      (dept!=='spa'?'':clientMemSection(id))+
+      (dept!=='spa'?'':clientMemSection(id)+clientClubSection(id))+
       (dept!=='spa'?'':(inv.length?'<h3 class="sec-h">Invoices</h3><div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>'+inv.map(function(i){var x=invInfo(i,pm);return '<tr><td><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td class="num">'+money(i.total)+'</td><td class="num">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No invoices for this client yet.</p>')+
       '<h3 class="sec-h">Payments</h3>'+(recs.length?'<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Towards</th><th>Mode</th><th class="num">Amount</th></tr></thead><tbody>'+recs.map(function(r){return '<tr><td>'+esc(r.no)+'</td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'<span class="pill off">Advance / on account</span>')+'</td><td>'+esc(r.mode)+'</td><td class="num">'+money(r.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No payments from this client yet.</p>'))+
       (dept!=='spa'?(function(){var pa=phClientAccount(id);return '<dl class="kv" style="margin-top:4px"><dt>Billed (all modules)</dt><dd class="num">'+money(pa.billed)+'</dd><dt>Paid / credit</dt><dd class="num">'+money(pa.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(pa)+'</dd></dl>'})():'')+
@@ -1872,11 +1882,11 @@ SECTIONS['invoice-form']={
       '<p class="err" id="f-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary" id="f-save">'+(editing?'Save changes':'Save invoice')+'</button><button type="button" class="btn" id="f-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>');
     if(editing) $('#f-cancel').onclick=function(){draft=null;go('invoices')};
     if(readOnly) return;
-    $('#f-date').onchange=function(e){draft.date=e.target.value;memBox();renderTotals()};
+    $('#f-date').onchange=function(e){draft.date=e.target.value;clubReprice();memBox();renderTotals()};
     var cc=combo($('#f-client-host'),{id:'f-client',label:'Client',placeholder:'Type to search name or phone',value:draft.clientId,emptyText:'No clients yet. Use the + button.',
       options:function(){return S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name,c.phone]})},
       missing:function(){return draft.clientName||'Removed client'},
-      onChange:function(v){draft.clientId=v;draft.memId='';acctHint();memBox();renderTotals()}});
+      onChange:function(v){draft.clientId=v;draft.memId='';acctHint();clubReprice();memBox();renderTotals()}});
     combos.push(cc);acctHint();
     $('#f-newclient').onclick=function(){editClient(null,function(c){draft.clientId=c.id;if(!S.clients.some(function(x){return x.id===c.id}))S.clients.push(c);cc.set(c.id);acctHint()})};
     $('#f-additem').onclick=function(){draft.items.push(blankItem());renderItems();var s=$$('.line .combo-in');if(s.length)s[s.length-3].focus()};
@@ -1917,7 +1927,7 @@ function renderItems(){
       '<button type="button" class="icon-btn it-del" aria-label="Remove service '+(i+1)+'"'+(draft.items.length===1?' disabled':'')+'>×</button></div>'+
       '<div class="line-nums">'+
       '<div class="field"><label for="it-qty-'+i+'">Qty</label><input id="it-qty-'+i+'" class="it-qty num" type="number" min="1" step="1" value="'+esc(it.qty)+'"></div>'+
-      '<div class="field"><label for="it-rate-'+i+'">Rate (₹)</label><input id="it-rate-'+i+'" class="it-rate num" type="number" min="0" step="0.01" value="'+esc(it.rate)+'"></div>'+
+      '<div class="field"><label for="it-rate-'+i+'">Rate (₹)</label><input id="it-rate-'+i+'" class="it-rate num" type="number" min="0" step="0.01" value="'+esc(it.rate)+'"><span class="it-std">'+(+it.stdRate>+it.rate?'★ Member price · <s>'+money(it.stdRate)+'</s>':'')+'</span></div>'+
       '<div class="field"><label for="it-pct-'+i+'">Discount %</label><input id="it-pct-'+i+'" class="it-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(it.discPct)+'"></div>'+
       '<div class="field"><label>Discount (₹)</label><div class="ro-box it-disc">'+money(lc.disc)+'</div></div>'+
       '<div class="field"><label for="it-gst-'+i+'">GST</label><select id="it-gst-'+i+'" class="it-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),it.gst)+'</select></div>'+
@@ -1930,13 +1940,13 @@ function renderItems(){
     combos.push(combo(row.querySelector('.h-svc'),{id:'it-svc-'+i,placeholder:'Type to search services',value:it.serviceId,emptyText:'Add services in Masters › Services',
       options:function(){return S.services.filter(function(s){return s.active!==false||s.id===it.serviceId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(s){return [s.id,s.name,money0(s.price)]})},
       missing:function(){return it.name},
-      onChange:function(v){var s=S.services.find(function(x){return x.id===v});it.serviceId=v;if(s){it.name=s.name;it.rate=s.price;it.gst=+s.gst||0;it.consumables=copyCons(s.consumables)}renderItems();var n=$('#it-perf-'+i);if(n)n.focus()}}));
+      onChange:function(v){var s=S.services.find(function(x){return x.id===v});it.serviceId=v;if(s){it.name=s.name;clubPriceItem(it);it.gst=+s.gst||0;it.consumables=copyCons(s.consumables)}renderItems();var n=$('#it-perf-'+i);if(n)n.focus()}}));
     combos.push(combo(row.querySelector('.h-perf'),{id:'it-perf-'+i,placeholder:'Select staff',value:it.performedBy,allowEmpty:true,emptyText:'Add staff in Masters › Users',
       options:function(){return userOptions(it.performedBy)},missing:function(){return it.performedByName||''},onChange:function(v){it.performedBy=v}}));
     combos.push(combo(row.querySelector('.h-ref'),{id:'it-ref-'+i,placeholder:'Select staff',value:it.referredBy,allowEmpty:true,emptyText:'Add staff in Masters › Users',
       options:function(){return userOptions(it.referredBy)},missing:function(){return it.referredByName||''},onChange:function(v){it.referredBy=v}}));
     row.querySelector('.it-qty').oninput=function(e){it.qty=+e.target.value||0;upd()};
-    row.querySelector('.it-rate').oninput=function(e){it.rate=+e.target.value||0;upd()};
+    row.querySelector('.it-rate').oninput=function(e){it.rate=+e.target.value||0;it.stdRate=0;it.clubId='';it._auto=null;row.querySelector('.it-std').innerHTML='';upd()};
     row.querySelector('.it-pct').oninput=function(e){it.discPct=+e.target.value||0;upd()};
     row.querySelector('.it-gst').onchange=function(e){it.gst=+e.target.value||0;upd()};
     row.querySelector('.it-del').onclick=function(){draft.items.splice(i,1);if(!draft.items.length)draft.items.push(blankItem());renderItems()};
@@ -1958,6 +1968,7 @@ function renderTotals(){
       (sp.inv.length?'<div class="r" style="margin-top:6px"><strong>Tax invoice for the rest</strong><span></span></div><div class="r"><span>Taxable amount</span><span>'+money(ti.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(ti.tax)+'</span></div>'+rnd(ti)+'<div class="r big"><span>To pay</span><span>'+money(ti.total)+'</span></div>'
         :'<div class="r big"><span>To pay</span><span>'+money(0)+'</span></div><div class="r"><span class="sub">Covered fully. Only a redemption slip is saved.</span><span></span></div>');
   }
+  var ci=clubInfo(draft.items); if(ci.saving>0) el.innerHTML+='<div class="r club-save"><span>★ Member savings</span><span>'+money(ci.saving)+'</span></div>';
   var fr=$('#f-round'); if(fr) fr.onchange=function(e){draft.roundOn=e.target.checked;renderTotals()};
   var full=sp&&!sp.inv.length;
   var pb=$('#f-paybox'); if(pb){pb.hidden=!!full; if(full&&draft.payAmount){draft.payAmount='';var fp=$('#f-pay');if(fp)fp.value=''}}
@@ -1983,12 +1994,13 @@ function saveInvoice(){
   for(var k=0;k<items.length;k++){var it=items[k];if(!(it.qty>0))return show('Quantity for '+it.name+' must be at least 1.');if(it.rate<0)return show('Rate for '+it.name+' can’t be negative.');if(it.discPct<0||it.discPct>100)return show('Discount % for '+it.name+' must be between 0 and 100.')}
   var sp=!draft.id&&memSplit(items); if(sp) return saveWithMembership(sp,c,show);
   var mp=0;
-  var saved=items.map(function(it){var lc=lineCalc(it,mp),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,memDisc:lc.memDisc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}});
+  var saved=items.map(function(it){var lc=lineCalc(it,mp),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,memDisc:lc.memDisc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,stdRate:+it.stdRate>+it.rate?r2(it.stdRate):0,clubId:+it.stdRate>+it.rate?(it.clubId||''):'',performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}});
+  var ci=clubInfo(saved);
   var t=sumItems(items,mp), total=t.total;
   var now=new Date().toISOString(), editing=!!draft.id, pay=0;
   if(!editing){pay=r2(draft.payAmount);if(pay<0)return show('Payment can’t be negative.')}
   var seq=editing?draft.seq:nextSeq(S.invoices);
-  var inv={id:draft.id||newId('i'),seq:seq,no:editing?draft.no:'INV-'+pad(seq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,items:saved,subtotal:t.subtotal,discount:t.discount,taxable:t.taxable,tax:t.tax,roundOn:!!draft.roundOn,roundOff:t.roundOff,total:total,createdAt:draft.createdAt||now,updatedAt:now};
+  var inv={id:draft.id||newId('i'),seq:seq,no:editing?draft.no:'INV-'+pad(seq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,items:saved,subtotal:t.subtotal,discount:t.discount,taxable:t.taxable,tax:t.tax,roundOn:!!draft.roundOn,roundOff:t.roundOff,total:total,clubSaving:ci.saving,clubId:ci.id,clubNo:ci.no,clubPlan:ci.plan,createdAt:draft.createdAt||now,updatedAt:now};
   var btn=$('#inv-form [type=submit]'); btn.disabled=true;
   put('invoices',inv).then(function(){
     if(pay>0){var rs=nextReceiptNo().seq;return put('receipts',{id:newId('r'),seq:rs,no:'RCT-'+pad(rs),date:draft.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,amount:pay,mode:draft.payMode,reference:draft.payRef.trim(),createdAt:now})}
@@ -2001,8 +2013,9 @@ function editInvoice(id){
   var i=invById(id); if(!i) return;
   if(i.cancelled){toast(i.no+' is cancelled and can’t be edited.');return}
   if(i.memSaleId){toast(i.no+' is a package invoice. To change it, delete the package (if unused) and sell it again.');return}
+  if(i.clubSaleId){toast(i.no+' is a membership invoice. To change it, delete the membership (if unused) and sell it again.');return}
   draft={id:i.id,seq:i.seq,no:i.no,createdAt:i.createdAt,date:i.date,clientId:i.clientId,clientName:i.clientName,roundOn:!!i.roundOn,useMem:!!i.memId,memId:i.memId||'',
-    items:(i.items||[]).map(function(it){return {serviceId:it.serviceId,name:it.name,sac:it.sac||'',qty:it.qty,rate:it.rate,discPct:discPctOf(it),gst:it.gst,performedBy:it.performedBy||'',performedByName:it.performedByName||'',referredBy:it.referredBy||'',referredByName:it.referredByName||'',consumables:copyCons(it.consumables)}})};
+    items:(i.items||[]).map(function(it){return {serviceId:it.serviceId,name:it.name,sac:it.sac||'',qty:it.qty,rate:it.rate,stdRate:+it.stdRate||0,clubId:it.clubId||'',discPct:discPctOf(it),gst:it.gst,performedBy:it.performedBy||'',performedByName:it.performedByName||'',referredBy:it.referredBy||'',referredByName:it.referredByName||'',consumables:copyCons(it.consumables)}})};
   if(!draft.items.length) draft.items=[blankItem()];
   closeModal(); go('invoice-form');
 }
@@ -2081,6 +2094,7 @@ function filteredInvoices(){
 function deleteInvoice(id){
   var i=invById(id); if(!i) return;
   if(i.memSaleId&&findIn('members',i.memSaleId)){toast(i.no+' is the invoice for package '+i.memNo+'. Delete the package instead.');return}
+  if(i.clubSaleId&&findIn('clubs',i.clubSaleId)){toast(i.no+' is the invoice for membership '+i.clubSaleNo+'. Delete the membership instead.');return}
   if(S.receipts.some(function(r){return r.invoiceId===id})){toast('Receipts are recorded against '+i.no+'. Delete those receipts first.');return}
   confirmBox('Delete invoice?','Delete '+i.no+' for '+i.clientName+' ('+money(i.total)+')? This can’t be undone.','Delete invoice',function(){
     remove('invoices',id).then(function(){closeModal();toast(i.no+' deleted')}).catch(function(e){toast(errText(e))});
@@ -2095,13 +2109,13 @@ function viewInvoice(id,fallback){
     var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), memPart=r2(Math.min(+i.memPaid||0,x.paid)), fromAdv=r2(Math.max(0,x.paid-Math.min(linked,x.paid)-memPart));
     m.innerHTML='<h2>Invoice '+esc(i.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(i.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(i.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(i.date)+'</dd></dl><div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(i.total)+'</div>'+(x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>'+
-      (i.items||[]).map(function(it){var sl=it.note||staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(r2((+it.disc||0)+(+it.memDisc||0)))+(discPctOf(it)?' <span class="sub">('+esc(discPctOf(it))+'%)</span>':'')+'</td><td class="num">'+esc(it.gst)+'%</td><td class="num">'+money(it.total)+'</td></tr>'}).join('')+
+      (i.items||[]).map(function(it){var sl=it.note||staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+(+it.stdRate>+it.rate?'<div class="sub">★ Member price · standard '+money(it.stdRate)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(r2((+it.disc||0)+(+it.memDisc||0)))+(discPctOf(it)?' <span class="sub">('+esc(discPctOf(it))+'%)</span>':'')+'</td><td class="num">'+esc(it.gst)+'%</td><td class="num">'+money(it.total)+'</td></tr>'}).join('')+
       '</tbody></table></div><div class="form-bottom" style="margin-top:12px"><div>'+
       '<div class="field" style="margin-top:8px"><label>Payments</label>'+(recs.length?recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join(''):'')+(i.redemptionId&&findIn('redemptions',i.redemptionId)?'<div class="sub">Rest of the bill used package slip <button class="link" data-red="'+esc(i.redemptionId)+'">'+esc(i.redemptionNo)+'</button></div>':'')+(memPart>0.004?'<div class="sub">Paid from package <button class="link" data-mem="'+esc(i.memId)+'">'+esc(i.memNo)+'</button> · <strong style="color:var(--ink)">'+money(memPart)+'</strong></div>':'')+(fromAdv>0.004?'<div class="sub">Adjusted from advance / on-account payments · <strong style="color:var(--ink)">'+money(fromAdv)+'</strong></div>':'')+(!recs.length&&fromAdv<=0.004&&memPart<=0.004?'<div class="sub">No payments yet.</div>':'')+'</div></div>'+
       '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Package benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (i.roundOff?'<div class="r"><span>Round off</span><span>'+(i.roundOff<0?'− ':'+ ')+money(Math.abs(i.roundOff))+'</span></div>':'')+
-      '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      cancelNote(i)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+      '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>'+(i.clubSaving>0?'<div class="r club-save"><span>★ Member savings'+(i.clubPlan?' ('+esc(i.clubPlan)+')':'')+'</span><span>'+money(i.clubSaving)+'</span></div>':'')+'</div></div>'+
+      cancelNote(i)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId&&!i.clubSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
     var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('invoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from package '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
@@ -2368,6 +2382,7 @@ function simpleMaster(cfg){
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='svcprices') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='services') return '<div class="field span2"><label>'+esc(f.label)+(f.req?' <span class="req">*</span>':'')+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
         var inputType=f.type==='email'?'email':(f.type==='password'?'password':'text');
@@ -2377,7 +2392,8 @@ function simpleMaster(cfg){
       '</div><p class="err" id="mf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add '+esc(cfg.singular))+'</button></div></form>',cfg.color,!!cfg.wide,function(m){
         m.querySelector('[data-x]').onclick=closeModal;
         var consVals={}, fileVals={};
-        var svcVals={};
+        var svcVals={}, priceVals={};
+        cfg.fields.forEach(function(f){if(f.type==='svcprices'){priceVals[f.id]=Object.assign({},r[f.id]||{});svcPriceTable(m.querySelector('#mf-'+f.id),function(){return priceVals[f.id]},function(v){priceVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='services'){svcVals[f.id]=Array.isArray(r[f.id])?r[f.id].slice():[];svcPicker(m.querySelector('#mf-'+f.id),function(){return svcVals[f.id]},function(v){svcVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
@@ -2386,9 +2402,9 @@ function simpleMaster(cfg){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
           if(!msg) msg=cfg.validate(obj,id)||'';
@@ -5386,16 +5402,16 @@ function memSplit(items){
 }
 function memBox(){
   var el=$('#f-mem'); if(!el) return;
-  if(!draft||!draft.clientId||draft.id){el.innerHTML='';return}
-  var opts=clientMems(draft.clientId,draft.date||todayStr()); if(!opts.length){el.innerHTML='';return}
+  if(!draft||!draft.clientId||draft.id){el.innerHTML=draft&&draft.clientId?clubNote():'';return}
+  var opts=clientMems(draft.clientId,draft.date||todayStr()); if(!opts.length){el.innerHTML=clubNote();return}
   var m=memPick(), x=memInfo(m);
-  el.innerHTML='<div class="mem-pick"><label class="check"><input type="checkbox" id="f-usemem"'+(draft.useMem!==false?' checked':'')+'> Redeem from package</label>'+
+  el.innerHTML=clubNote()+'<div class="mem-pick"><label class="check"><input type="checkbox" id="f-usemem"'+(draft.useMem!==false?' checked':'')+'> Redeem from package</label>'+
     (opts.length>1?'<select id="f-memid" style="width:auto;min-height:32px;padding:4px 8px" aria-label="Package">'+optList(opts.map(function(o){return [o.id,memLabel(o)]}),m.id)+'</select>':'<strong>'+esc(memLabel(m))+'</strong>')+
     '<span class="sub">Balance '+money(x.bal)+' · valid till '+fmtDate(m.expiry)+'</span></div>';
   $('#f-usemem').onchange=function(e){draft.useMem=e.target.checked;renderTotals()};
   var sel=$('#f-memid'); if(sel) sel.onchange=function(e){draft.memId=e.target.value;memBox();renderTotals()};
 }
-function itemRecord(it){var lc=lineCalc(it),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}}
+function itemRecord(it){var lc=lineCalc(it),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,stdRate:+it.stdRate>+it.rate?r2(it.stdRate):0,clubId:+it.stdRate>+it.rate?(it.clubId||''):'',performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}}
 function saveWithMembership(sp,c,show){
   var now=new Date().toISOString(), pay=r2(draft.payAmount||0);
   if(pay<0) return show('Payment can’t be negative.');
@@ -5407,7 +5423,7 @@ function saveWithMembership(sp,c,show){
   var inv=null;
   if(sp.inv.length){
     var t=sumItems(sp.inv), seq=nextSeq(S.invoices);
-    inv={id:newId('i'),seq:seq,no:'INV-'+pad(seq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,items:sp.inv.map(itemRecord),subtotal:t.subtotal,discount:t.discount,taxable:t.taxable,tax:t.tax,roundOn:!!draft.roundOn,roundOff:t.roundOff,total:t.total,redemptionId:red.id,redemptionNo:red.no,createdAt:now,updatedAt:now};
+    inv={id:newId('i'),seq:seq,no:'INV-'+pad(seq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,items:sp.inv.map(itemRecord),clubSaving:clubInfo(sp.inv).saving,clubId:clubInfo(sp.inv).id,clubNo:clubInfo(sp.inv).no,clubPlan:clubInfo(sp.inv).plan,subtotal:t.subtotal,discount:t.discount,taxable:t.taxable,tax:t.tax,roundOn:!!draft.roundOn,roundOff:t.roundOff,total:t.total,redemptionId:red.id,redemptionNo:red.no,createdAt:now,updatedAt:now};
     red.invoiceId=inv.id; red.invoiceNo=inv.no;
   }
   var btn=$('#inv-form [type=submit]'); btn.disabled=true;
@@ -5428,6 +5444,204 @@ function memDashPanel(){
   return '<div class="panel"><h3>Packages</h3><div class="mem-sum" style="margin:0 0 10px"><span>Sold this month <strong>'+soldM.length+'</strong></span><span>Unused balance <strong>'+money0(held)+'</strong></span></div>'+
     (exp.length?'<div class="tbl"><table><thead><tr><th>Expiring soon</th><th>Valid till</th><th class="num">Balance</th></tr></thead><tbody>'+exp.slice(0,6).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-mem="'+esc(r.m.id)+'"><strong>'+esc(r.m.clientName)+'</strong></button><div class="sub">'+esc(r.m.planName)+' · '+esc(r.m.no)+'</div></td><td class="nowrap">'+fmtDate(r.m.expiry)+'</td><td class="num">'+money0(r.x.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None expiring in the next 30 days.</p>')+
     '<p style="margin:8px 0 0"><button class="link" data-go="packages">Open Packages</button></p></div>';
+}
+
+/* =========================================================
+   SPA: Membership plans and memberships sold
+   A membership is a fee (+GST) for a validity period. While valid, the
+   client is billed at the plan's member price for each service that has one.
+   The fee is never adjusted against later bills.
+   ========================================================= */
+function clubPlanPrice(plan,sid){var v=plan&&plan.prices?plan.prices[sid]:null;return v===''||v==null||isNaN(+v)?null:+v}
+function clubStatus(m,t){t=t||todayStr();return m.expiry&&m.expiry<t?'Expired':(m.start&&m.start>t?'Upcoming':'Active')}
+function clientClubs(cid,date){return S.clubs.filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)}).sort(function(a,b){return (b.expiry||'').localeCompare(a.expiry||'')})}
+/* lowest member price for a service across the client's valid memberships */
+function clubFor(cid,date,sid){
+  var best=null;
+  if(!cid||!sid) return null;
+  clientClubs(cid,date||todayStr()).forEach(function(m){var p=clubPlanPrice(findIn('clubPlans',m.planId),sid);if(p!=null&&(!best||p<best.price))best={m:m,price:p}});
+  return best;
+}
+function clubSavingOf(it){var s=+it.stdRate||0;return s>(+it.rate||0)?r2((+it.qty||0)*(s-(+it.rate||0))):0}
+function clubInfo(items){
+  var saving=0, ids={};
+  items.forEach(function(it){if(!it.serviceId)return;var s=clubSavingOf(it);if(s>0){saving+=s;if(it.clubId)ids[it.clubId]=1}});
+  var m=findIn('clubs',Object.keys(ids)[0]);
+  return {saving:r2(saving),id:m?m.id:'',no:m?m.no:'',plan:m?m.planName:''};
+}
+/* set an invoice line's rate: member price when the client has one, else the standard price */
+function clubPriceItem(it){
+  var s=findIn('services',it.serviceId); if(!s) return;
+  var std=+s.price||0, c=draft&&draft.clientId?clubFor(draft.clientId,draft.date,s.id):null;
+  if(c&&c.price<std){it.rate=c.price;it.stdRate=std;it.clubId=c.m.id}else{it.rate=std;it.stdRate=0;it.clubId=''}
+  it._auto=it.rate;
+}
+/* client or date changed: re-price lines whose rate was not typed by hand */
+function clubReprice(){
+  if(!draft) return;
+  var ch=false;
+  draft.items.forEach(function(it){if(it.serviceId&&it._auto!=null&&+it.rate===+it._auto){var r0=it.rate,s0=it.stdRate;clubPriceItem(it);if(r0!==it.rate||s0!==it.stdRate)ch=true}});
+  if(ch) renderItems();
+}
+function clubNote(){
+  if(!draft||!draft.clientId) return '';
+  var l=clientClubs(draft.clientId,draft.date||todayStr()); if(!l.length) return '';
+  return '<div class="club-note">'+l.map(function(m){return '★ Member: <strong>'+esc(m.planName)+'</strong> · valid till '+fmtDate(m.expiry)}).join('<br>')+'</div>';
+}
+/* plan editor: every active service with its standard price and a member price box */
+function svcPriceTable(host,get,set){
+  var q='';
+  function list(){var v=get();return S.services.filter(function(sv){return sv.active!==false||v[sv.id]!=null}).sort(function(a,b){return byText(a.name,b.name)})}
+  function render(){
+    var v=get(), all=list(), shown=all.filter(function(sv){return !q||norm(sv.name).indexOf(norm(q))>=0}), n=all.filter(function(sv){return v[sv.id]!=null&&v[sv.id]!==''}).length;
+    host.querySelector('.spt-count').textContent=n+' of '+all.length+' services have a member price';
+    host.querySelector('.spt-list').innerHTML=shown.length?'<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Standard price</th><th class="num">Member price (₹)</th></tr></thead><tbody>'+
+      shown.map(function(sv){var mv=v[sv.id]==null?'':v[sv.id];return '<tr><td>'+esc(sv.name)+(sv.active===false?' <span class="sub">(inactive)</span>':'')+'</td><td class="num">'+money(sv.price)+'</td><td class="num"><input type="number" min="0" step="0.01" class="spt-in num" data-sid="'+esc(sv.id)+'" value="'+esc(mv)+'" placeholder="—" style="width:120px" aria-label="Member price for '+esc(sv.name)+'"></td></tr>'}).join('')+'</tbody></table></div>'
+      :'<p class="hint" style="margin:6px 0">'+(all.length?'No service matches.':'Add services in Masters › Services first.')+'</p>';
+    $$('.spt-in',host).forEach(function(inp){inp.oninput=function(){var o=Object.assign({},get());if(inp.value==='')delete o[inp.dataset.sid];else o[inp.dataset.sid]=inp.value;set(o);host.querySelector('.spt-count').textContent=Object.keys(o).length+' of '+all.length+' services have a member price'}});
+  }
+  host.innerHTML='<div class="svp"><div class="svp-bar"><input type="search" class="spt-q" placeholder="Search services" aria-label="Search services"><span class="sub spt-count"></span></div><p class="hint" style="margin:4px 0 8px">Leave the member price empty for services with no discount.</p><div class="spt-list"></div></div>';
+  host.querySelector('.spt-q').oninput=function(e){q=e.target.value;render()};
+  render();
+}
+SECTIONS['club-plans']=simpleMaster({
+  kind:'clubPlans',prefix:'cp',title:'Membership Plans',singular:'plan',singularCap:'Plan',color:'--m3',searchPh:'Plan name',wide:true,
+  emptyText:'Add plans such as Gold Annual, with member prices for each service.',
+  fields:[
+    {id:'name',label:'Plan name',req:true,max:60,span2:true},
+    {id:'fee',label:'Membership fee before GST (₹)',type:'number',req:true},
+    {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
+    {id:'validity',label:'Validity period',type:'number',req:true,step:'1',def:'12'},
+    {id:'validityUnit',label:'Validity in',type:'select',noBlank:true,def:'Months',options:function(){return ['Months','Days']}},
+    {id:'sac',label:'SAC code',max:8},
+    {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
+    {id:'prices',label:'Member prices',type:'svcprices'},
+    {id:'terms',label:'Terms (printed on the invoice note)',type:'textarea'}],
+  cols:[{h:'Plan',text:function(r){return r.name}},{h:'Fee',num:true,text:function(r){return money(r.fee)}},{h:'GST',num:true,text:function(r){return (+r.gst||0)+'%'}},
+    {h:'Fee incl. GST',num:true,text:function(r){return money(r2((+r.fee||0)*(1+(+r.gst||0)/100)))}},{h:'Validity',text:function(r){return memValidityText(r)}},
+    {h:'Services discounted',num:true,text:function(r){return String(Object.keys(r.prices||{}).length)}},{h:'Members',num:true,text:function(r){return String(S.clubs.filter(function(m){return m.planId===r.id&&clubStatus(m)!=='Expired'}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
+  search:function(r){return r.name},sort:function(a,b){return (+a.fee||0)-(+b.fee||0)},
+  validate:function(o,id){
+    o.gst=+o.gst||0;
+    if(!(+o.fee>0)) return 'Enter the membership fee.';
+    if(!(+o.validity>0)) return 'Enter the validity period.';
+    if(o.sac&&!/^\d{4,8}$/.test(o.sac)) return 'SAC code should be 4 to 8 digits.';
+    var pr={}, bad='';
+    Object.keys(o.prices||{}).some(function(sid){var v=o.prices[sid],sv=findIn('services',sid);if(v===''||v==null)return false;if(isNaN(+v)||+v<0){bad='Member price for '+(sv?sv.name:'a service')+' must be 0 or more.';return true}
+      if(sv&&+v>(+sv.price||0)){bad='Member price for '+sv.name+' ('+money(+v)+') is more than its standard price ('+money(sv.price)+').';return true}pr[sid]=r2(+v);return false});
+    if(bad) return bad;
+    o.prices=pr;
+    if(!Object.keys(pr).length) return 'Enter a member price for at least one service.';
+    return dupName('clubPlans',o,id)?'A plan with this name already exists.':'';
+  },
+  usage:function(r){var n=S.clubs.filter(function(m){return m.planId===r.id}).length;return n?r.name+' has been sold '+n+' time'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
+});
+
+var clubF={q:'',status:'Active'};
+function clubSavings(m){return S.invoices.filter(function(i){return !i.cancelled&&(i.items||[]).some(function(it){return it.clubId===m.id})}).map(function(i){var s=0;(i.items||[]).forEach(function(it){if(it.clubId===m.id)s+=clubSavingOf(it)});return {i:i,saving:r2(s)}})}
+SECTIONS.clubs={
+  mount:function(){
+    work.innerHTML=head('Memberships Sold',readOnly?'':'<button class="btn primary w" id="cb-new">'+PLUS+' Sell membership</button>')+
+      '<div class="toolbar"><div class="field grow"><label for="cb-q">Search</label><input type="search" id="cb-q" placeholder="Client, phone, plan or number" value="'+esc(clubF.q)+'"></div>'+
+      '<div class="field"><label for="cb-st">Status</label><select id="cb-st">'+optList([['','All'],'Active','Upcoming','Expired'],clubF.status)+'</select></div></div><div id="body"></div>';
+    var up=function(){SECTIONS.clubs.update();bindCommon()};
+    $('#cb-q').oninput=function(e){clubF.q=e.target.value;up()};
+    $('#cb-st').onchange=function(e){clubF.status=e.target.value;up()};
+    var nb=$('#cb-new'); if(nb) nb.onclick=function(){sellClub(null)};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    if(!S.clubs.length){b.innerHTML='<div class="empty"><strong>No memberships yet</strong>'+(S.clubPlans.length?'Use Sell membership to enrol a client.':'Add plans in Masters › Membership Plans first.')+'</div>';return}
+    var q=norm(clubF.q);
+    var list=S.clubs.map(function(m){return {m:m,st:clubStatus(m)}}).filter(function(r){
+      if(clubF.status&&r.st!==clubF.status) return false;
+      if(q&&norm(r.m.no+' '+r.m.clientName+' '+(r.m.clientPhone||'')+' '+r.m.planName).indexOf(q)<0) return false;
+      return true}).sort(function(a,c){return (c.m.date||'').localeCompare(a.m.date||'')||(+c.m.seq||0)-(+a.m.seq||0)});
+    if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No membership matches these filters.</div>';return}
+    b.innerHTML='<div class="tbl"><table><thead><tr><th>Membership</th><th>Client</th><th>Plan</th><th>Invoice</th><th class="num">Fee</th><th>Valid till</th><th class="num">Saved so far</th><th>Status</th></tr></thead><tbody>'+
+      list.map(function(r){var m=r.m,sv=r2(clubSavings(m).reduce(function(s,x){return s+x.saving},0));return '<tr><td class="nowrap"><button class="link" data-club="'+esc(m.id)+'">'+esc(m.no)+'</button><div class="sub">'+fmtDate(m.date)+'</div></td>'+
+        '<td><button class="link" style="color:inherit" data-client-view="'+esc(m.clientId)+'"><strong>'+esc(m.clientName)+'</strong></button><div class="sub">'+esc(m.clientPhone||'')+'</div></td>'+
+        '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+money(m.fee)+'</td>'+
+        '<td class="nowrap">'+fmtDate(m.expiry)+'</td><td class="num">'+money(sv)+'</td><td><span class="pill '+(r.st==='Active'?'paid':r.st==='Upcoming'?'partial':'unpaid')+'">'+esc(r.st)+'</span></td></tr>'}).join('')+
+      '</tbody></table></div><p class="hint">'+countOf(list.length,S.clubs.length,'memberships')+'</p>';
+  }
+};
+function sellClub(cid){
+  if(readOnly){toast('You need Contributor access to sell memberships.');return}
+  var plans=S.clubPlans.filter(function(p){return (p.status||'Active')==='Active'}).sort(function(a,b){return (+a.fee||0)-(+b.fee||0)});
+  if(!plans.length){toast('Add a plan in Masters › Membership Plans first.');return}
+  var st={clientId:cid||'',planId:plans[0].id,date:todayStr(),expiry:'',expiryTouched:false};
+  st.expiry=memExpiry(st.date,plans[0]);
+  var m=openModal('<h2>Sell membership</h2><form id="cbf" novalidate><div class="f-grid">'+
+    '<div class="field span2"><label for="cb-client">Client <span class="req">*</span></label><div id="cb-client-host"></div></div>'+
+    '<div class="field"><label for="cb-plan">Plan <span class="req">*</span></label><select id="cb-plan">'+optList(plans.map(function(p){return [p.id,p.name]}),st.planId)+'</select></div>'+
+    '<div class="field"><label for="cb-date">Start date</label><input type="date" id="cb-date" value="'+esc(st.date)+'"></div>'+
+    '<div class="field"><label for="cb-exp">Valid till</label><input type="date" id="cb-exp" value="'+esc(st.expiry)+'"></div></div>'+
+    '<div class="mem-sum" id="cb-sum"></div>'+
+    '<div class="pay-box"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="cb-pay">Amount (₹)</label><input type="number" id="cb-pay" min="0" step="0.01"></div><div class="field"><label for="cb-mode">Payment mode</label><select id="cb-mode">'+optList(MODES,'Cash')+'</select></div><div class="field"><label for="cb-ref">Reference</label><input type="text" id="cb-ref" autocomplete="off"></div></div></div>'+
+    '<p class="err" id="cb-err" hidden></p>'+
+    '<div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save membership</button></div></form>','--m3',true,function(m2){
+      combo(m2.querySelector('#cb-client-host'),{id:'cb-client',label:'Client',placeholder:'Type to search name or phone',value:st.clientId,emptyText:'No clients yet.',
+        options:function(){return S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name,c.phone]})},onChange:function(v){st.clientId=v}});
+    });
+  var plan=function(){return findIn('clubPlans',st.planId)};
+  var sum=function(){var p=plan();if(!p){m.querySelector('#cb-sum').innerHTML='';return}var pc=memPriceCalc({price:p.fee,gst:p.gst},true);
+    m.querySelector('#cb-sum').innerHTML='<span>Fee <strong>'+money(pc.price)+'</strong></span><span>GST '+(+p.gst||0)+'% <strong>'+money(pc.tax)+'</strong></span><span>Invoice total <strong>'+money(pc.total)+'</strong></span><span>Member prices on <strong>'+Object.keys(p.prices||{}).length+' services</strong></span>';
+    m.querySelector('#cb-pay').value=pc.total};
+  sum();
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#cb-plan').onchange=function(e){st.planId=e.target.value;if(!st.expiryTouched){st.expiry=memExpiry(st.date,plan());m.querySelector('#cb-exp').value=st.expiry}sum()};
+  m.querySelector('#cb-date').onchange=function(e){st.date=e.target.value;if(!st.expiryTouched){st.expiry=memExpiry(st.date,plan());m.querySelector('#cb-exp').value=st.expiry}};
+  m.querySelector('#cb-exp').onchange=function(e){st.expiry=e.target.value;st.expiryTouched=true};
+  m.querySelector('#cbf').onsubmit=function(e){
+    e.preventDefault();
+    var err=m.querySelector('#cb-err'), c=clientById(st.clientId), p=plan(), msg='', pay=r2(m.querySelector('#cb-pay').value||0);
+    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!st.date) msg='Choose the start date.'; else if(!st.expiry||st.expiry<st.date) msg='Valid till must be on or after the start date.'; else if(pay<0) msg='Payment can’t be negative.';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]'); btn.disabled=true;
+    var now=new Date().toISOString(), seq=nextSeq(S.clubs), iseq=nextSeq(S.invoices), pc=memPriceCalc({price:p.fee,gst:p.gst},true);
+    var mem={id:newId('cm'),seq:seq,no:'MSP-'+pad(seq),date:st.date,start:st.date,expiry:st.expiry,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
+      planId:p.id,planName:p.name,fee:pc.price,gst:+p.gst||0,invoiceId:'',invoiceNo:'',createdAt:now,updatedAt:now};
+    var inv={id:newId('i'),seq:iseq,no:'INV-'+pad(iseq),date:st.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,
+      items:[{serviceId:'',memItem:true,name:p.name+' Membership',note:'Valid '+fmtDate(st.date)+' to '+fmtDate(st.expiry)+' · '+mem.no+' · member prices on selected services'+(p.terms?' · '+p.terms:''),sac:p.sac||'',qty:1,rate:pc.price,discPct:0,disc:0,gst:+p.gst||0,amount:pc.price,tax:pc.tax,total:r2(pc.price+pc.tax),consumables:[]}],
+      subtotal:pc.price,discount:0,taxable:pc.price,tax:pc.tax,roundOn:true,roundOff:pc.roundOff,total:pc.total,clubSaleId:mem.id,clubSaleNo:mem.no,createdAt:now,updatedAt:now};
+    mem.invoiceId=inv.id; mem.invoiceNo=inv.no;
+    put('clubs',mem).then(function(){return put('invoices',inv)}).then(function(){
+      if(pay>0){var rn=nextReceiptNo();return put('receipts',{id:newId('r'),seq:rn.seq,no:rn.no,date:st.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,amount:pay,mode:m.querySelector('#cb-mode').value,reference:m.querySelector('#cb-ref').value.trim(),module:'spa',createdAt:now})}
+    }).then(function(){closeModal();toast(mem.no+' saved with invoice '+inv.no);viewClub(mem.id)})
+      .catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
+function viewClub(id){
+  var render=function(m){
+    var mm=findIn('clubs',id); if(!mm){closeModal();return}
+    var st=clubStatus(mm), inv=mm.invoiceId&&invById(mm.invoiceId), ix=inv?invInfo(inv):null, plan=findIn('clubPlans',mm.planId), sv=clubSavings(mm), tot=r2(sv.reduce(function(s,x){return s+x.saving},0));
+    var prices=plan?Object.keys(plan.prices||{}).map(function(sid){var s=findIn('services',sid);return s?{n:s.name,std:+s.price||0,mp:plan.prices[sid]}:null}).filter(Boolean).sort(function(a,b){return byText(a.n,b.n)}):[];
+    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd>'+
+      '<dt>Invoice</dt><dd>'+(inv?'<button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> · '+money(inv.total)+' '+statusPill(ix.status):esc(mm.invoiceNo||'—'))+'</dd></dl>'+
+      '<div style="text-align:right"><span class="pill '+(st==='Active'?'paid':st==='Upcoming'?'partial':'unpaid')+'">'+esc(st)+'</span><div class="big" style="margin-top:6px">'+money(tot)+'</div><div class="sub">saved so far</div></div></div>'+
+      '<h3 class="sec-h">Member prices</h3>'+(prices.length?'<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Standard</th><th class="num">Member price</th></tr></thead><tbody>'+prices.map(function(p){return '<tr><td>'+esc(p.n)+'</td><td class="num"><s class="sub">'+money(p.std)+'</s></td><td class="num"><strong>'+money(p.mp)+'</strong></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">The plan has no member prices.</p>')+
+      '<h3 class="sec-h">Bills at member price</h3>'+(sv.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Invoice</th><th class="num">Total</th><th class="num">Saved</th></tr></thead><tbody>'+sv.sort(function(a,b){return (b.i.date||'').localeCompare(a.i.date||'')}).map(function(x){return '<tr><td class="nowrap">'+fmtDate(x.i.date)+'</td><td><button class="link" data-inv="'+esc(x.i.id)+'">'+esc(x.i.no)+'</button></td><td class="num">'+money(x.i.total)+'</td><td class="num">'+money(x.saving)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">Not used yet.</p>')+
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!sv.length?'<button class="btn danger" data-del>Delete</button>':'')+(!readOnly&&st==='Active'?'<button class="btn primary w" data-bill>New invoice</button>':'')+'</div>';
+    m.querySelector('[data-x]').onclick=closeModal;
+    var bl=m.querySelector('[data-bill]'); if(bl) bl.onclick=function(){closeModal();draft=newDraft();draft.clientId=mm.clientId;go('invoice-form')};
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){
+      var recs=inv?S.receipts.filter(function(r){return r.invoiceId===inv.id}):[];
+      confirmBox('Delete membership?','Delete '+mm.no+' for '+mm.clientName+'? Its invoice '+(mm.invoiceNo||'')+(recs.length?' and '+recs.length+' receipt'+(recs.length===1?'':'s'):'')+' will be deleted too.','Delete',function(){
+        Promise.all(recs.map(function(r){return remove('receipts',r.id)})).then(function(){return inv?remove('invoices',inv.id):null}).then(function(){return remove('clubs',mm.id)}).then(function(){closeModal();toast(mm.no+' deleted')}).catch(function(e){toast(errText(e))});
+      });
+    };
+    $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
+  };
+  var m=openModal('','--m3',true); render(m); modalRefresh=function(){render(m)};
+}
+function clientClubSection(cid){
+  var list=S.clubs.filter(function(m){return m.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  if(!list.length) return '';
+  return '<h3 class="sec-h">Memberships</h3><div class="tbl"><table><thead><tr><th>Membership</th><th>Plan</th><th>Valid till</th><th class="num">Saved so far</th><th>Status</th></tr></thead><tbody>'+
+    list.map(function(m){var st=clubStatus(m),sv=r2(clubSavings(m).reduce(function(s,x){return s+x.saving},0));return '<tr><td class="nowrap"><button class="link" data-club="'+esc(m.id)+'">'+esc(m.no)+'</button></td><td>'+esc(m.planName)+'</td><td class="nowrap">'+fmtDate(m.expiry)+'</td><td class="num">'+money(sv)+'</td><td><span class="pill '+(st==='Active'?'paid':st==='Upcoming'?'partial':'unpaid')+'">'+esc(st)+'</span></td></tr>'}).join('')+
+    '</tbody></table></div>';
 }
 
 /* =========================================================
@@ -5904,6 +6118,8 @@ function pendTasks(d){
   var dues=function(kind,view){return dueBills(al).filter(function(b){return b.kind===kind}).map(function(b){var x=billInfo(b,al);return {main:b.clientName,sub:(b.clientPhone||'')+' · '+b.no+' · '+fmtDate(b.date)+' · '+daysSince(b.date)+' days',amt:x.bal,btn:'View',run:function(){view(b.id)}}})};
   if(d==='spa'){
     out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('inv',function(id){viewInvoice(id)})});
+    var lim=addDays(t,15);
+    out.push({key:'clubexp',label:'Memberships expiring',hint:'Memberships ending in the next 15 days. Call the client to renew.',ro:true,rows:S.clubs.filter(function(m){return clubStatus(m)==='Active'&&m.expiry<=lim&&!S.clubs.some(function(o){return o.clientId===m.clientId&&o.id!==m.id&&o.expiry>m.expiry})}).sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')}).map(function(m){return {main:m.clientName,sub:(m.clientPhone||'')+' · '+m.planName+' · '+m.no+' · ends '+fmtDate(m.expiry),btn:'Renew',run:function(){sellClub(m.clientId)},view:function(){viewClub(m.id)}}})});
   }
   if(d==='aes'){
     var bm=aiBilledMap();
@@ -5995,7 +6211,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
-  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','cities','states','invoice-form','invoices','packages','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
