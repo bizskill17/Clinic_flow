@@ -102,6 +102,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .mi .chip{flex:none;width:34px;height:34px;border-radius:9px;background:var(--soft);color:var(--c);display:grid;place-items:center;transition:background .15s ease,color .15s ease}
 .mi .chip svg{width:18px;height:18px}
 .it-std{display:block;font-size:12px;color:var(--m5);margin-top:3px;min-height:0}.it-std s{color:var(--muted)}.club-note{margin-top:6px;font-size:13px;color:var(--m4)}.totals .club-save span{color:var(--m5);font-weight:600}
+.tile-btn{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background .15s ease,transform .15s ease}.tile-btn:hover{background:color-mix(in srgb,var(--tc) 9%,var(--surface))}.tile-btn:active{transform:translateY(1px)}
 .nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);border-left:5px solid var(--tc);background:var(--surface);cursor:pointer;text-align:left;color:var(--text);font:inherit}.pend-card .n{font-size:24px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;order:2}.pend-card .l{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;order:1}.pend-card:hover{background:color-mix(in srgb,var(--tc) 8%,var(--surface))}.pend-card.on{border-color:var(--tc);box-shadow:0 0 0 1px var(--tc) inset;background:color-mix(in srgb,var(--tc) 10%,var(--surface))}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
@@ -1585,10 +1586,10 @@ SECTIONS.dashboard={
     var outAmt=0,outN=0,alx=allocate(); dueBills(alx).forEach(function(i){outAmt+=billInfo(i,alx).bal;outN++});
     var monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
     var html='<div class="tiles">'+
-      tile('--m0','Sales today',money0(sum(invT,'total')),invT.length+' invoice'+(invT.length===1?'':'s'))+
-      tile('--m5','Collected today',money0(sum(recT,'amount')),recT.length+' receipt'+(recT.length===1?'':'s'))+
-      tile('--m4','Sales in '+monthName,money0(sum(invM,'total')),'Collected '+money0(sum(recM,'amount')))+
-      tile('--m6','Outstanding',money0(outAmt),outN+' unpaid bill'+(outN===1?'':'s')+' (all modules)')+'</div>';
+      tile('--m0','Sales today',money0(sum(invT,'total')),invT.length+' invoice'+(invT.length===1?'':'s'),openList('invoices',invF,t,function(f){f.status='';f.view='inv'}))+
+      tile('--m5','Collected today',money0(sum(recT,'amount')),recT.length+' receipt'+(recT.length===1?'':'s'),openList('receipts',recF,t,function(f){f.mode=''}))+
+      tile('--m4','Sales in '+monthName,money0(sum(invM,'total')),'Collected '+money0(sum(recM,'amount')),openList('invoices',invF,monthStart(),function(f){f.status='';f.view='inv'}))+
+      tile('--m6','Outstanding',money0(outAmt),outN+' unpaid bill'+(outN===1?'':'s')+' (all modules)',function(){go('outstanding')})+'</div>';
 
     // chart: last 14 days sales
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(d))}
@@ -1612,7 +1613,17 @@ SECTIONS.dashboard={
   }
 };
 function step(n,c,t,p,goKey,label){return '<div class="step" style="--sc:var('+c+');--sc-soft:var('+c+'-soft)"><span class="n">'+n+'</span><strong>'+esc(t)+'</strong><p>'+esc(p)+'</p><button class="btn" data-go="'+goKey+'">'+esc(label)+'</button></div>'}
-function tile(c,k,v,s){return '<div class="tile" style="--tc:var('+c+')"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div><div class="s">'+esc(s)+'</div></div>'}
+function tile(c,k,v,s,fn){
+  var inner='<div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div><div class="s">'+esc(s)+'</div>';
+  if(!fn) return '<div class="tile" style="--tc:var('+c+')">'+inner+'</div>';
+  var id=dept+':'+k; TILE_FN[id]=fn;
+  return '<button type="button" class="tile tile-btn" style="--tc:var('+c+')" data-tile="'+esc(id)+'" title="Open">'+inner+'</button>';
+}
+var TILE_FN={};
+document.addEventListener('click',function(e){var t=e.target.closest&&e.target.closest('[data-tile]');if(t&&TILE_FN[t.dataset.tile])TILE_FN[t.dataset.tile]()});
+function monthStart(){return todayStr().slice(0,8)+'01'}
+/* open a list with a date range already filled in */
+function openList(key,f,from,extra){return function(){f.q='';f.from=from;f.to=todayStr();if(extra)extra(f);go(key)}}
 function hbar(label,val,frac,c,rawLabel){return '<div class="hbar" style="--hc:var('+c+')"><span>'+(rawLabel?label:esc(label))+'</span><span class="num">'+esc(val)+'</span><div class="track"><div class="fill" style="width:'+Math.max(2,Math.round(frac*100))+'%"></div></div></div>'}
 function barChart(days,vals,today){
   var W=560,H=200,pl=8,pr=8,pt=22,pb=30,n=days.length,max=Math.max.apply(null,vals.concat([0]));
@@ -5112,15 +5123,15 @@ SECTIONS['ph-dashboard']={
     S.phMoves.forEach(function(m){if(m.type==='Sale'&&m.clientId){var x=phSaleInfo(m,al);if(x.bal>0.004){phDue+=x.bal;phDueN++}}});
     var payable=r2(S.phSuppliers.reduce(function(x,sp){return x+Math.max(0,phSupplierPayable(sp.id).net)},0));
     var html='<div class="tiles">'+
-      tile('--m3','Sales today',money0(sum(salesT)),salesT.length+' bill'+(salesT.length===1?'':'s')+' · collected '+money0(sum(recT,'amount')))+
-      tile('--m4','Sales in '+monthName,money0(r2(sum(salesM)-sum(retM))),'Net of returns '+money0(sum(retM)))+
-      tile('--m2','Purchases in '+monthName,money0(sum(purM)),purM.length+' purchase'+(purM.length===1?'':'s'))+
-      tile('--m7','Stock value at cost',money0(stockVal),rows.length+' item'+(rows.length===1?'':'s'))+'</div>'+
+      tile('--m3','Sales today',money0(sum(salesT)),salesT.length+' bill'+(salesT.length===1?'':'s')+' · collected '+money0(sum(recT,'amount')),openList('ph-item-issue',phListF.out,todayStr(),function(f){f.type='Sale';f.item='';phMode.out='list'}))+
+      tile('--m4','Sales in '+monthName,money0(r2(sum(salesM)-sum(retM))),'Net of returns '+money0(sum(retM)),openList('ph-item-issue',phListF.out,monthStart(),function(f){f.type='';f.item='';phMode.out='list'}))+
+      tile('--m2','Purchases in '+monthName,money0(sum(purM)),purM.length+' purchase'+(purM.length===1?'':'s'),openList('ph-item-in',phListF.in,monthStart(),function(f){f.type='Purchase';f.item='';phMode.in='list'}))+
+      tile('--m7','Stock value at cost',money0(stockVal),rows.length+' item'+(rows.length===1?'':'s'),function(){go('ph-inventory')})+'</div>'+
       '<div class="tiles">'+
-      tile('--m11','Low stock',String(low.length),'At or below reorder level')+
-      tile('--m6','Out of stock',String(out),'Items with no stock')+
-      tile('--m6','Due on pharmacy bills',money0(phDue),phDueN+' unpaid bill'+(phDueN===1?'':'s'))+
-      tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases')+'</div>';
+      tile('--m11','Low stock',String(low.length),'At or below reorder level',function(){lsF.q='';lsF.cat='';lsF.show='low';go('ph-low-stock')})+
+      tile('--m6','Out of stock',String(out),'Items with no stock',function(){lsF.q='';lsF.cat='';lsF.show='out';go('ph-low-stock')})+
+      tile('--m6','Due on pharmacy bills',money0(phDue),phDueN+' unpaid bill'+(phDueN===1?'':'s'),function(){go('ph-outstanding')})+
+      tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases',function(){go('ph-payable')})+'</div>';
     /* chart */
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var dd=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(dd))}
     var vals=days.map(function(dd){return sum(S.phMoves.filter(function(m){return m.type==='Sale'&&!m.cancelled&&m.date===dd}))});
@@ -6075,15 +6086,15 @@ SECTIONS['ae-dashboard']={
     var mk=Object.keys(modes).sort(function(a,c){return modes[c]-modes[a]}), mmax=mk.length?modes[mk[0]]||1:1;
 
     var html='<div class="tiles">'+
-      tile('--m2','Appointments today',String(apLive.length),apDone+' completed')+
-      tile('--m11','Sessions today',String(sesT.length),pl(conT.length,'consultation'))+
-      tile('--m4','Billed today',money0(sum(invT)),pl(invT.length,'invoice'))+
-      tile('--m5','Collected today',money0(sum(recT,'amount')),pl(recT.length,'receipt'))+'</div>'+
+      tile('--m2','Appointments today',String(apLive.length),apDone+' completed',function(){apF.view='day';apF.date=todayStr();apF.q='';apF.status='';go('ae-appointments')})+
+      tile('--m11','Sessions today',String(sesT.length),pl(conT.length,'consultation'),openList('ae-sessions',sesF,t,function(){sesMode='list'}))+
+      tile('--m4','Billed today',money0(sum(invT)),pl(invT.length,'invoice'),openList('ae-invoices',aiF,t,function(f){f.status='';aiMode='list'}))+
+      tile('--m5','Collected today',money0(sum(recT,'amount')),pl(recT.length,'receipt'),openList('ae-receipts',recF,t,function(f){f.mode=''}))+'</div>'+
       '<div class="tiles">'+
-      tile('--m4','Billed in '+monthName,money0(sum(invM)),pl(invM.length,'invoice'))+
-      tile('--m5','Collected in '+monthName,money0(sum(recM,'amount')),pl(recM.length,'receipt'))+
-      tile('--m6','Outstanding',money0(dueTot),pl(owers.length,'client'))+
-      tile('--m3','Quotations in '+monthName,money0(sum(qtM)),started+' of '+qtM.length+' started')+'</div>';
+      tile('--m4','Billed in '+monthName,money0(sum(invM)),pl(invM.length,'invoice'),openList('ae-invoices',aiF,ym+'-01',function(f){f.status='';aiMode='list'}))+
+      tile('--m5','Collected in '+monthName,money0(sum(recM,'amount')),pl(recM.length,'receipt'),openList('ae-receipts',recF,ym+'-01',function(f){f.mode=''}))+
+      tile('--m6','Outstanding',money0(dueTot),pl(owers.length,'client'),function(){go('ae-outstanding')})+
+      tile('--m3','Quotations in '+monthName,money0(sum(qtM)),started+' of '+qtM.length+' started',openList('ae-quotations',qtF,ym+'-01',function(){qtMode='list'}))+'</div>';
 
     html+='<div class="panels"><div class="panel"><h3>Today’s appointments</h3>'+(apT.length?'<div class="tbl"><table><thead><tr><th>Time</th><th>Client</th><th>For</th><th>Doctor / staff</th><th>Status</th></tr></thead><tbody>'+
         apT.map(function(a){return '<tr class="click-row" data-ad-appt="'+esc(a.id)+'"><td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong></td><td><strong>'+esc(a.clientName)+'</strong></td><td>'+esc(apWhat(a))+'</td><td>'+esc(apStaffNames(a)||'—')+'</td><td><span class="pill '+(AP_PILL[a.status]||'off')+'">'+esc(a.status)+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No appointments today.</p>')+'</div>'+
