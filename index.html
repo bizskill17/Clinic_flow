@@ -6192,7 +6192,9 @@ SECTIONS['ph-pending']=pendSection('pha');
 
 /* ---------- shell wiring ---------- */
 var VIEWS={home:$('#view-home'),spa:$('#view-spa'),pha:$('#view-pha'),aes:$('#view-aes')}, notice=$('#notice');
+var curView='home';
 function show(view){
+  curView=view;
   if(document.body.classList.contains('nav-open'))setNav(false);
   Object.keys(VIEWS).forEach(function(k){VIEWS[k].hidden=k!==view});
   window.scrollTo(0,0); closeModal();
@@ -6255,7 +6257,36 @@ function pwEye(inp){
   w.appendChild(b);
 }
 function passwordDialog(){openModal('<h2>Change password</h2><form id="pw-form"><div class="field"><label>Current password</label><input id="pw-old" type="password" required></div><div class="field"><label>New password</label><input id="pw-new" type="password" minlength="8" required></div><p class="err" id="pw-err" hidden></p><div class="m-actions"><button class="btn primary">Save password</button></div></form>','--m10',false,function(m){pwEye(m.querySelector('#pw-old'));pwEye(m.querySelector('#pw-new'));m.querySelector('#pw-form').onsubmit=function(e){e.preventDefault();authCall('change_password',{oldPassword:m.querySelector('#pw-old').value,newPassword:m.querySelector('#pw-new').value}).then(function(){CURRENT_USER.mustChangePassword=false;closeModal();toast('Password updated');}).catch(function(x){var er=m.querySelector('#pw-err');er.textContent=x.message;er.hidden=false})}})}
-function startApp(){applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><span><strong>'+esc(CURRENT_USER.name)+'</strong>'+esc(CURRENT_USER.role)+'</span><button class="btn sm" data-logout>Logout</button></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
+/* keep the open screen (and any half-filled form) across a page refresh, per browser tab */
+var RESUME_KEY='resume-v1';
+function saveResume(){
+  if(!CURRENT_USER) return;
+  var st={user:CURRENT_USER.id||CURRENT_USER.userId||CURRENT_USER.name,view:curView,key:current,
+    modes:{ai:aiMode,ses:sesMode,con:conMode,qt:qtMode,ph:phMode},
+    drafts:{spa:draft,ai:aiDraft,ses:sesDraft,con:conDraft,qt:qtDraft,ph:phDraft}};
+  try{sessionStorage.setItem(RESUME_KEY,JSON.stringify(st))}catch(e){try{st.drafts={};st.modes={ai:'list',ses:'list',con:'list',qt:'list',ph:{in:'list',out:'list'}};sessionStorage.setItem(RESUME_KEY,JSON.stringify(st))}catch(e2){}}
+}
+window.addEventListener('pagehide',saveResume);
+window.addEventListener('beforeunload',saveResume);
+function resumeApp(){
+  var st=null; try{st=JSON.parse(sessionStorage.getItem(RESUME_KEY)||'null');sessionStorage.removeItem(RESUME_KEY)}catch(e){}
+  if(!st||st.user!==(CURRENT_USER.id||CURRENT_USER.userId||CURRENT_USER.name)) return false;
+  if(st.view==='home'){if(CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'){show('home');return true}return false}
+  if(['spa','aes','pha'].indexOf(st.view)<0||!allowedDept(st.view)) return false;
+  var btn=$('#nav-'+st.view+' .mi[data-key="'+st.key+'"]'), ok=st.key&&SECTIONS[st.key]&&btn&&!btn.closest('li').hidden;
+  if(ok){
+    var m=st.modes||{}, d=st.drafts||{};
+    try{
+      draft=d.spa||null; aiDraft=d.ai||null; sesDraft=d.ses||null; conDraft=d.con||null; qtDraft=d.qt||null; if(d.ph)phDraft=d.ph;
+      aiMode=(m.ai==='form'&&aiDraft)?'form':'list'; sesMode=(m.ses==='form'&&sesDraft)?'form':'list'; conMode=(m.con==='form'&&conDraft)?'form':'list'; qtMode=(m.qt==='form'&&qtDraft)?'form':'list';
+      if(m.ph){phMode.in=(m.ph.in==='form'&&phDraft.in)?'form':'list';phMode.out=(m.ph.out==='form'&&phDraft.out)?'form':'list'}
+    }catch(e){}
+  }
+  show(st.view);
+  if(ok&&st.key!==current){try{go(st.key)}catch(e){go({spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[st.view])}}
+  return true;
+}
+function startApp(){applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><span><strong>'+esc(CURRENT_USER.name)+'</strong>'+esc(CURRENT_USER.role)+'</span><button class="btn sm" data-logout>Logout</button></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(resumeApp())return;if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
 function initAuth(){authCall('me').then(function(x){CURRENT_USER=x.user;startApp();if(CURRENT_USER.mustChangePassword)passwordDialog();}).catch(function(){authOverlay();});}
 initAuth();
 })();
