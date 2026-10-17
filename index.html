@@ -1598,7 +1598,7 @@ SECTIONS.dashboard={
     var modeTot={}; recM.forEach(function(r){modeTot[r.mode||'Other']=r2((modeTot[r.mode||'Other']||0)+(+r.amount||0))});
     var mk=Object.keys(modeTot).sort(function(a,b){return modeTot[b]-modeTot[a]}), mmax=Math.max.apply(null,mk.map(function(k){return modeTot[k]}).concat([1]));
     var mcol=['--m5','--m4','--m2','--m3','--m1'];
-    html+='<div class="stack"><div class="panel"><h3>Payments received in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k,ix){return hbar(k,money0(modeTot[k]),modeTot[k]/mmax,mcol[ix%mcol.length])}).join(''):'<p class="hint">No payments recorded this month yet.</p>')+'</div>'+memDashPanel()+occasionsPanel()+'</div></div>';
+    html+='<div class="stack"><div class="panel"><h3>Payments received in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k,ix){return hbar(k,money0(modeTot[k]),modeTot[k]/mmax,mcol[ix%mcol.length])}).join(''):'<p class="hint">No payments recorded this month yet.</p>')+'</div>'+memDashPanel()+'</div></div>';
 
     // recent invoices + top services
     var recent=S.invoices.slice().sort(sortInv).slice(0,6);
@@ -6087,7 +6087,7 @@ SECTIONS['ae-dashboard']={
 
     html+='<div class="panels"><div class="panel"><h3>Today’s appointments</h3>'+(apT.length?'<div class="tbl"><table><thead><tr><th>Time</th><th>Client</th><th>For</th><th>Doctor / staff</th><th>Status</th></tr></thead><tbody>'+
         apT.map(function(a){return '<tr class="click-row" data-ad-appt="'+esc(a.id)+'"><td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong></td><td><strong>'+esc(a.clientName)+'</strong></td><td>'+esc(apWhat(a))+'</td><td>'+esc(apStaffNames(a)||'—')+'</td><td><span class="pill '+(AP_PILL[a.status]||'off')+'">'+esc(a.status)+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No appointments today.</p>')+'</div>'+
-      '<div class="stack"><div class="panel"><h3>Collections in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k){return hbar(k,money0(modes[k]),modes[k]/mmax,'--m5')}).join(''):'<p class="hint">No collections this month.</p>')+'</div>'+occasionsPanel()+'</div></div>';
+      '<div class="stack"><div class="panel"><h3>Collections in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k){return hbar(k,money0(modes[k]),modes[k]/mmax,'--m5')}).join(''):'<p class="hint">No collections this month.</p>')+'</div>'+'</div></div>';
 
     html+='<div class="panels"><div class="panel"><h3>Follow-up: sessions left, nothing booked</h3>'+(follow.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Procedure</th><th>Done</th><th>Last session</th><th></th></tr></thead><tbody>'+
         follow.slice(0,10).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'"><strong>'+esc(r.q.clientName)+'</strong></button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td><td>'+esc(r.l.name)+'<div class="sub">'+esc(r.q.no)+'</div></td><td class="nowrap">'+progBar(r.st.done,+r.l.sessions||0)+'</td><td class="nowrap">'+(r.last?fmtDate(r.last):'—')+'</td><td>'+(readOnly?'':'<button class="btn sm w" data-ad-book="'+esc(r.q.id)+'|'+r.i+'">Book</button>')+'</td></tr>'}).join('')+'</tbody></table></div>'+
