@@ -106,6 +106,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .it-std{display:block;font-size:12px;color:var(--m5);margin-top:3px;min-height:0}.it-std s{color:var(--muted)}.club-note{margin-top:6px;font-size:13px;color:var(--m4)}.totals .club-save span{color:var(--m5);font-weight:600}
 .tile-btn{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background .15s ease,transform .15s ease}.tile-btn:hover{background:color-mix(in srgb,var(--tc) 9%,var(--surface))}.tile-btn:active{transform:translateY(1px)}
 .pw-wrap{position:relative}.pw-wrap input{padding-right:46px!important}.pw-wrap .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px!important;height:34px;min-height:0;padding:0!important;margin:0!important;border:0;border-radius:8px;background:transparent!important;color:#6b7775!important;display:grid;place-items:center;cursor:pointer}.pw-wrap .pw-eye:hover{background:#e3e8e6!important;color:#1f2a2c!important}
+.wa-tag{margin-top:12px;padding:8px 12px;border-radius:10px;background:color-mix(in srgb,#25d366 8%,var(--surface));border:1px solid color-mix(in srgb,#25d366 25%,var(--line));font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.wa-tag .wa-ic{color:#1f9e55;display:inline-grid}.wa-tag .ok{color:#1f9e55;font-weight:600}.wa-tag .bad{color:var(--m6);font-weight:600}.wa-sws{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.wa-sw{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.wa-sw input{margin-top:3px;width:18px;height:18px;accent-color:#1f9e55}.wa-sw span{display:flex;flex-direction:column;gap:2px}.wa-cron{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.wa-cron code,.panel code{background:color-mix(in srgb,var(--ink) 6%,var(--surface));padding:6px 8px;border-radius:6px;font-size:12px;word-break:break-all}
 .nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);border-left:5px solid var(--tc);background:var(--surface);cursor:pointer;text-align:left;color:var(--ink);font:inherit}.pend-card .n{font-size:24px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;order:2}.pend-card .l{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;order:1}.pend-card:hover{background:color-mix(in srgb,var(--tc) 8%,var(--surface))}.pend-card.on .l{color:var(--ink)}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
@@ -486,6 +487,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c10" data-key="users">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
               Users</button></li>
+            <li><button class="mi c5" data-key="wa-settings">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg></span>
+              WhatsApp</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -578,6 +582,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c10" data-key="users">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
               Users</button></li>
+            <li><button class="mi c5" data-key="wa-settings">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg></span>
+              WhatsApp</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -678,6 +685,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c10" data-key="users">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></svg></span>
               Users</button></li>
+            <li><button class="mi c5" data-key="wa-settings">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg></span>
+              WhatsApp</button></li>
           </ul></li>
       </ul>
     </nav>
@@ -1266,12 +1276,12 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
-var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[]};
-var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false};
-var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships'};
+var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[]};
+var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false,waLog:false};
+var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
 function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
@@ -1312,7 +1322,7 @@ function authCall(action,data){
 }
 function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
-  var common=['clients','cities','states','users','business'];
+  var common=['clients','cities','states','users','business','waLog'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
@@ -1357,6 +1367,10 @@ function errText(e){
   return 'Could not save. Check your connection and try again.';
 }
 function put(kind,obj){
+  var isNew=!!obj&&!S[kind].some(function(x){return x.id===obj.id});
+  return putRaw(kind,obj).then(function(r){if(isNew)waOnSaved(kind,obj);return r});
+}
+function putRaw(kind,obj){
   var data=Object.assign({},obj); var id=data.id; delete data.id;
   if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);scheduleRefresh();});
   var list=S[kind], i=list.findIndex(function(x){return x.id===id});
@@ -1454,6 +1468,7 @@ function openModal(html,color,wide,onMount){
 var EYE='<svg class="eye" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 /* full-page PDF preview with Download / Open / Close */
 function pdfView(name,data){
+  if(PDF_CAPTURE){var cap=PDF_CAPTURE;PDF_CAPTURE=null;cap(name,data);return}
   var blob=data instanceof Blob?data:new Blob([data],{type:'application/pdf'}), url=URL.createObjectURL(blob);
   var old=$('#pdfv'); if(old) old.remove();
   var ov=document.createElement('div'); ov.id='pdfv'; ov.className='pdfv'; ov.setAttribute('role','dialog'); ov.setAttribute('aria-label',name);
@@ -1683,6 +1698,7 @@ function editClient(id,onSaved){
     '<div class="field"><label for="cf-gender">Gender</label><select id="cf-gender">'+optList([['','Not specified'],'Female','Male','Other'],c.gender||'')+'</select></div>'+
     '<div class="field"><label for="cf-dob">Date of birth</label><input type="date" id="cf-dob" value="'+esc(c.dob)+'"></div>'+
     '<div class="field"><label for="cf-anniv">Anniversary date</label><input type="date" id="cf-anniv" value="'+esc(c.anniv)+'"></div>'+
+    '<div class="field"><label for="cf-wa">Send WhatsApp messages</label><select id="cf-wa">'+optList(['Yes','No'],c.waOff?'No':'Yes')+'</select></div>'+
     '<div class="field span2"><label for="cf-address">Address</label><textarea id="cf-address" rows="3">'+esc(c.address)+'</textarea></div>'+
     '<div class="field"><label for="cf-city">City</label><select id="cf-city">'+optList([['',S.cities.length?'Select a city':'No cities yet (add in Masters › Cities)']].concat(S.cities.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(ct){return [ct.id,ct.name]})),c.cityId||'')+'</select></div>'+
     '<div class="field"><label>State</label><div class="ro-field" id="cf-state" aria-live="polite">'+esc(cityLabel(c.cityId).state||'—')+'</div></div>'+
@@ -1703,7 +1719,7 @@ function editClient(id,onSaved){
         else { var dup=S.clients.find(function(x){return x.id!==id&&String(x.phone||'').replace(/\D/g,'').slice(-10)===digits.slice(-10)}); if(dup) msg='This phone number already belongs to '+dup.name+'.'; }
         if(msg){err.textContent=msg;err.hidden=false;return}
         var now=new Date().toISOString();
-        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),anniv:v('anniv'),address:v('address'),cityId:v('city'),openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
+        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),anniv:v('anniv'),waOff:v('wa')==='No',address:v('address'),cityId:v('city'),openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
         var btn=m.querySelector('[type=submit]'); btn.disabled=true;
         put('clients',obj).then(function(){
           closeModal(); toast(id?'Client updated':'Client added');
@@ -2129,7 +2145,7 @@ function viewInvoice(id,fallback){
       '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Package benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (i.roundOff?'<div class="r"><span>Round off</span><span>'+(i.roundOff<0?'− ':'+ ')+money(Math.abs(i.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(i.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>'+(i.clubSaving>0?'<div class="r club-save"><span>★ Member savings'+(i.clubPlan?' ('+esc(i.clubPlan)+')':'')+'</span><span>'+money(i.clubSaving)+'</span></div>':'')+'</div></div>'+
-      cancelNote(i)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId&&!i.clubSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+      cancelNote(i)+waTag('inv',i.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!i.cancelled&&canCancel()&&!i.memSaleId&&!i.clubSaleId?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(i.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
     var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('invoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=invoicePdf(i,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from package '+i.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(pdf)pdfView(i.no+'.pdf',pdf)};
@@ -2214,7 +2230,7 @@ SECTIONS.receipts={
     var tot=0, byMode={};
     list.forEach(function(r){tot+=+r.amount||0;byMode[r.mode]=(byMode[r.mode]||0)+(+r.amount||0)});
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Receipt</th><th>Date</th><th>Client</th><th>Towards</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
-      list.map(function(r){return '<tr><td class="nowrap"><strong>'+esc(r.no)+'</strong></td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+esc(r.clientName)+'</td><td class="nowrap">'+towardsCell(r)+'</td><td>'+esc(r.mode)+'</td><td>'+esc(r.reference||'')+'</td><td class="num">'+money(r.amount)+'</td><td><div class="row-acts">'+(r.clientId?'<button class="btn sm" data-ledger="'+esc(r.clientId)+'">Ledger</button>':'')+'<button class="btn sm" data-dl="'+esc(r.src+':'+r.id)+'">'+EYE+' View PDF</button><button class="btn sm danger w" data-del="'+esc(r.src+':'+r.id)+'">Delete</button></div></td></tr>'}).join('')+
+      list.map(function(r){return '<tr><td class="nowrap"><strong>'+esc(r.no)+'</strong></td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+esc(r.clientName)+'</td><td class="nowrap">'+towardsCell(r)+'</td><td>'+esc(r.mode)+'</td><td>'+esc(r.reference||'')+'</td><td class="num">'+money(r.amount)+'</td><td><div class="row-acts">'+(r.clientId?'<button class="btn sm" data-ledger="'+esc(r.clientId)+'">Ledger</button>':'')+(WA.configured&&r.clientId&&!readOnly?'<button class="btn sm" data-wares="receipt|'+esc(r.id)+'" title="Send on WhatsApp">'+WA_ICON+'</button>':'')+'<button class="btn sm" data-dl="'+esc(r.src+':'+r.id)+'">'+EYE+' View PDF</button><button class="btn sm danger w" data-del="'+esc(r.src+':'+r.id)+'">Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(tot)+'</td><td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,allReceipts().length,'receipts')+' · '+Object.keys(byMode).map(function(k){return esc(k)+' '+money0(byMode[k])}).join(' · ')+'</p>';
     var find=function(key){var p=key.split(':');return {src:p[0],r:findIn(p[0],p.slice(1).join(':'))}};
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){
@@ -3039,7 +3055,7 @@ function phViewMove(id,fallback){
       (sale||t==='Return'?'<div class="r"><span>Amount</span><span>'+money(m.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(m.discount)+'</span></div><div class="r"><span>Amount before GST</span><span>'+money(m.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(m.tax)+'</span></div>':'')+
       (m.roundOff?'<div class="r"><span>Round off</span><span>'+(m.roundOff<0?'− ':'+ ')+money(Math.abs(m.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>'+(t==='Expiry'||t==='Damage'?'Loss at cost':(/Issue$/.test(t)?'Issued at cost':(t==='Return'?'Credit to client':'Total')))+'</span><span>'+money(m.total)+'</span></div>'+(sale?'<div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div>':'')+'</div></div>'+
-      cancelNote(m)+'<div class="m-actions"><button class="btn" data-x>Close</button>'+(t==='Purchase'&&!readOnly&&(phBillBal(m)||{}).bal>0.004?'<button class="btn primary w" data-paysup>Pay supplier</button>':'')+''+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(sale&&!m.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel sale</button>':'')+(m.cancelled?'':'<button class="btn w" data-edit>Edit</button>')+(sale&&!m.cancelled&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
+      cancelNote(m)+(sale&&m.clientId?waTag('phsale',m.id):'')+'<div class="m-actions"><button class="btn" data-x>Close</button>'+(t==='Purchase'&&!readOnly&&(phBillBal(m)||{}).bal>0.004?'<button class="btn primary w" data-paysup>Pay supplier</button>':'')+''+(sale?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(sale&&!m.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel sale</button>':'')+(m.cancelled?'':'<button class="btn w" data-edit>Edit</button>')+(sale&&!m.cancelled&&x.bal>0.004&&m.clientId?'<button class="btn primary w" data-paynow>Record payment</button>':'')+'</div>';
     m0.querySelector('[data-x]').onclick=closeModal;
     var ed=m0.querySelector('[data-edit]'); if(ed) ed.onclick=function(){phEdit(id)};
     var cx=m0.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('phMoves',id)};
@@ -3642,7 +3658,7 @@ function viewCon(id,fallback){
       '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.sessions+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
+      waTag('conrx',c.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){conPdf(c,'consultation')};
     m.querySelector('[data-rx]').onclick=function(){conPdf(c,'prescription')};
@@ -4117,7 +4133,7 @@ function viewSes(id,fallback){
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>'+EYE+' Prescription</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
+      waTag('sesrx',s.id)+(function(){var sp=waSesProc(s);return sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id?waTag('edu',s.id):''})()+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>'+EYE+' Prescription</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-rx]').onclick=function(){sesPdf(s)};
     var se=m.querySelector('[data-edit]'); if(se) se.onclick=function(){sesEdit(id)};
@@ -4442,7 +4458,7 @@ function viewAeInv(id,fallback){
       '<div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
       (v.roundOff?'<div class="r"><span>Round off</span><span>'+(v.roundOff<0?'− ':'+ ')+money(Math.abs(v.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(v.total)+'</span></div><div class="r"><span>Paid</span><span>'+money(x.paid)+'</span></div><div class="r"><strong>Balance</strong><strong>'+money(Math.max(0,x.bal))+'</strong></div></div></div>'+
-      cancelNote(v)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!v.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(readOnly||v.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
+      cancelNote(v)+waTag('aeinv',v.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button>'+(!v.cancelled&&canCancel()?'<button class="btn danger w" data-cancel>Cancel invoice</button>':'')+(readOnly||v.cancelled?'':'<button class="btn w" data-edit>Edit</button>'+(x.bal>0.004?'<button class="btn primary w" data-paynow>Record payment</button>':''))+'</div>';
     var cx=m.querySelector('[data-cancel]'); if(cx) cx.onclick=function(){cancelBill('aeInvoices',id)};
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){aiPdf(v)};
@@ -5010,7 +5026,7 @@ function viewQt(id,fallback){
       (q.other?'<div class="r"><span>'+esc(q.otherDesc||'Other charges')+'</span><span>'+money(q.other)+'</span></div><div class="r"><span>GST on other charges ('+q.otherGst+'%)</span><span>'+money(q.otherTax)+'</span></div>':'')+
       (q.roundOff?'<div class="r"><span>Round off</span><span>'+(q.roundOff<0?'− ':'+ ')+money(Math.abs(q.roundOff))+'</span></div>':'')+
       '<div class="r big"><span>Total</span><span>'+money(q.total)+'</span></div></div></div>'+
-      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button><button class="btn w" data-edit>Edit</button></div>';
+      waTag('quote',q.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' View PDF</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){qtPdf(q)};
     m.querySelector('[data-edit]').onclick=function(){qtEdit(id)};
@@ -6192,6 +6208,158 @@ SECTIONS['spa-pending']=pendSection('spa');
 SECTIONS['ae-pending']=pendSection('aes');
 SECTIONS['ph-pending']=pendSection('pha');
 
+/* =========================================================
+   WHATSAPP (Meta Cloud API)
+   Sending happens on the server; the browser only builds the PDF.
+   ========================================================= */
+var WA={configured:false,on:{}}, WA_GROUP={inv:'invoice',aeinv:'invoice',phsale:'invoice',quote:'quotation',receipt:'receipt',conrx:'prescription',sesrx:'prescription',edu:'education',birthday:'birthday'};
+var WA_LABEL={invoice:'Invoice',quotation:'Quotation',receipt:'Receipt',prescription:'Prescription',education:'Educational content',birthday:'Birthday wishes',test:'Test message'};
+function waLoadStatus(){return authCall('wa_status').then(function(x){WA=x||WA}).catch(function(){})}
+function waOn(group){return !!(WA.configured&&WA.on&&WA.on[group])}
+function waB64(data){
+  var u8=data instanceof Uint8Array?data:new Uint8Array(data instanceof ArrayBuffer?data:(data&&data.buffer?data.buffer:[]));
+  var s='',ch=0x8000; for(var i=0;i<u8.length;i+=ch) s+=String.fromCharCode.apply(null,u8.subarray(i,i+ch)); return btoa(s);
+}
+var PDF_CAPTURE=null;
+function waCapture(fn){var out=null;PDF_CAPTURE=function(n,d){out={name:n,data:d}};try{fn()}catch(e){}finally{PDF_CAPTURE=null}return out}
+function waMeds(list){return (list||[]).some(function(m){return m&&String(m.name||'').trim()})}
+function waFirst(n){return String(n||'').trim().split(/\s+/)[0]||'there'}
+function waSesProc(s){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId),pid=s.procId||(ln&&ln.l&&ln.l.procId)||'';return {id:pid,proc:findIn('aeProcs',pid),name:(ln&&ln.l&&ln.l.name)||s.procName||''}}
+/* what to send for one document */
+function waBuild(kind,id){
+  var B=biz().name||'us', o=null, d;
+  if(kind==='inv'){d=invById(id);if(!d||d.cancelled)return null;
+    var pm=paidMap(),x=invInfo(d,pm),recs=S.receipts.filter(function(r){return r.invoiceId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+    var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)),memPart=r2(Math.min(+d.memPaid||0,x.paid)),fromAdv=r2(Math.max(0,x.paid-Math.min(linked,x.paid)-memPart));
+    o={pdf:waCapture(function(){var p=invoicePdf(d,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from package '+d.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(p)pdfView(d.no+'.pdf',p)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
+  else if(kind==='aeinv'){d=aeInvById(id);if(!d||d.cancelled)return null;o={pdf:waCapture(function(){aiPdf(d)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
+  else if(kind==='phsale'){d=phMove(id);if(!d||d.type!=='Sale'||d.cancelled||!d.clientId)return null;
+    var x2=phSaleInfo(d),recs2=allReceipts().filter(function(r){return r.saleId===id}),linked2=r2(recs2.reduce(function(s2,r){return s2+(+r.amount||0)},0)),fa=r2(x2.paid-Math.min(linked2,x2.paid));
+    o={pdf:waCapture(function(){var p=phSalePdf(d,x2,recs2,fa);if(p)pdfView(d.no+'.pdf',p)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
+  else if(kind==='quote'){d=findIn('aeQuotes',id);if(!d)return null;o={pdf:waCapture(function(){qtPdf(d)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
+  else if(kind==='receipt'){d=findIn('receipts',id)||findIn('phReceipts',id);if(!d||!d.clientId)return null;o={pdf:waCapture(function(){var p=receiptPdf(d);if(p)pdfView(d.no+'.pdf',p)}),params:[waFirst(d.clientName),money(d.amount),d.no,B]}}
+  else if(kind==='conrx'){d=findIn('aeCons',id);if(!d||!waMeds(d.meds))return null;o={pdf:waCapture(function(){conPdf(d,'prescription')}),params:[waFirst(d.clientName),B,fmtDate(d.date)]}}
+  else if(kind==='sesrx'){d=findIn('aeSessions',id);if(!d||!waMeds(d.meds))return null;o={pdf:waCapture(function(){sesPdf(d)}),params:[waFirst(d.clientName),B,fmtDate(d.date)]}}
+  else if(kind==='edu'){d=findIn('aeSessions',id);if(!d)return null;var sp=waSesProc(d),f=sp.proc&&sp.proc.eduPdf;if(!f||!f.id)return null;
+    o={fileId:f.id,filename:(sp.name||'Information').replace(/[^A-Za-z0-9 ._-]/g,'')+'.pdf',params:[waFirst(d.clientName),sp.name||'your procedure',B],dedupe:d.clientId+'|'+sp.id,docNo:sp.name}}
+  if(!o) return null;
+  var c=clientById(d.clientId)||{};
+  return Object.assign({group:WA_GROUP[kind],kind:kind,docId:id,docNo:d.no,clientId:d.clientId||'',clientName:d.clientName||c.name||'',to:c.phone||d.clientPhone||''},o);
+}
+/* queue: wait a moment so the invoice PDF includes a payment saved right after it */
+var waQ=[],waT=null,waBusy=false;
+function waQueue(kind,id,manual){
+  if(!manual&&!waOn(WA_GROUP[kind])) return;
+  if(waQ.some(function(j){return j.kind===kind&&j.id===id})) return;
+  waQ.push({kind:kind,id:id,manual:!!manual}); clearTimeout(waT); waT=setTimeout(waRun,manual?50:1500);
+}
+function waRun(){
+  if(waBusy||!waQ.length) return; waBusy=true;
+  var j=waQ.shift(), b=null; try{b=waBuild(j.kind,j.id)}catch(e){b=null}
+  var next=function(){waBusy=false;if(waQ.length)waT=setTimeout(waRun,200)};
+  if(!b){if(j.manual)toast('Nothing to send for this document.');return next()}
+  if((j.kind!=='edu')&&(!b.pdf||!b.pdf.data)){if(j.manual)toast('The PDF could not be created.');return next()}
+  var body={action:'wa_send',group:b.group,kind:b.kind,docId:b.docId,docNo:b.docNo,clientId:b.clientId,clientName:b.clientName,to:b.to,params:b.params,dedupe:b.dedupe||'',manual:j.manual};
+  if(b.pdf){body.pdf=waB64(b.pdf.data);body.filename=b.pdf.name}else{body.fileId=b.fileId;body.filename=b.filename}
+  fetch('api/index.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().catch(function(){return {}}).then(function(x){if(!r.ok)throw new Error(x.error||'Request failed.');return x})})
+    .then(function(x){
+      if(x.log){var i=S.waLog.findIndex(function(l){return l.id===x.log.id});if(i<0)S.waLog.push(x.log);scheduleRefresh()}
+      var what=WA_LABEL[b.group]||'Message';
+      if(x.skipped){if(j.manual)toast('Not sent: '+x.skipped)}
+      else if(x.ok) toast('WhatsApp: '+what+' sent to '+(b.clientName||'client'));
+      else toast('WhatsApp '+what.toLowerCase()+' not sent: '+(x.error||'error'));
+    }).catch(function(e){toast('WhatsApp not sent: '+errText(e))}).then(next);
+}
+/* hook: a new document was saved */
+function waOnSaved(kind,obj){
+  try{
+    if(kind==='invoices'&&!obj.cancelled) waQueue('inv',obj.id);
+    else if(kind==='aeInvoices'&&!obj.cancelled) waQueue('aeinv',obj.id);
+    else if(kind==='phMoves'&&obj.type==='Sale'&&obj.clientId&&!obj.cancelled) waQueue('phsale',obj.id);
+    else if(kind==='receipts'&&obj.clientId) waQueue('receipt',obj.id);
+    else if(kind==='aeQuotes') waQueue('quote',obj.id);
+    else if(kind==='aeCons'&&waMeds(obj.meds)) waQueue('conrx',obj.id);
+    else if(kind==='aeSessions'){
+      if(waMeds(obj.meds)) waQueue('sesrx',obj.id);
+      var sp=waSesProc(obj);
+      if(sp.id&&sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id&&S.aeSessions.filter(function(x){return x.clientId===obj.clientId&&waSesProc(x).id===sp.id}).length===1) waQueue('edu',obj.id);
+    }
+  }catch(e){}
+}
+/* status line + Resend button on a document */
+function waLast(docId,group){return S.waLog.filter(function(l){return l.docId===docId&&(!group||l.group===group)}).sort(function(a,b){return (b.at||'').localeCompare(a.at||'')})[0]}
+function waTag(kind,docId){
+  if(!WA.configured) return '';
+  var g=WA_GROUP[kind], l=waLast(docId,g), t=l?new Date(l.at):null;
+  var when=t?t.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'numeric',minute:'2-digit',hour12:true}):'';
+  return '<div class="wa-tag"><span class="wa-ic" aria-hidden="true">'+WA_ICON+'</span>'+(l?(l.status==='sent'?'<span class="ok">'+esc(WA_LABEL[g]||'Message')+' sent</span> · '+esc(when):'<span class="bad">Not sent</span> · '+esc(l.error||'')+' · '+esc(when)):'<span class="sub">Not sent on WhatsApp yet</span>')+
+    (readOnly?'':' <button type="button" class="link" data-wares="'+esc(kind)+'|'+esc(docId)+'">'+(l?'Resend':'Send')+' on WhatsApp</button>')+'</div>';
+}
+var WA_ICON='<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3a.5.5 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5 5 0 0 0 1 2.7 11.6 11.6 0 0 0 4.5 4c1.7.7 2.3.8 3.1.7a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3Z"/></svg>';
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-wares]');if(!b)return;var p=b.dataset.wares.split('|');if(!WA.configured){toast('Set up WhatsApp first in Settings › WhatsApp.');return}b.disabled=true;b.textContent='Sending…';waQueue(p[0],p.slice(1).join('|'),true)});
+
+/* ---------- Settings › WhatsApp (Admin only) ---------- */
+var waTab='setup', waCfgCache=null;
+SECTIONS['wa-settings']={
+  mount:function(){
+    work.innerHTML=head('WhatsApp')+'<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(waTab==='setup'?' primary':'')+'" data-watab="setup">Setup</button><button class="btn'+(waTab==='log'?' primary':'')+'" data-watab="log">Message log</button></div></div><div id="body"></div>';
+    $$('[data-watab]',work).forEach(function(b){b.onclick=function(){waTab=b.dataset.watab;go(current)}});
+    if(waTab==='log'){apiCall('GET',{collection:'wa_log'}).then(function(r){S.waLog=r.records||[];SECTIONS['wa-settings'].update()}).catch(function(){})}
+    if(waTab==='setup'){waCfgCache=null;authCall('wa_get').then(function(c){waCfgCache=c;SECTIONS['wa-settings'].update()}).catch(function(e){var b=$('#body',work);if(b)b.innerHTML='<div class="empty"><strong>Can’t open WhatsApp settings</strong>'+esc(errText(e))+'</div>'})}
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(waTab==='log') return waLogView(b);
+    if(!waCfgCache){if(!b.innerHTML)b.innerHTML=loadingHTML();return}
+    if(b.dataset.drawn==='1') return; b.dataset.drawn='1';
+    var c=waCfgCache, cron=location.origin+location.pathname.replace(/[^/]*$/,'')+'api/index.php?action=wa_cron&key='+(c.cronKey||'');
+    var sw=function(g,label,hint){return '<label class="wa-sw"><input type="checkbox" data-waon="'+g+'"'+(c.on&&c.on[g]?' checked':'')+'><span><strong>'+esc(label)+'</strong><span class="sub">'+esc(hint)+'</span></span></label>'};
+    b.innerHTML='<div class="panel"><h3>1 · Connection</h3><p class="hint" style="margin:-4px 0 12px">From Meta › WhatsApp › API Setup. The access token is stored only on the server and is never shown again in full.</p><div class="f-grid">'+
+      '<div class="field"><label for="wa-pid">Phone number ID</label><input type="text" id="wa-pid" value="'+esc(c.phoneId||'')+'" autocomplete="off" inputmode="numeric"></div>'+
+      '<div class="field"><label for="wa-waba">WhatsApp Business Account ID</label><input type="text" id="wa-waba" value="'+esc(c.wabaId||'')+'" autocomplete="off" inputmode="numeric"></div>'+
+      '<div class="field span2"><label for="wa-tok">Access token (permanent)</label><input type="password" id="wa-tok" autocomplete="new-password" placeholder="'+esc(c.tokenMasked?'Saved: '+c.tokenMasked+'  ·  paste a new one to replace':'Paste the permanent access token')+'"></div>'+
+      '<div class="field"><label for="wa-lang">Template language code</label><input type="text" id="wa-lang" value="'+esc(c.lang||'en')+'" autocomplete="off"><span class="hint">Usually <strong>en</strong>. Must match the language chosen when creating the templates in Meta.</span></div></div>'+
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pill '+(c.configured?'paid':'off')+'">'+(c.configured?'Connected details saved':'Not set up')+'</span></div></div>'+
+      '<div class="panel" style="margin-top:14px"><h3>2 · Send automatically</h3><div class="wa-sws">'+
+        sw('invoice','Invoice','When an invoice is saved: Spa, Aesthetics and Pharmacy sale bills')+
+        sw('quotation','Quotation','When a quotation is saved')+
+        sw('receipt','Receipt','When a payment is recorded')+
+        sw('prescription','Prescription','When a consultation or session with medicines is saved')+
+        sw('education','Educational content','After the first session of a procedure (uses the PDF on the procedure)')+
+        sw('birthday','Birthday wishes','Every morning, to clients whose birthday is today (needs the daily job below)')+'</div>'+
+        '<details style="margin-top:12px"><summary class="sub" style="cursor:pointer">Template names in Meta (change only if you named them differently)</summary><div class="f-grid" style="margin-top:10px">'+
+        ['invoice','quotation','receipt','prescription','education','birthday'].map(function(g){return '<div class="field"><label for="wa-t-'+g+'">'+esc(WA_LABEL[g])+'</label><input type="text" id="wa-t-'+g+'" data-watpl="'+g+'" value="'+esc((c.tpl||{})[g]||'')+'" autocomplete="off"></div>'}).join('')+'</div></details></div>'+
+      '<p class="err" id="wa-err" hidden></p><div class="form-actions"><button type="button" class="btn primary w" id="wa-save">Save settings</button></div>'+
+      '<div class="panel" style="margin-top:14px"><h3>3 · Test</h3><p class="hint" style="margin:-4px 0 10px">Sends Meta’s ready-made “hello_world” message. With Meta’s test number, the phone must be added as a recipient in Meta first.</p><div class="toolbar" style="margin:0"><div class="field grow"><label for="wa-to">Mobile number</label><input type="tel" id="wa-to" placeholder="10-digit mobile number"></div><button type="button" class="btn w" id="wa-test" style="align-self:flex-end">Send test message</button></div></div>'+
+      '<div class="panel" style="margin-top:14px"><h3>4 · Daily job for birthday wishes</h3><p class="hint" style="margin:-4px 0 10px">In Hostinger › Advanced › Cron Jobs, add a job that runs once a day at 9:00 AM and opens this link. Keep this link private.</p>'+
+        '<div class="wa-cron"><code id="wa-cron">'+(c.cronKey?esc(cron):'Save settings once to create the link.')+'</code>'+(c.cronKey?'<button type="button" class="btn sm" id="wa-copy">Copy</button>':'')+'</div>'+
+        (c.cronKey?'<p class="hint" style="margin-top:8px">Hostinger command: <code>wget -qO- "'+esc(cron)+'" &gt;/dev/null 2&gt;&amp;1</code></p>':'')+'</div>';
+    var err=$('#wa-err',b), show=function(m){err.textContent=m;err.hidden=!m};
+    $('#wa-save',b).onclick=function(){
+      var btn=this, on={}, tpl={}; $$('[data-waon]',b).forEach(function(x){on[x.dataset.waon]=x.checked}); $$('[data-watpl]',b).forEach(function(x){tpl[x.dataset.watpl]=x.value.trim()});
+      var body={phoneId:$('#wa-pid',b).value.trim(),wabaId:$('#wa-waba',b).value.trim(),lang:$('#wa-lang',b).value.trim(),on:on,tpl:tpl}, tk=$('#wa-tok',b).value.trim(); if(tk) body.token=tk;
+      if(!body.phoneId) return show('Enter the Phone number ID.');
+      if(!tk&&!c.tokenMasked) return show('Paste the access token.');
+      show(''); btn.disabled=true;
+      authCall('wa_save',body).then(function(x){waCfgCache=x;WA={configured:x.configured,on:x.on};b.dataset.drawn='';SECTIONS['wa-settings'].update();toast('WhatsApp settings saved')}).catch(function(e){btn.disabled=false;show(errText(e))});
+    };
+    $('#wa-test',b).onclick=function(){var btn=this,to=$('#wa-to',b).value.trim();if(!/\d{10}/.test(to.replace(/\D/g,'')))return show('Enter a 10-digit mobile number for the test.');show('');btn.disabled=true;btn.textContent='Sending…';
+      authCall('wa_test',{to:to}).then(function(){toast('Test message sent. Check WhatsApp on '+to)}).catch(function(e){show('Test failed: '+errText(e))}).then(function(){btn.disabled=false;btn.textContent='Send test message'})};
+    var cp=$('#wa-copy',b); if(cp) cp.onclick=function(){try{navigator.clipboard.writeText($('#wa-cron',b).textContent);toast('Link copied')}catch(e){}};
+  }
+};
+var waLogF={q:'',status:''};
+function waLogView(b){
+  if(!ready()){b.innerHTML=loadingHTML();return}
+  var q=norm(waLogF.q), all=S.waLog.slice().sort(function(a,c){return (c.at||'').localeCompare(a.at||'')});
+  var list=all.filter(function(l){return (!waLogF.status||l.status===waLogF.status)&&(!q||norm((l.clientName||'')+' '+(l.to||'')+' '+(l.docNo||'')+' '+(WA_LABEL[l.group]||'')).indexOf(q)>=0)});
+  if(!b.querySelector('#wl-q')) b.innerHTML='<div class="toolbar"><div class="field grow"><label for="wl-q">Search</label><input type="search" id="wl-q" placeholder="Client, number or document" value="'+esc(waLogF.q)+'"></div><div class="field"><label for="wl-st">Status</label><select id="wl-st">'+optList([['','All'],['sent','Sent'],['failed','Failed']],waLogF.status)+'</select></div></div><div id="wl-body"></div>';
+  $('#wl-q',b).oninput=function(e){waLogF.q=e.target.value;waLogView(b)}; $('#wl-st',b).onchange=function(e){waLogF.status=e.target.value;waLogView(b)};
+  var t=$('#wl-body',b);
+  if(!all.length){t.innerHTML='<div class="empty"><strong>No messages yet</strong>Messages sent on WhatsApp will be listed here.</div>';return}
+  t.innerHTML=list.length?'<div class="tbl"><table><thead><tr><th>When</th><th>Message</th><th>Client</th><th>Number</th><th>Status</th></tr></thead><tbody>'+list.slice(0,500).map(function(l){var d=new Date(l.at);return '<tr><td class="nowrap">'+esc(d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}))+'</td><td>'+esc(WA_LABEL[l.group]||l.group||'')+(l.docNo?'<div class="sub">'+esc(l.docNo)+'</div>':'')+'</td><td>'+esc(l.clientName||'')+'<div class="sub">'+esc(l.by||'')+(l.manual?' · resent':'')+'</div></td><td class="nowrap">'+esc(l.to||'')+'</td><td>'+(l.status==='sent'?'<span class="pill paid">Sent</span>':'<span class="pill unpaid">Failed</span><div class="sub">'+esc(l.error||'')+'</div>')+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(Math.min(list.length,500),all.length,'messages')+'</p>':'<div class="empty"><strong>No matches</strong>No message matches these filters.</div>';
+}
+
 /* ---------- shell wiring ---------- */
 var VIEWS={home:$('#view-home'),spa:$('#view-spa'),pha:$('#view-pha'),aes:$('#view-aes')}, notice=$('#notice');
 var curView='home';
@@ -6236,7 +6404,7 @@ function applyRoleUI(){
   var keys=roleKeys();
   $$('.dept').forEach(function(b){b.hidden=!allowedDept(b.id==='btn-spa'?'spa':b.id==='btn-aes'?'aes':'pha')});
   $$('.mi[data-key]').forEach(function(b){b.closest('li').hidden=!!(keys&&keys.indexOf(b.dataset.key)<0)||(!CURRENT_USER||(!CURRENT_USER.role==='Admin'&&b.dataset.key==='business'));});
-  if(CURRENT_USER&&CURRENT_USER.role!=='Admin')$$('.mi[data-key="business"]').forEach(function(b){b.closest('li').hidden=true});
+  if(CURRENT_USER&&CURRENT_USER.role!=='Admin')$$('.mi[data-key="business"],.mi[data-key="wa-settings"]').forEach(function(b){b.closest('li').hidden=true});
   if(CURRENT_USER&&!['Admin','Manager'].includes(CURRENT_USER.role))$$('.mi[data-key="users"]').forEach(function(b){b.closest('li').hidden=true});
   $$('.mgroup').forEach(function(g){var sub=$('#'+g.getAttribute('aria-controls'));g.closest('li').hidden=!$$('li',sub).some(function(li){return !li.hidden});});
 }
@@ -6290,7 +6458,7 @@ function resumeApp(){
   return true;
 }
 function initials(n){var w=String(n||'').trim().split(/\s+/).filter(Boolean);return ((w[0]||'?')[0]+(w.length>1?w[w.length-1][0]:'')).toUpperCase()}
-function startApp(){applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><div class="su-card"><div class="su-row"><span class="su-av" aria-hidden="true">'+esc(initials(CURRENT_USER.name))+'</span><div class="su-who"><strong>'+esc(CURRENT_USER.name)+'</strong><span class="su-role">'+esc(CURRENT_USER.role)+'</span></div></div><button type="button" class="su-out" data-logout><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Log out</button></div></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(resumeApp())return;if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
+function startApp(){waLoadStatus().then(function(){scheduleRefresh()});applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><div class="su-card"><div class="su-row"><span class="su-av" aria-hidden="true">'+esc(initials(CURRENT_USER.name))+'</span><div class="su-who"><strong>'+esc(CURRENT_USER.name)+'</strong><span class="su-role">'+esc(CURRENT_USER.role)+'</span></div></div><button type="button" class="su-out" data-logout><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Log out</button></div></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(resumeApp())return;if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
 function initAuth(){authCall('me').then(function(x){CURRENT_USER=x.user;startApp();if(CURRENT_USER.mustChangePassword)passwordDialog();}).catch(function(){authOverlay();});}
 initAuth();
 })();
