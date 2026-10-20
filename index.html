@@ -189,7 +189,7 @@ tfoot td{font-weight:700;background:var(--surface-2);border-top:1px solid var(--
 .empty strong{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
 
 /* Dashboard */
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
 @media (max-width:1000px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .tile{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface);border-left:5px solid var(--tc)}
 .tile .k{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
@@ -448,6 +448,18 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="spa-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+            <li><button class="mi c6" data-key="expenses">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+              Expenses</button></li>
+            <li><button class="mi c13" data-key="vendor-pay">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.4 5 1.5 5 3.6-2.2 3-5 3-5-1.1-5-3"/></svg></span>
+              Vendor Payments</button></li>
+            <li><button class="mi c6" data-key="exp-report">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
+              Expense Report</button></li>
+            <li><button class="mi c13" data-key="vendor-payable">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              Payable to Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
@@ -472,6 +484,12 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c4" data-key="club-plans">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 7 5-3 5 3-1.5-7"/></svg></span>
               Membership Plans</button></li>
+            <li><button class="mi c6" data-key="exp-cats">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
+              Expense Categories</button></li>
+            <li><button class="mi c13" data-key="vendors">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg></span>
+              Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="spa-settings-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
@@ -552,6 +570,18 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="ae-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+            <li><button class="mi c6" data-key="expenses">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+              Expenses</button></li>
+            <li><button class="mi c13" data-key="vendor-pay">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.4 5 1.5 5 3.6-2.2 3-5 3-5-1.1-5-3"/></svg></span>
+              Vendor Payments</button></li>
+            <li><button class="mi c6" data-key="exp-report">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
+              Expense Report</button></li>
+            <li><button class="mi c13" data-key="vendor-payable">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              Payable to Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ae-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
@@ -567,6 +597,12 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c11" data-key="ae-proc-master">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3Z"/><path d="M18 15l.8 2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2Z"/></svg></span>
               Procedures</button></li>
+            <li><button class="mi c6" data-key="exp-cats">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
+              Expense Categories</button></li>
+            <li><button class="mi c13" data-key="vendors">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg></span>
+              Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="aes-settings-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
@@ -631,6 +667,12 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c13" data-key="ph-sup-pay">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h3"/></svg></span>
               Supplier Payments</button></li>
+            <li><button class="mi c6" data-key="expenses">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+              Expenses</button></li>
+            <li><button class="mi c13" data-key="vendor-pay">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.7 5 3.4 5 1.5 5 3.6-2.2 3-5 3-5-1.1-5-3"/></svg></span>
+              Vendor Payments</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="true" aria-controls="ph-reports-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
@@ -649,6 +691,12 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c3" data-key="ph-low-stock">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span>
               Low Stock</button></li>
+            <li><button class="mi c6" data-key="exp-report">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
+              Expense Report</button></li>
+            <li><button class="mi c13" data-key="vendor-payable">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+              Payable to Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="ph-masters-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/></svg></span>
@@ -670,6 +718,12 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c13" data-key="ph-suppliers">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 10h4l4 3v3h-8"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg></span>
               Suppliers</button></li>
+            <li><button class="mi c6" data-key="exp-cats">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
+              Expense Categories</button></li>
+            <li><button class="mi c13" data-key="vendors">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg></span>
+              Vendors</button></li>
           </ul></li>
         <li class="group"><button class="mi cg mgroup" aria-expanded="false" aria-controls="pha-settings-sub">
           <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
@@ -1276,12 +1330,12 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,5,12,18,28];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],'exp-cats':['--m6','--m6-soft'],vendors:['--m13','--m13-soft'],expenses:['--m6','--m6-soft'],'vendor-pay':['--m13','--m13-soft'],'exp-report':['--m6','--m6-soft'],'vendor-payable':['--m13','--m13-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
-var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[]};
-var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false,waLog:false};
-var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log'};
+var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[],expCats:[],vendors:[],expenses:[],vpays:[]};
+var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false,waLog:false,expCats:false,vendors:false,expenses:false,vpays:false};
+var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log',expCats:'exp_categories',vendors:'exp_vendors',expenses:'exp_expenses',vpays:'exp_vendor_payments'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
 function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
@@ -1322,7 +1376,7 @@ function authCall(action,data){
 }
 function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
-  var common=['clients','cities','states','users','business','waLog'];
+  var common=['clients','cities','states','users','business','waLog','expCats','vendors','expenses','vpays'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
@@ -1330,7 +1384,7 @@ function permittedKeys(){
 function initMySqlStore(){
   var keys=permittedKeys();
   Object.keys(COL).forEach(function(k){if(keys.indexOf(k)<0){S[k]=[];loaded[k]=true}});
-  keys.reduce(function(chain,k){return chain.then(function(){return apiCall('GET',{collection:COL[k]}).then(function(result){S[k]=result.records||[];loaded[k]=true;});});},Promise.resolve()).then(function(){
+  keys.reduce(function(chain,k){return chain.then(function(){return apiCall('GET',{collection:COL[k]}).then(function(result){S[k]=result.records||[];SEQ_FLOOR[k]=+result.maxSeq||0;loaded[k]=true;});});},Promise.resolve()).then(function(){
     DB={collection:function(collection){return {doc:function(id){return {
       set:function(data){return apiCall('POST',{collection:collection,id:id,data:data});},
       delete:function(){return apiCall('DELETE',{collection:collection,id:id});}
@@ -1607,7 +1661,7 @@ SECTIONS.dashboard={
       tile('--m0','Sales today',money0(sum(invT,'total')),invT.length+' invoice'+(invT.length===1?'':'s'),openList('invoices',invF,t,function(f){f.status='';f.view='inv'}))+
       tile('--m5','Collected today',money0(sum(recT,'amount')),recT.length+' receipt'+(recT.length===1?'':'s'),openList('receipts',recF,t,function(f){f.mode=''}))+
       tile('--m4','Sales in '+monthName,money0(sum(invM,'total')),'Collected '+money0(sum(recM,'amount')),openList('invoices',invF,monthStart(),function(f){f.status='';f.view='inv'}))+
-      tile('--m6','Outstanding',money0(outAmt),outN+' unpaid bill'+(outN===1?'':'s')+' (all modules)',function(){go('outstanding')})+'</div>';
+      tile('--m6','Outstanding',money0(outAmt),outN+' unpaid bill'+(outN===1?'':'s')+' (all modules)',function(){go('outstanding')})+tile('--m6','Expenses in '+monthName,money0(expMonthTotal('spa')),'Spa expenses',openList('expenses',expF,monthStart(),function(f){f.dept=DEPT_NAME['spa'];f.cat='';f.status='';expLastDept=dept}))+'</div>';
 
     // chart: last 14 days sales
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(d))}
@@ -5150,7 +5204,7 @@ SECTIONS['ph-dashboard']={
       tile('--m11','Low stock',String(low.length),'At or below reorder level',function(){lsF.q='';lsF.cat='';lsF.show='low';go('ph-low-stock')})+
       tile('--m6','Out of stock',String(out),'Items with no stock',function(){lsF.q='';lsF.cat='';lsF.show='out';go('ph-low-stock')})+
       tile('--m6','Due on pharmacy bills',money0(phDue),phDueN+' unpaid bill'+(phDueN===1?'':'s'),function(){go('ph-outstanding')})+
-      tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases',function(){go('ph-payable')})+'</div>';
+      tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases',function(){go('ph-payable')})+tile('--m6','Expenses in '+monthName,money0(expMonthTotal('pha')),'Pharmacy expenses',openList('expenses',expF,monthStart(),function(f){f.dept=DEPT_NAME['pha'];f.cat='';f.status='';expLastDept=dept}))+'</div>';
     /* chart */
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var dd=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(dd))}
     var vals=days.map(function(dd){return sum(S.phMoves.filter(function(m){return m.type==='Sale'&&!m.cancelled&&m.date===dd}))});
@@ -6113,7 +6167,7 @@ SECTIONS['ae-dashboard']={
       tile('--m4','Billed in '+monthName,money0(sum(invM)),pl(invM.length,'invoice'),openList('ae-invoices',aiF,ym+'-01',function(f){f.status='';aiMode='list'}))+
       tile('--m5','Collected in '+monthName,money0(sum(recM,'amount')),pl(recM.length,'receipt'),openList('ae-receipts',recF,ym+'-01',function(f){f.mode=''}))+
       tile('--m6','Outstanding',money0(dueTot),pl(owers.length,'client'),function(){go('ae-outstanding')})+
-      tile('--m3','Quotations in '+monthName,money0(sum(qtM)),started+' of '+qtM.length+' started',openList('ae-quotations',qtF,ym+'-01',function(){qtMode='list'}))+'</div>';
+      tile('--m3','Quotations in '+monthName,money0(sum(qtM)),started+' of '+qtM.length+' started',openList('ae-quotations',qtF,ym+'-01',function(){qtMode='list'}))+tile('--m6','Expenses in '+monthName,money0(expMonthTotal('aes')),'Aesthetics expenses',openList('expenses',expF,monthStart(),function(f){f.dept=DEPT_NAME['aes'];f.cat='';f.status='';expLastDept=dept}))+'</div>';
 
     html+='<div class="panels"><div class="panel"><h3>Today’s appointments</h3>'+(apT.length?'<div class="tbl"><table><thead><tr><th>Time</th><th>Client</th><th>For</th><th>Doctor / staff</th><th>Status</th></tr></thead><tbody>'+
         apT.map(function(a){return '<tr class="click-row" data-ad-appt="'+esc(a.id)+'"><td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong></td><td><strong>'+esc(a.clientName)+'</strong></td><td>'+esc(apWhat(a))+'</td><td>'+esc(apStaffNames(a)||'—')+'</td><td><span class="pill '+(AP_PILL[a.status]||'off')+'">'+esc(a.status)+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No appointments today.</p>')+'</div>'+
@@ -6177,6 +6231,7 @@ function pendTasks(d){
     out.push({key:'supbills',label:'Supplier bills unpaid',hint:'Purchase bills not fully paid to the supplier.',rows:sb});
     out.push({key:'low',label:'Low stock',hint:'Active items at or below their reorder level, or out of stock.',rows:phInvRows(true).filter(function(r){return r.item.status!=='Inactive'&&(r.qty<=0||r.low)}).sort(function(a,b){return a.qty-b.qty}).map(function(r){return {main:r.item.name,sub:'Stock '+r.qty+(r.reorder!=null?' · reorder at '+r.reorder:''),btn:'Ledger',ro:true,run:function(){viewItemLedger(r.item.id)}}})});
   }
+  out.push({key:'vbills',label:'Vendor bills unpaid',hint:'Expenses bought on credit and not yet paid.',rows:expDue(d).map(function(x){return {main:x.v.name,sub:x.b.no+' · '+(x.b.cat||'')+(x.b.billNo?' · bill '+x.b.billNo:'')+' · '+fmtDate(x.b.date)+' · '+daysSince(x.b.date)+' days',amt:x.b.bal,btn:'Pay',run:function(){vendorPayDialog(x.v.id,x.b.id)},view:function(){viewExpense(x.b.id)}}})});
   return out;
 }
 function pendTotal(d){try{return pendTasks(d).reduce(function(n,x){return n+x.rows.length},0)}catch(e){return 0}}
@@ -6359,6 +6414,364 @@ function waLogView(b){
   t.innerHTML=list.length?'<div class="tbl"><table><thead><tr><th>When</th><th>Message</th><th>Client</th><th>Number</th><th>Status</th></tr></thead><tbody>'+list.slice(0,500).map(function(l){var d=new Date(l.at);return '<tr><td class="nowrap">'+esc(d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}))+'</td><td>'+esc(WA_LABEL[l.group]||l.group||'')+(l.docNo?'<div class="sub">'+esc(l.docNo)+'</div>':'')+'</td><td>'+esc(l.clientName||'')+'<div class="sub">'+esc(l.by||'')+(l.manual?' · resent':'')+'</div></td><td class="nowrap">'+esc(l.to||'')+'</td><td>'+(l.status==='sent'?'<span class="pill paid">Sent</span>':'<span class="pill unpaid">Failed</span><div class="sub">'+esc(l.error||'')+'</div>')+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(Math.min(list.length,500),all.length,'messages')+'</p>':'<div class="empty"><strong>No matches</strong>No message matches these filters.</div>';
 }
 
+/* =========================================================
+   EXPENSES & VENDOR PAYMENTS (all departments)
+   Each expense belongs to a department (or Common). Department staff see
+   only their own department; Admin-only categories (e.g. Salaries) are
+   hidden from everyone except Admin (the server filters them too).
+   ========================================================= */
+var DEPT_NAME={spa:'Spa',aes:'Aesthetics',pha:'Pharmacy'}, EXP_DEPTS=['Spa','Aesthetics','Pharmacy','Common'];
+var EXP_CATS=[['Rent',false],['Salaries',true],['Electricity',false],['Internet & Phone',false],['Marketing',false],['Repairs & Maintenance',false],['Housekeeping',false],['Professional Fees',false],['Miscellaneous',false]];
+var SEQ_FLOOR={};
+/* expenses and vendor payments are partly hidden per user, so number them after the highest number on the server */
+function seqAfter(kind){var m=+SEQ_FLOOR[kind]||0;S[kind].forEach(function(x){m=Math.max(m,+x.seq||0)});SEQ_FLOOR[kind]=m+1;return m+1}
+function isMgr(){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'}
+function myDeptName(){return CURRENT_USER&&!isMgr()?DEPT_NAME[{Spa:'spa',Aesthetics:'aes',Pharmacy:'pha'}[CURRENT_USER.role]]||'':''}
+function expCatsFor(cur){return S.expCats.filter(function(c){return (!c.adminOnly||isAdmin())&&((c.status||'Active')==='Active'||c.id===cur)}).sort(function(a,b){return byText(a.name,b.name)})}
+function expPaidNow(e){return !!e.paidNow}
+
+SECTIONS['exp-cats']=simpleMaster({
+  kind:'expCats',prefix:'xc',title:'Expense Categories',singular:'category',singularCap:'Category',color:'--m6',searchPh:'Category name',
+  emptyText:'Group your expenses, for example Rent or Electricity.',quick:{label:'Add common categories',run:function(){
+    var now=new Date().toISOString(),list=EXP_CATS.filter(function(c){return !S.expCats.some(function(x){return norm(x.name)===norm(c[0])})}).map(function(c){return {id:newId('xc'),name:c[0],adminOnly:c[1],status:'Active',createdAt:now,updatedAt:now}});
+    Promise.all(list.map(function(o){return put('expCats',o)})).then(function(){toast(list.length+' categories added')}).catch(function(e){toast(errText(e))})}},
+  fields:[{id:'name',label:'Category name',req:true,max:60},
+    {id:'visible',label:'Who can see these expenses',type:'select',noBlank:true,def:'Everyone',options:function(){return ['Everyone','Admin only']}},
+    {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
+  cols:[{h:'Category',text:function(r){return r.name}},{h:'Visible to',text:function(r){return r.adminOnly?'Admin only':'Everyone'}},{h:'Expenses',num:true,text:function(r){return String(S.expenses.filter(function(e){return e.catId===r.id}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
+  search:function(r){return r.name},sort:function(a,b){return byText(a.name,b.name)},
+  validate:function(o,id){o.adminOnly=o.visible==='Admin only';if(o.adminOnly&&!isAdmin())return 'Only Admin can create Admin-only categories.';delete o.visible;return dupName('expCats',o,id)?'This category already exists.':''},
+  usage:function(r){var n=S.expenses.filter(function(e){return e.catId===r.id}).length;return n?r.name+' is used by '+n+' expense'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''},
+  afterSave:function(o,old){if(old.id&&(old.name!==o.name||!!old.adminOnly!==!!o.adminOnly)){S.expenses.filter(function(e){return e.catId===o.id}).forEach(function(e){put('expenses',Object.assign({},e,{catName:o.name,adminOnly:!!o.adminOnly})).catch(function(){})})}}
+});
+/* simpleMaster stores the select value; map it back when editing */
+(function(){var f=SECTIONS['exp-cats'];var m0=f.update;f.update=function(){S.expCats.forEach(function(c){c.visible=c.adminOnly?'Admin only':'Everyone'});return m0.apply(this,arguments)}})();
+
+SECTIONS.vendors=simpleMaster({
+  kind:'vendors',prefix:'vd',title:'Vendors',singular:'vendor',singularCap:'Vendor',color:'--m13',searchPh:'Name, phone or GSTIN',
+  emptyText:'Add the people and companies you pay for expenses, for example your landlord or electricity board.',
+  fields:[{id:'name',label:'Vendor name',req:true,max:80,span2:true},{id:'phone',label:'Phone',max:20},{id:'gstin',label:'GSTIN',max:15,upper:true},{id:'pan',label:'PAN',max:10,upper:true},
+    {id:'openingBal',label:'Opening balance payable (₹)',type:'number',hint:'Amount already owed when you start'},
+    {id:'address',label:'Address',type:'textarea'},{id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
+  cols:[{h:'Vendor',text:function(r){return r.name}},{h:'Phone',text:function(r){return r.phone||''}},{h:'GSTIN',text:function(r){return r.gstin||''}},{h:'Payable',num:true,text:function(r){return money(Math.max(0,vendorAlloc(r.id).net))}},{h:'Status',text:function(r){return r.status||'Active'}}],
+  search:function(r){return r.name+' '+(r.phone||'')+' '+(r.gstin||'')},sort:function(a,b){return byText(a.name,b.name)},
+  validate:function(o,id){if(o.gstin&&!/^[0-9A-Z]{15}$/.test(o.gstin))return 'GSTIN should be 15 letters and numbers.';o.openingBal=o.openingBal===''?0:r2(o.openingBal);return dupName('vendors',o,id)?'A vendor with this name already exists.':''},
+  usage:function(r){var n=S.expenses.filter(function(e){return e.vendorId===r.id}).length+S.vpays.filter(function(p){return p.vendorId===r.id}).length;return n?r.name+' has expenses or payments, so it can’t be deleted. Set it to Inactive instead.':''}
+});
+
+/* bill-wise balances for one vendor (credit expenses + opening balance; payments settle the linked bill first, then the oldest) */
+function vendorAlloc(vid){
+  var v=findIn('vendors',vid)||{}, bills=[];
+  if((+v.openingBal||0)>0) bills.push({id:'ob:'+vid,no:'Opening balance',date:'',total:r2(v.openingBal),paid:0,opening:true});
+  S.expenses.filter(function(e){return e.vendorId===vid&&!e.paidNow}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
+    .forEach(function(e){bills.push({id:e.id,no:e.no,date:e.date,total:r2(e.total),paid:0,billNo:e.billNo||'',dept:e.dept,cat:e.catName})});
+  var map={}; bills.forEach(function(b){map[b.id]=b});
+  var pool=0, paidTot=0;
+  S.vpays.filter(function(p){return p.vendorId===vid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(p){var amt=+p.amount||0;paidTot+=amt;var b=p.expenseId&&map[p.expenseId];if(b){var use=Math.min(amt,Math.max(0,r2(b.total-b.paid)));b.paid=r2(b.paid+use);amt=r2(amt-use)}pool=r2(pool+amt)});
+  bills.forEach(function(b){var room=r2(b.total-b.paid);if(room>0&&pool>0){var use=Math.min(room,pool);b.paid=r2(b.paid+use);pool=r2(pool-use)}b.bal=r2(b.total-b.paid)});
+  return {bills:bills,paid:r2(paidTot),advance:r2(pool),net:r2(bills.reduce(function(t,b){return t+b.total},0)-paidTot)};
+}
+function expStatus(e){
+  if(e.paidNow) return {status:'paid',paid:+e.total||0,bal:0};
+  if(!e.vendorId) return {status:'unpaid',paid:0,bal:+e.total||0};
+  var b=vendorAlloc(e.vendorId).bills.find(function(x){return x.id===e.id})||{paid:0,bal:+e.total||0};
+  return {status:b.bal<=0.004?'paid':(b.paid>0.004?'partial':'unpaid'),paid:b.paid,bal:b.bal};
+}
+
+/* ---------- expense form ---------- */
+function editExpense(id){
+  if(readOnly){toast('You need Contributor access to record expenses.');return}
+  var e=id?findIn('expenses',id):null; if(id&&!e) return;
+  var mine=myDeptName(), st={dept:e?e.dept:(mine||DEPT_NAME[dept]||'Common'),vendorId:e?e.vendorId||'':'',billFile:e&&e.billFile?Object.assign({},e.billFile):null,paidNow:e?!!e.paidNow:true};
+  var cats=expCatsFor(e&&e.catId);
+  if(!cats.length){toast('Add expense categories in Masters › Expense Categories first.');return}
+  var m=openModal('<h2>'+(e?'Edit expense '+esc(e.no):'New expense')+'</h2><form id="exf" novalidate><div class="f-grid">'+
+    '<div class="field"><label for="ex-date">Date</label><input type="date" id="ex-date" value="'+esc(e?e.date:todayStr())+'"></div>'+
+    '<div class="field"><label for="ex-dept">Department</label><select id="ex-dept"'+(mine?' disabled':'')+'>'+optList(mine?[mine]:EXP_DEPTS,st.dept)+'</select></div>'+
+    '<div class="field"><label for="ex-cat">Category <span class="req">*</span></label><select id="ex-cat">'+optList([['','Select a category']].concat(cats.map(function(c){return [c.id,c.name+(c.adminOnly?' (Admin only)':'')]})),e?e.catId:'')+'</select></div>'+
+    '<div class="field"><label for="ex-vendor">Vendor</label><div id="ex-vendor-host"></div></div>'+
+    '<div class="field"><label for="ex-bill">Bill / invoice no.</label><input type="text" id="ex-bill" maxlength="40" autocomplete="off" value="'+esc(e?e.billNo||'':'')+'"></div>'+
+    '<div class="field"><label for="ex-amt">Amount before GST (₹) <span class="req">*</span></label><input type="number" id="ex-amt" min="0" step="0.01" value="'+esc(e?e.amount:'')+'"></div>'+
+    '<div class="field"><label for="ex-gst">GST</label><select id="ex-gst">'+optList(GST_RATES.map(function(g){return [String(g),g+'%']}),String(e?+e.gst||0:0))+'</select></div>'+
+    '<div class="field"><label>Total</label><div class="ro-box strong" id="ex-total">₹0.00</div></div>'+
+    '<div class="field span2"><label>Payment</label><div class="seg" role="group"><label class="check"><input type="radio" name="ex-pay" value="now"'+(st.paidNow?' checked':'')+'> Paid now</label><label class="check"><input type="radio" name="ex-pay" value="credit"'+(st.paidNow?'':' checked')+'> On credit (pay later)</label></div></div>'+
+    '<div class="field ex-now"><label for="ex-mode">Payment mode</label><select id="ex-mode">'+optList(MODES,e&&e.mode||'Cash')+'</select></div>'+
+    '<div class="field ex-now"><label for="ex-ref">Reference</label><input type="text" id="ex-ref" maxlength="60" autocomplete="off" placeholder="UPI / UTR / cheque no." value="'+esc(e?e.reference||'':'')+'"></div>'+
+    '<div class="field span2"><label>Bill copy</label><div id="ex-file"></div></div>'+
+    '<div class="field span2"><label for="ex-note">Note</label><input type="text" id="ex-note" maxlength="160" autocomplete="off" value="'+esc(e?e.note||'':'')+'"></div></div>'+
+    '<p class="err" id="ex-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(e?'Save changes':'Save expense')+'</button></div></form>','--m6',true,function(m2){
+      combo(m2.querySelector('#ex-vendor-host'),{id:'ex-vendor',label:'Vendor',placeholder:'Optional · type to search',value:st.vendorId,allowEmpty:true,emptyText:'Add vendors in Masters › Vendors',
+        options:function(){return S.vendors.filter(function(v){return (v.status||'Active')==='Active'||v.id===st.vendorId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(v){return [v.id,v.name,v.phone||'']})},missing:function(){return e&&e.vendorName||''},onChange:function(v){st.vendorId=v}});
+      pdfField(m2.querySelector('#ex-file'),function(){return st.billFile},function(v){st.billFile=v},{images:true});
+    });
+  var calc=function(){var a=r2(m.querySelector('#ex-amt').value||0),g=+m.querySelector('#ex-gst').value||0,t=r2(a*g/100);return {amount:a,gst:g,tax:t,total:r2(a+t)}};
+  var upd=function(){m.querySelector('#ex-total').textContent=money(calc().total);st.paidNow=m.querySelector('input[name=ex-pay]:checked').value==='now';$$('.ex-now',m).forEach(function(x){x.hidden=!st.paidNow})};
+  m.querySelector('#ex-amt').oninput=upd; m.querySelector('#ex-gst').onchange=upd; $$('input[name=ex-pay]',m).forEach(function(r){r.onchange=upd}); upd();
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#exf').onsubmit=function(ev){
+    ev.preventDefault();
+    var err=m.querySelector('#ex-err'), c=findIn('expCats',m.querySelector('#ex-cat').value), v=findIn('vendors',st.vendorId), k=calc(), d=m.querySelector('#ex-date').value, msg='';
+    if(!d) msg='Choose the date.'; else if(!c) msg='Choose a category.'; else if(!(k.amount>0)) msg='Enter the amount.'; else if(!st.paidNow&&!v) msg='Choose the vendor for an expense on credit, so you can pay it later.';
+    else if(e&&st.paidNow&&!e.paidNow&&S.vpays.some(function(p){return p.expenseId===e.id})) msg='This bill already has vendor payments. Delete them first to mark it as paid now.';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]'); btn.disabled=true;
+    var now=new Date().toISOString(), seq=e?e.seq:seqAfter('expenses');
+    var obj={id:e?e.id:newId('ex'),seq:seq,no:e?e.no:'EXP-'+pad(seq),date:d,dept:mine||m.querySelector('#ex-dept').value,catId:c.id,catName:c.name,adminOnly:!!c.adminOnly,
+      vendorId:v?v.id:'',vendorName:v?v.name:'',billNo:m.querySelector('#ex-bill').value.trim(),amount:k.amount,gst:k.gst,tax:k.tax,total:k.total,
+      paidNow:st.paidNow,mode:st.paidNow?m.querySelector('#ex-mode').value:'',reference:st.paidNow?m.querySelector('#ex-ref').value.trim():'',billFile:st.billFile||null,note:m.querySelector('#ex-note').value.trim(),
+      createdAt:e?e.createdAt:now,updatedAt:now,createdBy:e?e.createdBy||'':(CURRENT_USER?CURRENT_USER.name:'')};
+    put('expenses',obj).then(function(){closeModal();toast(obj.no+(e?' updated':' saved')+' · '+money(obj.total));viewExpense(obj.id)}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
+function viewExpense(id){
+  var render=function(m){
+    var e=findIn('expenses',id); if(!e){closeModal();return}
+    var x=expStatus(e), pays=S.vpays.filter(function(p){return p.expenseId===id});
+    m.innerHTML='<h2>Expense '+esc(e.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Date</dt><dd>'+fmtDate(e.date)+'</dd><dt>Department</dt><dd>'+esc(e.dept)+'</dd><dt>Category</dt><dd><strong>'+esc(e.catName)+'</strong>'+(e.adminOnly?' <span class="pill off">Admin only</span>':'')+'</dd>'+
+      (e.vendorName?'<dt>Vendor</dt><dd><button class="link" data-vled="'+esc(e.vendorId)+'">'+esc(e.vendorName)+'</button></dd>':'')+(e.billNo?'<dt>Bill no.</dt><dd>'+esc(e.billNo)+'</dd>':'')+
+      (e.billFile&&e.billFile.id?'<dt>Bill copy</dt><dd><a href="'+esc(blobUrl(e.billFile.id,e.billFile.type||'application/pdf'))+'" target="_blank" rel="noopener">'+EYE+' View bill</a></dd>':'')+
+      (e.paidNow?'<dt>Paid</dt><dd>'+esc(e.mode)+(e.reference?' · '+esc(e.reference):'')+'</dd>':'')+(e.note?'<dt>Note</dt><dd>'+esc(e.note)+'</dd>':'')+(e.createdBy?'<dt>Entered by</dt><dd>'+esc(e.createdBy)+'</dd>':'')+'</dl>'+
+      '<div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(e.total)+'</div><div class="sub">'+money(e.amount)+' + GST '+(+e.gst||0)+'% '+money(e.tax)+'</div>'+(x.bal>0.004?'<div class="due">Due '+money(x.bal)+'</div>':'')+'</div></div>'+
+      (pays.length?'<h3 class="sec-h">Payments</h3><div class="tbl"><table><tbody>'+pays.map(function(p){return '<tr><td class="nowrap">'+fmtDate(p.date)+'</td><td>'+esc(p.no)+'</td><td>'+esc(p.mode)+(p.reference?' · '+esc(p.reference):'')+'</td><td class="num">'+money(p.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'')+
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(isMgr()&&!readOnly&&!pays.length?'<button class="btn danger" data-del>Delete</button>':'')+(readOnly?'':'<button class="btn w" data-edit>Edit</button>')+(!readOnly&&x.bal>0.004&&e.vendorId?'<button class="btn primary w" data-pay>Pay vendor</button>':'')+'</div>';
+    m.querySelector('[data-x]').onclick=closeModal;
+    var ed=m.querySelector('[data-edit]'); if(ed) ed.onclick=function(){editExpense(id)};
+    var pb=m.querySelector('[data-pay]'); if(pb) pb.onclick=function(){vendorPayDialog(e.vendorId,e.id,function(){viewExpense(id)})};
+    var vl=m.querySelector('[data-vled]'); if(vl) vl.onclick=function(){vendorLedger(e.vendorId)};
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete expense?','Delete '+e.no+' ('+e.catName+', '+money(e.total)+')? This can’t be undone.','Delete',function(){remove('expenses',e.id).then(function(){closeModal();toast(e.no+' deleted')}).catch(function(er){toast(errText(er))})})};
+  };
+  var m=openModal('','--m6',true); render(m); modalRefresh=function(){render(m)};
+}
+
+/* ---------- Expenses list ---------- */
+var expF={q:'',dept:'',cat:'',from:'',to:'',status:''};
+function expDeptDefault(){return myDeptName()||DEPT_NAME[dept]||''}
+function expList(){
+  var q=norm(expF.q), dp=myDeptName()||expF.dept;
+  return S.expenses.filter(function(e){
+    if(e.adminOnly&&!isAdmin()) return false;
+    if(dp&&dp!=='__all'&&e.dept!==dp) return false;
+    if(expF.cat&&e.catId!==expF.cat) return false;
+    if(expF.from&&e.date<expF.from) return false;
+    if(expF.to&&e.date>expF.to) return false;
+    if(expF.status&&expStatus(e).status!==expF.status) return false;
+    if(q&&norm(e.no+' '+e.catName+' '+(e.vendorName||'')+' '+(e.billNo||'')+' '+(e.note||'')+' '+(e.reference||'')).indexOf(q)<0) return false;
+    return true;
+  }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
+}
+var expLastDept=null;
+SECTIONS.expenses={
+  mount:function(){
+    if(expLastDept!==dept){expF.dept=expDeptDefault();expLastDept=dept}
+    var mine=myDeptName();
+    work.innerHTML=head('Expenses','<button class="btn" id="ex-export">Export CSV</button>'+(readOnly?'':'<button class="btn primary w" id="ex-new">'+PLUS+' New expense</button>'))+
+      '<div class="toolbar"><div class="field grow"><label for="ex-q">Search</label><input type="search" id="ex-q" placeholder="Number, category, vendor, bill or note" value="'+esc(expF.q)+'"></div>'+
+      (mine?'':'<div class="field"><label for="ex-fd">Department</label><select id="ex-fd">'+optList([['__all','All departments']].concat(EXP_DEPTS),expF.dept||'__all')+'</select></div>')+
+      '<div class="field"><label for="ex-fc">Category</label><select id="ex-fc"></select></div>'+
+      '<div class="field"><label for="ex-fs">Status</label><select id="ex-fs">'+optList([['','All'],['paid','Paid'],['partial','Part paid'],['unpaid','Unpaid']],expF.status)+'</select></div>'+dateFilters('exd',expF)+'</div><div id="body"></div>';
+    var up=function(){SECTIONS.expenses.update()};
+    $('#ex-q').oninput=function(e){expF.q=e.target.value;up()};
+    var fd=$('#ex-fd'); if(fd) fd.onchange=function(e){expF.dept=e.target.value;up()};
+    $('#ex-fc').onchange=function(e){expF.cat=e.target.value;up()};
+    $('#ex-fs').onchange=function(e){expF.status=e.target.value;up()};
+    $('#exd-from').onchange=function(e){expF.from=e.target.value;up()};
+    $('#exd-to').onchange=function(e){expF.to=e.target.value;up()};
+    var nb=$('#ex-new'); if(nb) nb.onclick=function(){editExpense(null)};
+    $('#ex-export').onclick=function(){saveFile('expenses-'+todayStr()+'.csv',csv([['Number','Date','Department','Category','Vendor','Bill no.','Amount','GST %','GST','Total','Payment','Mode','Reference','Paid','Due','Note']].concat(expList().map(function(e){var x=expStatus(e);return [e.no,e.date,e.dept,e.catName,e.vendorName||'',e.billNo||'',e.amount,e.gst,e.tax,e.total,e.paidNow?'Paid now':'Credit',e.mode||'',e.reference||'',x.paid,x.bal,e.note||'']}))))};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    var fc=$('#ex-fc',work); if(fc) fc.innerHTML=optList([['','All categories']].concat(expCatsFor(expF.cat).map(function(c){return [c.id,c.name]})),expF.cat);
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var all=S.expenses.filter(function(e){return !e.adminOnly||isAdmin()});
+    if(!all.length){b.innerHTML='<div class="empty"><strong>No expenses yet</strong>'+(S.expCats.length?'Use New expense to record one.':'Add categories in Masters › Expense Categories first.')+'</div>';return}
+    var list=expList(); if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No expense matches these filters.</div>';return}
+    var T=0,G=0,D=0;
+    b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Vendor</th>'+(myDeptName()?'':'<th>Dept</th>')+'<th class="num">GST</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>'+
+      list.map(function(e){var x=expStatus(e);T+=+e.total||0;G+=+e.tax||0;D+=x.bal;return '<tr class="click-row" data-exv="'+esc(e.id)+'"><td class="nowrap"><strong>'+esc(e.no)+'</strong>'+(e.billFile&&e.billFile.id?' <span title="Bill copy attached">📎</span>':'')+'</td><td class="nowrap">'+fmtDate(e.date)+'</td><td>'+esc(e.catName)+(e.note?'<div class="sub">'+esc(e.note)+'</div>':'')+'</td><td>'+esc(e.vendorName||'—')+(e.billNo?'<div class="sub">Bill '+esc(e.billNo)+'</div>':'')+'</td>'+(myDeptName()?'':'<td>'+esc(e.dept)+'</td>')+
+        '<td class="num">'+money(e.tax)+'</td><td class="num">'+money(e.total)+'</td><td>'+statusPill(x.status)+(x.bal>0.004&&x.status!=='unpaid'?'<div class="sub">Due '+money(x.bal)+'</div>':'')+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="'+(myDeptName()?4:5)+'">Total</td><td class="num">'+money(G)+'</td><td class="num">'+money(T)+'</td><td>'+(D>0.004?'<span class="due">Due '+money(D)+'</span>':'')+'</td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,all.length,'expenses')+'</p>';
+    $$('[data-exv]',b).forEach(function(x){x.onclick=function(){viewExpense(x.dataset.exv)}});
+  }
+};
+
+/* ---------- vendor payments ---------- */
+function vendorPayDialog(vid,expenseId,onDone){
+  if(readOnly){toast('You need Contributor access to record payments.');return}
+  var st={vid:vid||'',eid:expenseId||''}, mine=myDeptName();
+  var m=openModal('<h2>Pay vendor</h2><form id="vpf" novalidate><div class="f-grid">'+
+    '<div class="field span2"><label for="vp-v">Vendor <span class="req">*</span></label><div id="vp-v-host"></div></div>'+
+    '<div class="field span2"><label for="vp-bill">Against bill</label><select id="vp-bill"></select></div>'+
+    '<div class="field"><label for="vp-date">Date</label><input type="date" id="vp-date" value="'+todayStr()+'"></div>'+
+    '<div class="field"><label for="vp-amt">Amount (₹) <span class="req">*</span></label><input type="number" id="vp-amt" min="0" step="0.01"></div>'+
+    '<div class="field"><label for="vp-mode">Mode</label><select id="vp-mode">'+optList(MODES,'Bank transfer')+'</select></div>'+
+    '<div class="field"><label for="vp-ref">Reference</label><input type="text" id="vp-ref" maxlength="60" autocomplete="off" placeholder="UTR / cheque no."></div>'+
+    '<div class="field span2"><label for="vp-note">Note</label><input type="text" id="vp-note" maxlength="120" autocomplete="off"></div></div>'+
+    '<p class="hint" id="vp-due"></p><p class="err" id="vp-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save payment</button></div></form>','--m13',false,function(m2){
+      combo(m2.querySelector('#vp-v-host'),{id:'vp-v',label:'Vendor',placeholder:'Type to search vendors',value:st.vid,emptyText:'Add vendors in Masters › Vendors',
+        options:function(){return S.vendors.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name]})},onChange:function(v){st.vid=v;st.eid='';bills()}});
+    });
+  function bills(){
+    var sel=m.querySelector('#vp-bill'), a=st.vid?vendorAlloc(st.vid):null, open=a?a.bills.filter(function(b){return b.bal>0.004&&!b.opening}):[];
+    sel.innerHTML=optList([['','On account (oldest bills first)']].concat(open.map(function(b){return [b.id,b.no+(b.billNo?' · bill '+b.billNo:'')+' · '+(b.cat||'')+' · '+fmtDate(b.date)+' · due '+money(b.bal)]})),st.eid);
+    m.querySelector('#vp-due').innerHTML=a?'Total payable to this vendor: <strong>'+money(Math.max(0,a.net))+'</strong>':'';
+    var b=open.find(function(x){return x.id===st.eid}); if(b) m.querySelector('#vp-amt').value=b.bal;
+  }
+  bills();
+  m.querySelector('#vp-bill').onchange=function(e){st.eid=e.target.value;bills()};
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#vpf').onsubmit=function(ev){ev.preventDefault();
+    var err=m.querySelector('#vp-err'), v=findIn('vendors',st.vid), amt=r2(m.querySelector('#vp-amt').value||0), d=m.querySelector('#vp-date').value, msg='';
+    if(!v) msg='Choose the vendor.'; else if(!(amt>0)) msg='Enter an amount greater than zero.'; else if(!d) msg='Choose the date.';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]');btn.disabled=true;
+    var seq=seqAfter('vpays'), ex=st.eid&&findIn('expenses',st.eid);
+    var obj={id:newId('vp'),seq:seq,no:'VPY-'+pad(seq),date:d,vendorId:v.id,vendorName:v.name,expenseId:ex?ex.id:'',expenseNo:ex?ex.no:'',dept:ex?ex.dept:(mine||DEPT_NAME[dept]||'Common'),adminOnly:!!(ex&&ex.adminOnly),
+      amount:amt,mode:m.querySelector('#vp-mode').value,reference:m.querySelector('#vp-ref').value.trim(),note:m.querySelector('#vp-note').value.trim(),createdAt:new Date().toISOString(),createdBy:CURRENT_USER?CURRENT_USER.name:''};
+    put('vpays',obj).then(function(){closeModal();toast(obj.no+' saved: '+money(amt)+' to '+v.name);if(onDone)onDone(obj)}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
+function vendorLedger(vid){
+  var render=function(m){
+    var v=findIn('vendors',vid)||{}, a=vendorAlloc(vid), rows=[];
+    if(+v.openingBal) rows.push({date:'',ref:'',part:'Opening balance',dr:0,cr:+v.openingBal,ord:0});
+    S.expenses.forEach(function(e){if(e.vendorId!==vid)return;rows.push({date:e.date,ref:e.no,part:e.catName+(e.billNo?' · bill '+e.billNo:'')+(e.paidNow?' (paid now)':''),dr:0,cr:+e.total||0,ord:1,seq:e.seq});if(e.paidNow)rows.push({date:e.date,ref:e.no,part:'Paid with bill ('+(e.mode||'')+(e.reference?' · '+e.reference:'')+')',dr:+e.total||0,cr:0,ord:2,seq:e.seq})});
+    S.vpays.forEach(function(p){if(p.vendorId===vid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.expenseNo?' against '+p.expenseNo:''),dr:+p.amount||0,cr:0,ord:3,seq:p.seq})});
+    rows.sort(function(x,y){return (x.date||'').localeCompare(y.date||'')||x.ord-y.ord||(x.seq||0)-(y.seq||0)});
+    var bal=0; rows.forEach(function(r){bal=r2(bal+r.cr-r.dr);r.bal=bal});
+    m.innerHTML='<h2>'+esc(v.name||'Vendor')+' · ledger</h2><div class="mem-sum" style="margin-top:-4px"><span>Bills <strong>'+money(rows.reduce(function(t,r){return t+r.cr},0))+'</strong></span><span>Paid <strong>'+money(rows.reduce(function(t,r){return t+r.dr},0))+'</strong></span><span>Balance payable <strong>'+money(Math.max(0,a.net))+'</strong></span>'+(a.advance>0.004?'<span>Advance with vendor <strong>'+money(a.advance)+'</strong></span>':'')+'</div>'+
+      (rows.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Particulars</th><th>Ref</th><th class="num">Bill</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead><tbody>'+
+      rows.map(function(r){return '<tr><td class="nowrap">'+(r.date?fmtDate(r.date):'—')+'</td><td>'+esc(r.part)+'</td><td class="nowrap">'+esc(r.ref||'—')+'</td><td class="num">'+(r.cr?money(r.cr):'')+'</td><td class="num">'+(r.dr?money(r.dr):'')+'</td><td class="num">'+money(r.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No entries yet.</p>')+
+      '<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-csv>Export CSV</button>'+(readOnly?'':'<button class="btn primary w" data-pay>Record payment</button>')+'</div>';
+    m.querySelector('[data-x]').onclick=closeModal;
+    m.querySelector('[data-csv]').onclick=function(){saveFile('vendor-ledger-'+(v.name||'').replace(/\W+/g,'-')+'.csv',csv([['Date','Particulars','Ref','Bill','Paid','Balance']].concat(rows.map(function(r){return [r.date,r.part,r.ref,r.cr||'',r.dr||'',r.bal]}))))};
+    var pb=m.querySelector('[data-pay]'); if(pb) pb.onclick=function(){vendorPayDialog(vid,'',function(){vendorLedger(vid)})};
+  };
+  var m=openModal('','--m13',true); render(m); modalRefresh=function(){render(m)};
+}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-vled]');if(b&&!b.onclick){vendorLedger(b.dataset.vled)}});
+var vpF={q:'',from:'',to:''};
+function vpList(){
+  var q=norm(vpF.q), dp=myDeptName();
+  return S.vpays.filter(function(p){
+    if(p.adminOnly&&!isAdmin()) return false;
+    if(dp&&p.dept!==dp) return false;
+    if(q&&norm(p.no+' '+p.vendorName+' '+(p.expenseNo||'')+' '+(p.reference||'')+' '+(p.note||'')).indexOf(q)<0) return false;
+    if(vpF.from&&p.date<vpF.from) return false; if(vpF.to&&p.date>vpF.to) return false; return true;
+  }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)});
+}
+SECTIONS['vendor-pay']={
+  mount:function(){
+    work.innerHTML=head('Vendor Payments','<button class="btn" id="vp-export">Export CSV</button>'+(readOnly?'':'<button class="btn primary w" id="vp-new">'+PLUS+' Pay vendor</button>'))+
+      '<div class="toolbar"><div class="field grow"><label for="vp-q">Search</label><input type="search" id="vp-q" placeholder="Vendor, number, expense or reference" value="'+esc(vpF.q)+'"></div>'+dateFilters('vpd',vpF)+'</div><div id="body"></div>';
+    var up=function(){SECTIONS['vendor-pay'].update()};
+    $('#vp-q').oninput=function(e){vpF.q=e.target.value;up()};
+    $('#vpd-from').onchange=function(e){vpF.from=e.target.value;up()};
+    $('#vpd-to').onchange=function(e){vpF.to=e.target.value;up()};
+    var nb=$('#vp-new'); if(nb) nb.onclick=function(){vendorPayDialog('','')};
+    $('#vp-export').onclick=function(){saveFile('vendor-payments-'+todayStr()+'.csv',csv([['Number','Date','Vendor','Against','Mode','Reference','Note','Amount']].concat(vpList().map(function(p){return [p.no,p.date,p.vendorName,p.expenseNo||'On account',p.mode,p.reference||'',p.note||'',p.amount]}))))};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var list=vpList(), T=0;
+    if(!S.vpays.length){b.innerHTML='<div class="empty"><strong>No vendor payments yet</strong>Use Pay vendor to record a payment for an expense bought on credit.</div>';return}
+    if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No payment matches these filters.</div>';return}
+    b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Vendor</th><th>Against</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
+      list.map(function(p){T+=+p.amount||0;return '<tr><td class="nowrap"><strong>'+esc(p.no)+'</strong></td><td class="nowrap">'+fmtDate(p.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-vled="'+esc(p.vendorId)+'">'+esc(p.vendorName)+'</button></td><td class="nowrap">'+(p.expenseId&&findIn('expenses',p.expenseId)?'<button class="link" data-exv2="'+esc(p.expenseId)+'">'+esc(p.expenseNo)+'</button>':'<span class="pill off">On account</span>')+'</td><td>'+esc(p.mode)+'</td><td>'+esc(p.reference||'')+(p.note?'<div class="sub">'+esc(p.note)+'</div>':'')+'</td><td class="num">'+money(p.amount)+'</td>'+
+        '<td>'+(isMgr()&&!readOnly?'<button class="btn sm danger" data-vpdel="'+esc(p.id)+'">Delete</button>':'')+'</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.vpays.length,'payments')+'</p>';
+    $$('[data-exv2]',b).forEach(function(x){x.onclick=function(){viewExpense(x.dataset.exv2)}});
+    $$('[data-vpdel]',b).forEach(function(x){x.onclick=function(){var p=findIn('vpays',x.dataset.vpdel);if(!p)return;confirmBox('Delete payment?','Delete '+p.no+' ('+money(p.amount)+' to '+p.vendorName+')?','Delete',function(){remove('vpays',p.id).then(function(){toast(p.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+  }
+};
+
+/* ---------- Payable to vendors ---------- */
+var vyF={view:'vendor',q:''};
+function vyRows(){
+  var q=norm(vyF.q), dp=myDeptName(), out=[];
+  S.vendors.forEach(function(v){
+    var a=vendorAlloc(v.id), due=a.bills.filter(function(b){return b.bal>0.004&&(!dp||b.opening||b.dept===dp)});
+    if(vyF.view==='bill'){due.forEach(function(b){if(q&&norm(v.name+' '+b.no+' '+(b.billNo||'')+' '+(b.cat||'')).indexOf(q)<0)return;out.push({v:v,b:b})})}
+    else if(a.net>0.004&&(!q||norm(v.name).indexOf(q)>=0)) out.push({v:v,a:a,n:due.length,bills:r2(a.bills.reduce(function(t,b){return t+b.total},0))});
+  });
+  return vyF.view==='bill'?out.sort(function(x,y){return (x.b.date||'').localeCompare(y.b.date||'')}):out.sort(function(x,y){return y.a.net-x.a.net});
+}
+SECTIONS['vendor-payable']={
+  mount:function(){
+    var bv=vyF.view==='bill';
+    work.innerHTML=head('Payable to Vendors','<button class="btn" id="vy-export">Export CSV</button>'+(readOnly?'':'<button class="btn primary w" id="vy-pay">'+PLUS+' Pay vendor</button>'))+
+      '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(!bv?' primary':'')+'" data-vyview="vendor">By vendor</button><button class="btn'+(bv?' primary':'')+'" data-vyview="bill">By bill</button></div></div>'+
+      '<div class="toolbar"><div class="field grow"><label for="vy-q">Search</label><input type="search" id="vy-q" placeholder="Vendor'+(bv?', number, bill no. or category':'')+'" value="'+esc(vyF.q)+'"></div></div><div id="body"></div>';
+    $$('[data-vyview]',work).forEach(function(x){x.onclick=function(){vyF.view=x.dataset.vyview;go(current)}});
+    $('#vy-q').oninput=function(e){vyF.q=e.target.value;SECTIONS['vendor-payable'].update()};
+    var pb=$('#vy-pay'); if(pb) pb.onclick=function(){vendorPayDialog('','')};
+    $('#vy-export').onclick=function(){var r=vyRows();saveFile('vendor-payable-'+todayStr()+'.csv',csv(vyF.view==='bill'?[['Vendor','Number','Category','Bill no.','Date','Days','Total','Paid','Balance']].concat(r.map(function(x){return [x.v.name,x.b.no,x.b.cat||'',x.b.billNo||'',x.b.date,x.b.date?daysSince(x.b.date):'',x.b.total,x.b.paid,x.b.bal]})):[['Vendor','Phone','Bills due','Bills','Paid','Balance']].concat(r.map(function(x){return [x.v.name,x.v.phone||'',x.n,x.bills,x.a.paid,Math.max(0,x.a.net)]}))))};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var rows=vyRows(), T=0;
+    if(!rows.length){b.innerHTML='<div class="empty"><strong>Nothing payable</strong>All vendor bills are paid.</div>';return}
+    if(vyF.view==='bill'){
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Vendor</th><th>Number</th><th>Date</th><th>Overdue</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
+        rows.map(function(x){T+=x.b.bal;return '<tr><td><button class="link" style="color:inherit;font-weight:500" data-vled="'+esc(x.v.id)+'">'+esc(x.v.name)+'</button></td><td class="nowrap">'+(x.b.opening?'<span class="pill off">Opening balance</span>':'<button class="link" data-exv2="'+esc(x.b.id)+'">'+esc(x.b.no)+'</button><div class="sub">'+esc(x.b.cat||'')+(x.b.billNo?' · bill '+esc(x.b.billNo):'')+'</div>')+'</td><td class="nowrap">'+(x.b.date?fmtDate(x.b.date):'—')+'</td><td>'+(x.b.date?agePill(daysSince(x.b.date)):'')+'</td><td class="num">'+money(x.b.total)+'</td><td class="num">'+money(x.b.paid)+'</td><td class="num due">'+money(x.b.bal)+'</td>'+
+          '<td>'+(readOnly?'':'<button class="btn sm w" data-vybill="'+esc(x.v.id+'|'+(x.b.opening?'':x.b.id))+'">Pay</button>')+'</td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div>';
+    } else {
+      b.innerHTML='<div class="tbl"><table><thead><tr><th>Vendor</th><th class="num">Bills due</th><th class="num">Bills</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
+        rows.map(function(x){var bal=Math.max(0,x.a.net);T+=bal;return '<tr><td><button class="link" style="color:inherit;font-weight:500" data-vled="'+esc(x.v.id)+'">'+esc(x.v.name)+'</button><div class="sub">'+esc(x.v.phone||'')+'</div></td><td class="num">'+x.n+'</td><td class="num">'+money(x.bills)+'</td><td class="num">'+money(x.a.paid)+'</td><td class="num due">'+money(bal)+'</td>'+
+          '<td><div class="row-acts"><button class="btn sm" data-vled="'+esc(x.v.id)+'">Ledger</button>'+(readOnly?'':'<button class="btn sm w" data-vybill="'+esc(x.v.id)+'|">Pay</button>')+'</div></td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div>';
+    }
+    $$('[data-exv2]',b).forEach(function(x){x.onclick=function(){viewExpense(x.dataset.exv2)}});
+    $$('[data-vybill]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.vybill.split('|');vendorPayDialog(p[0],p[1])}});
+  }
+};
+
+/* ---------- Expense report ---------- */
+var erF={from:'',to:'',dept:''}, erLastDept=null;
+SECTIONS['exp-report']={
+  mount:function(){
+    if(erLastDept!==dept){erF.dept=expDeptDefault();erLastDept=dept;if(!erF.from){erF.from=monthStart();erF.to=todayStr()}}
+    var mine=myDeptName();
+    work.innerHTML=head('Expense Report','<button class="btn" id="er-export">Export CSV</button>')+
+      '<div class="toolbar">'+(mine?'':'<div class="field"><label for="er-d">Department</label><select id="er-d">'+optList([['__all','All departments']].concat(EXP_DEPTS),erF.dept||'__all')+'</select></div>')+dateFilters('erd',erF)+'</div><div id="body"></div>';
+    var up=function(){SECTIONS['exp-report'].update()};
+    var d=$('#er-d'); if(d) d.onchange=function(e){erF.dept=e.target.value;up()};
+    $('#erd-from').onchange=function(e){erF.from=e.target.value;up()};
+    $('#erd-to').onchange=function(e){erF.to=e.target.value;up()};
+    $('#er-export').onclick=function(){var r=erData();saveFile('expense-report-'+todayStr()+'.csv',csv([['Category','Expenses','Amount','GST','Total']].concat(r.cats.map(function(c){return [c.name,c.n,c.amount,c.tax,c.total]})).concat([['Total',r.n,r.amount,r.tax,r.total]])))};
+  },
+  update:function(){
+    var b=$('#body',work); if(!b) return;
+    if(!ready()){b.innerHTML=loadingHTML();return}
+    var r=erData();
+    if(!r.n){b.innerHTML='<div class="empty"><strong>No expenses in this period</strong>Change the dates or department.</div>';return}
+    var max=r.cats.length?r.cats[0].total||1:1;
+    b.innerHTML='<div class="tiles">'+tile('--m6','Total expenses',money0(r.total),r.n+' expense'+(r.n===1?'':'s'))+tile('--m4','GST paid',money0(r.tax),'Input GST on bills')+tile('--m5','Paid',money0(r.paid),'Including paid now')+tile('--m3','Unpaid',money0(r.due),'Payable to vendors')+'</div>'+
+      '<div class="panels"><div class="panel"><h3>By category</h3><div class="tbl"><table><thead><tr><th>Category</th><th class="num">Count</th><th class="num">Before GST</th><th class="num">GST</th><th class="num">Total</th><th class="num">Share</th></tr></thead><tbody>'+
+      r.cats.map(function(c){return '<tr><td><strong>'+esc(c.name)+'</strong></td><td class="num">'+c.n+'</td><td class="num">'+money(c.amount)+'</td><td class="num">'+money(c.tax)+'</td><td class="num">'+money(c.total)+'</td><td class="num">'+Math.round(c.total/r.total*100)+'%</td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td>Total</td><td class="num">'+r.n+'</td><td class="num">'+money(r.amount)+'</td><td class="num">'+money(r.tax)+'</td><td class="num">'+money(r.total)+'</td><td></td></tr></tfoot></table></div></div>'+
+      '<div class="stack">'+(myDeptName()?'':'<div class="panel"><h3>By department</h3>'+r.depts.map(function(d){return hbar(d.name,money0(d.total),d.total/(r.depts[0].total||1),'--m6')}).join('')+'</div>')+
+      '<div class="panel"><h3>By month</h3>'+r.months.map(function(m){return hbar(m.name,money0(m.total),m.total/(Math.max.apply(null,r.months.map(function(x){return x.total}))||1),'--m4')}).join('')+'</div></div></div>';
+  }
+};
+function erData(){
+  var dp=myDeptName()||erF.dept, list=S.expenses.filter(function(e){return (!e.adminOnly||isAdmin())&&(!dp||dp==='__all'||e.dept===dp)&&(!erF.from||e.date>=erF.from)&&(!erF.to||e.date<=erF.to)});
+  var cats={},depts={},months={},r={n:list.length,amount:0,tax:0,total:0,paid:0,due:0};
+  list.forEach(function(e){var x=expStatus(e);r.amount+=+e.amount||0;r.tax+=+e.tax||0;r.total+=+e.total||0;r.paid+=x.paid;r.due+=x.bal;
+    var c=cats[e.catId]=cats[e.catId]||{name:e.catName,n:0,amount:0,tax:0,total:0};c.n++;c.amount=r2(c.amount+(+e.amount||0));c.tax=r2(c.tax+(+e.tax||0));c.total=r2(c.total+(+e.total||0));
+    depts[e.dept]=r2((depts[e.dept]||0)+(+e.total||0));var mk=(e.date||'').slice(0,7);months[mk]=r2((months[mk]||0)+(+e.total||0))});
+  ['amount','tax','total','paid','due'].forEach(function(k){r[k]=r2(r[k])});
+  r.cats=Object.keys(cats).map(function(k){return cats[k]}).sort(function(a,b){return b.total-a.total});
+  r.depts=Object.keys(depts).map(function(k){return {name:k,total:depts[k]}}).sort(function(a,b){return b.total-a.total});
+  r.months=Object.keys(months).sort().map(function(k){return {name:parseD(k+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'}),total:months[k]}});
+  return r;
+}
+function expMonthTotal(dk){var ym=todayStr().slice(0,7),dn=DEPT_NAME[dk];return r2(S.expenses.filter(function(e){return (!e.adminOnly||isAdmin())&&e.dept===dn&&(e.date||'').slice(0,7)===ym}).reduce(function(t,e){return t+(+e.total||0)},0))}
+function expDue(dk){var dn=DEPT_NAME[dk],out=[];S.vendors.forEach(function(v){vendorAlloc(v.id).bills.forEach(function(b){if(b.bal>0.004&&!b.opening&&b.dept===dn){var e=findIn('expenses',b.id);if(e&&e.adminOnly&&!isAdmin())return;out.push({v:v,b:b})}})});return out.sort(function(a,b){return (a.b.date||'').localeCompare(b.b.date||'')})}
+
 /* ---------- shell wiring ---------- */
 var VIEWS={home:$('#view-home'),spa:$('#view-spa'),pha:$('#view-pha'),aes:$('#view-aes')}, notice=$('#notice');
 var curView='home';
@@ -6394,9 +6807,9 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
-  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
-  return ['ph-dashboard','ph-pending','clients','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
+  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
+  return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
 function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
 function applyRoleUI(){
