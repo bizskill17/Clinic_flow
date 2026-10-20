@@ -31,7 +31,7 @@ if($action==='file_delete'){if($method!=='POST')respond(405,['error'=>'Method no
 function waGroups():array{return['invoice','quotation','receipt','prescription','education','birthday'];}
 function waDefaults():array{return['invoice'=>'veda_invoice','quotation'=>'veda_quotation','receipt'=>'veda_receipt','prescription'=>'veda_prescription','education'=>'veda_education','birthday'=>'veda_birthday'];}
 function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
-function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on']];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'cronKey'=>$c['cronKey']];}return $o;}
+function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on']];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang']];}return $o;}
 function waPhone(string $s):string{$d=preg_replace('/\D/','',$s);if(strlen($d)===11&&$d[0]==='0')$d=substr($d,1);if(strlen($d)===10)$d='91'.$d;return $d;}
 function waHttp(string $url,string $token,$body,bool $multipart=false):array{
   if(!function_exists('curl_init'))return[0,['error'=>['message'=>'The server is missing the PHP curl extension.']]];
@@ -59,16 +59,15 @@ function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?arr
   if($code>=200&&$code<300&&!empty($r['messages'][0]['id']))return['ok'=>true,'waId'=>$r['messages'][0]['id']];
   return['ok'=>false,'error'=>waErr($r)];
 }
-if($action==='wa_status'){me($pdo);respond(200,waPublic(waCfg($pdo),false));}
-if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true));}
+if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
+if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
   if(!empty($in['clearToken']))$c['token']='';
   if(isset($in['lang']))$c['lang']=preg_replace('/[^A-Za-z_]/','',(string)$in['lang'])?:'en';
   foreach(waGroups() as $g){if(isset($in['on'][$g]))$c['on'][$g]=(bool)$in['on'][$g];if(isset($in['tpl'][$g])){$t=preg_replace('/[^a-z0-9_]/','',strtolower((string)$in['tpl'][$g]));$c['tpl'][$g]=$t?:waDefaults()[$g];}}
-  if($c['cronKey']===''||!empty($in['newCronKey']))$c['cronKey']=bin2hex(random_bytes(16));
-  save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true));}
+  save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_test'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can send a test.']);$c=waCfg($pdo);if($c['phoneId']===''||$c['token']==='')respond(400,['error'=>'Save the Phone number ID and Access token first.']);$to=waPhone((string)($in['to']??''));if(strlen($to)<11)respond(400,['error'=>'Enter a valid mobile number.']);
   $tc=$c;$tc['tpl']['test']='hello_world';$tc['lang']='en_US';$r=waSendTpl($pdo,$tc,'test',$to,[],null);
   waLog($pdo,['kind'=>'test','group'=>'test','to'=>$to,'clientName'=>'Test message','status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>$u['name']??'']);
@@ -90,17 +89,28 @@ if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not al
   $l=waLog($pdo,$base+['to'=>$to,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'']);
   respond(200,['ok'=>$r['ok'],'error'=>$r['error']??'','log'=>$l]);}
 /* daily job (Hostinger cron): birthday wishes. Called with the secret cron key. */
-if($action==='wa_cron'){$c=waCfg($pdo);$key=(string)($_GET['key']??'');if($c['cronKey']===''||!hash_equals($c['cronKey'],$key))respond(403,['error'=>'Invalid key.']);
-  if($c['phoneId']===''||$c['token']===''||empty($c['on']['birthday']))respond(200,['ok'=>true,'sent'=>0,'note'=>'Birthday messages are off or WhatsApp is not set up.']);
+/* birthday wishes for today (IST); safe to call many times: each client gets one wish per year */
+function waBirthdays(PDO $pdo,array $c):array{
   $now=new DateTime('now',new DateTimeZone('Asia/Kolkata'));$md=$now->format('m-d');$yr=$now->format('Y');
   $biz=waDoc($pdo,'spa_business','profile');$bname=(string)($biz['name']??'');$sent=0;$failed=0;
   $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='spa_clients'");$q->execute();$rows=$q->fetchAll();
   foreach($rows as $row){$cl=json_decode($row['data'],true)?:[];$dob=(string)($cl['dob']??'');if(strlen($dob)<10||substr($dob,5,5)!==$md||!empty($cl['waOff']))continue;
     $to=waPhone((string)($cl['phone']??''));if(strlen($to)<11)continue;$dk=$row['id'].'|'.$yr;if(waLogged($pdo,'birthday',$dk))continue;
     $first=trim(explode(' ',trim((string)($cl['name']??'')))[0]??'');$r=waSendTpl($pdo,$c,'birthday',$to,[$first?:'there',$bname?:'us'],null);
-    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>'Daily job']);
+    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>'Automatic (daily)']);
     $r['ok']?$sent++:$failed++;}
-  respond(200,['ok'=>true,'sent'=>$sent,'failed'=>$failed]);}
+  return['sent'=>$sent,'failed'=>$failed];
+}
+/* runs once a day, the first time the system is used after 9:00 AM IST (no cron needed) */
+function waDaily(PDO $pdo):void{
+  $c=waCfg($pdo);if($c['phoneId']===''||$c['token']===''||empty($c['on']['birthday']))return;
+  $now=new DateTime('now',new DateTimeZone('Asia/Kolkata'));if((int)$now->format('G')<9)return;
+  $id='bday-'.$now->format('Y-m-d');
+  try{$q=$pdo->prepare('INSERT INTO docs(collection,id,data,updated_at)VALUES(?,?,?,CURRENT_TIMESTAMP)');$q->execute(['wa_runs',$id,json_encode(['state'=>'running','at'=>gmdate('c')])]);}catch(Throwable $e){return;}
+  @set_time_limit(300);ignore_user_abort(true);$r=waBirthdays($pdo,$c);
+  save($pdo,'wa_runs',$id,['state'=>'done','at'=>gmdate('c'),'sent'=>$r['sent'],'failed'=>$r['failed']]);
+}
+function waLastRun(PDO $pdo):?array{$q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_runs' ORDER BY id DESC LIMIT 1");$q->execute();$r=$q->fetch();if(!$r)return null;$d=json_decode($r['data'],true)?:[];$d['day']=substr($r['id'],5);return $d;}
 /* ---- bulk save (imports): up to 1000 records of one collection in one transaction ---- */
 if($action==='bulk'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);$c=(string)($in['collection']??'');if(!in_array($c,$cols,true))respond(400,['error'=>'Unknown collection.']);if(in_array($c,['spa_users','spa_business'],true))respond(400,['error'=>'This list can’t be bulk saved.']);if(!allowed($u,$c,'POST'))respond(403,['error'=>'Not permitted for your role.']);$recs=$in['records']??null;if(!is_array($recs)||count($recs)>1000)respond(400,['error'=>'Invalid records.']);$pdo->beginTransaction();try{foreach($recs as $r){$id=(string)($r['id']??'');$d=$r['data']??null;if($id===''||strlen($id)>100||!is_array($d))throw new Exception('bad record');save($pdo,$c,$id,$d);}$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();error_log($e->getMessage());respond(400,['error'=>'Import failed: a record was invalid.']);}respond(200,['ok'=>true,'count'=>count($recs)]);}
 $user=me($pdo);$c=$method==='GET'?($_GET['collection']??''):($in['collection']??'');if(!is_string($c)||!in_array($c,$cols,true))respond(400,['error'=>'Unknown collection.']);if(!allowed($user,$c,$method))respond(403,['error'=>'Not permitted for your role.']);

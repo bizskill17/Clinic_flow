@@ -6215,6 +6215,7 @@ SECTIONS['ph-pending']=pendSection('pha');
 var WA={configured:false,on:{}}, WA_GROUP={inv:'invoice',aeinv:'invoice',phsale:'invoice',quote:'quotation',receipt:'receipt',conrx:'prescription',sesrx:'prescription',edu:'education',birthday:'birthday'};
 var WA_LABEL={invoice:'Invoice',quotation:'Quotation',receipt:'Receipt',prescription:'Prescription',education:'Educational content',birthday:'Birthday wishes',test:'Test message'};
 function waLoadStatus(){return authCall('wa_status').then(function(x){WA=x||WA}).catch(function(){})}
+setInterval(function(){if(CURRENT_USER)waLoadStatus()},30*60*1000);
 function waOn(group){return !!(WA.configured&&WA.on&&WA.on[group])}
 function waB64(data){
   var u8=data instanceof Uint8Array?data:new Uint8Array(data instanceof ArrayBuffer?data:(data&&data.buffer?data.buffer:[]));
@@ -6312,7 +6313,7 @@ SECTIONS['wa-settings']={
     if(waTab==='log') return waLogView(b);
     if(!waCfgCache){if(!b.innerHTML)b.innerHTML=loadingHTML();return}
     if(b.dataset.drawn==='1') return; b.dataset.drawn='1';
-    var c=waCfgCache, cron=location.origin+location.pathname.replace(/[^/]*$/,'')+'api/index.php?action=wa_cron&key='+(c.cronKey||'');
+    var c=waCfgCache;
     var sw=function(g,label,hint){return '<label class="wa-sw"><input type="checkbox" data-waon="'+g+'"'+(c.on&&c.on[g]?' checked':'')+'><span><strong>'+esc(label)+'</strong><span class="sub">'+esc(hint)+'</span></span></label>'};
     b.innerHTML='<div class="panel"><h3>1 · Connection</h3><p class="hint" style="margin:-4px 0 12px">From Meta › WhatsApp › API Setup. The access token is stored only on the server and is never shown again in full.</p><div class="f-grid">'+
       '<div class="field"><label for="wa-pid">Phone number ID</label><input type="text" id="wa-pid" value="'+esc(c.phoneId||'')+'" autocomplete="off" inputmode="numeric"></div>'+
@@ -6326,14 +6327,13 @@ SECTIONS['wa-settings']={
         sw('receipt','Receipt','When a payment is recorded')+
         sw('prescription','Prescription','When a consultation or session with medicines is saved')+
         sw('education','Educational content','After the first session of a procedure (uses the PDF on the procedure)')+
-        sw('birthday','Birthday wishes','Every morning, to clients whose birthday is today (needs the daily job below)')+'</div>'+
+        sw('birthday','Birthday wishes','Every morning after 9 AM, to clients whose birthday is today')+'</div>'+
         '<details style="margin-top:12px"><summary class="sub" style="cursor:pointer">Template names in Meta (change only if you named them differently)</summary><div class="f-grid" style="margin-top:10px">'+
         ['invoice','quotation','receipt','prescription','education','birthday'].map(function(g){return '<div class="field"><label for="wa-t-'+g+'">'+esc(WA_LABEL[g])+'</label><input type="text" id="wa-t-'+g+'" data-watpl="'+g+'" value="'+esc((c.tpl||{})[g]||'')+'" autocomplete="off"></div>'}).join('')+'</div></details></div>'+
       '<p class="err" id="wa-err" hidden></p><div class="form-actions"><button type="button" class="btn primary w" id="wa-save">Save settings</button></div>'+
       '<div class="panel" style="margin-top:14px"><h3>3 · Test</h3><p class="hint" style="margin:-4px 0 10px">Sends Meta’s ready-made “hello_world” message. With Meta’s test number, the phone must be added as a recipient in Meta first.</p><div class="toolbar" style="margin:0"><div class="field grow"><label for="wa-to">Mobile number</label><input type="tel" id="wa-to" placeholder="10-digit mobile number"></div><button type="button" class="btn w" id="wa-test" style="align-self:flex-end">Send test message</button></div></div>'+
-      '<div class="panel" style="margin-top:14px"><h3>4 · Daily job for birthday wishes</h3><p class="hint" style="margin:-4px 0 10px">In Hostinger › Advanced › Cron Jobs, add a job that runs once a day at 9:00 AM and opens this link. Keep this link private.</p>'+
-        '<div class="wa-cron"><code id="wa-cron">'+(c.cronKey?esc(cron):'Save settings once to create the link.')+'</code>'+(c.cronKey?'<button type="button" class="btn sm" id="wa-copy">Copy</button>':'')+'</div>'+
-        (c.cronKey?'<p class="hint" style="margin-top:8px">Hostinger command: <code>wget -qO- "'+esc(cron)+'" &gt;/dev/null 2&gt;&amp;1</code></p>':'')+'</div>';
+      '<div class="panel" style="margin-top:14px"><h3>4 · Birthday wishes</h3><p class="hint" style="margin:-4px 0 10px">Sent automatically once a day, the first time anyone uses the system after 9:00 AM. No setup needed.</p>'+
+        '<p style="margin:0">'+(function(r){if(!r)return '<span class="sub">Not run yet.</span>';var d=new Date(r.at),t=d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'numeric',minute:'2-digit',hour12:true});return r.state==='done'?'Last run: <strong>'+esc(t)+'</strong> · '+(r.sent||0)+' sent'+(r.failed?' · <span class="due">'+r.failed+' failed</span>':''):'Running since '+esc(t)})(c.lastRun)+'</p></div>';
     var err=$('#wa-err',b), show=function(m){err.textContent=m;err.hidden=!m};
     $('#wa-save',b).onclick=function(){
       var btn=this, on={}, tpl={}; $$('[data-waon]',b).forEach(function(x){on[x.dataset.waon]=x.checked}); $$('[data-watpl]',b).forEach(function(x){tpl[x.dataset.watpl]=x.value.trim()});
@@ -6345,7 +6345,6 @@ SECTIONS['wa-settings']={
     };
     $('#wa-test',b).onclick=function(){var btn=this,to=$('#wa-to',b).value.trim();if(!/\d{10}/.test(to.replace(/\D/g,'')))return show('Enter a 10-digit mobile number for the test.');show('');btn.disabled=true;btn.textContent='Sending…';
       authCall('wa_test',{to:to}).then(function(){toast('Test message sent. Check WhatsApp on '+to)}).catch(function(e){show('Test failed: '+errText(e))}).then(function(){btn.disabled=false;btn.textContent='Send test message'})};
-    var cp=$('#wa-copy',b); if(cp) cp.onclick=function(){try{navigator.clipboard.writeText($('#wa-cron',b).textContent);toast('Link copied')}catch(e){}};
   }
 };
 var waLogF={q:'',status:''};
