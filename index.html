@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <script>try{if(sessionStorage.getItem('resume-v1'))document.documentElement.className+=' resuming'}catch(e){}</script>
-<style>.resuming #view-home{visibility:hidden}</style>
+<style>.resuming #view-home{visibility:hidden}.split-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(100px,1fr) minmax(100px,1fr) auto;gap:12px;align-items:end;margin-bottom:10px}.split-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.split-row>.btn{margin-bottom:2px}@media(max-width:600px){.split-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.split-row>.field:nth-child(3){grid-column:1/3;grid-row:2}.split-row>[data-sp-remove]{grid-column:3;grid-row:1/3}}
+</style>
 </head>
 <body>
 <title>Clinic Management System</title>
@@ -2004,6 +2005,65 @@ function userName(id){var u=findIn('users',id);return u?u.name:''}
    ========================================================= */
 var draft=null, combos=[];
 function blankItem(){return {serviceId:'',name:'',qty:1,rate:0,discPct:0,gst:18,performedBy:'',referredBy:'',consumables:[]}}
+
+/* Shared split-payment editor and receipt writer. Amounts remain in separate receipts. */
+function splitRows(d){
+  if(!d.payments)d.payments=[{amount:d.payAmount||'',mode:d.payMode||'Cash',reference:d.payRef||''}];
+  return d.payments;
+}
+function splitTotal(d){return r2(splitRows(d).reduce(function(t,p){return t+r2(p.amount)},0))}
+function splitError(d,required){
+  var rows=splitRows(d),msg='';
+  rows.some(function(p,i){
+    var used=String(p.amount==null?'':p.amount).trim()!=='';
+    if((used&&(!Number.isFinite(+p.amount)||+p.amount<=0))||(!used&&String(p.reference||'').trim())){msg='Enter an amount greater than zero for payment '+(i+1)+'.';return true}
+    if(used&&MODES.indexOf(p.mode)<0){msg='Choose a payment mode for payment '+(i+1)+'.';return true}
+  });
+  return msg||(required&&!(splitTotal(d)>0)?'Enter at least one payment greater than zero.':'');
+}
+function mountSplit(host,d,totalFn){
+  if(!host)return;
+  var rows=splitRows(d);
+  function summary(){
+    d.payAmount=String(splitTotal(d));
+    var total=r2(totalFn()),received=splitTotal(d),balance=r2(Math.max(0,total-received)),advance=r2(Math.max(0,received-total));
+    var box=host.querySelector('[data-split-summary]');if(!box)return;
+    box.innerHTML='<span>Invoice / balance due <strong>'+money(total)+'</strong></span><span>Total received <strong>'+money(received)+'</strong></span><span>Balance <strong>'+money(balance)+'</strong></span>'+
+      (advance>0?'<span>Advance <strong>'+money(advance)+'</strong></span>':'')+
+      '<span class="pill '+(balance<=0.004?'paid':(received>0?'partial':'unpaid'))+'">'+(balance<=0.004?'Paid':(received>0?'Partially paid':'Unpaid'))+'</span>';
+  }
+  function draw(){
+    host.innerHTML='<div class="split-rows">'+rows.map(function(p,i){return '<div class="split-row" data-split-row="'+i+'"><div class="field"><label>Amount (₹)</label><input aria-label="Payment '+(i+1)+' amount" data-sp-amount type="number" min="0.01" step="0.01" placeholder="0.00" value="'+esc(p.amount)+'"></div><div class="field"><label>Payment mode</label><select aria-label="Payment '+(i+1)+' mode" data-sp-mode>'+optList(MODES,p.mode)+'</select></div><div class="field"><label>Reference</label><input aria-label="Payment '+(i+1)+' reference" data-sp-ref placeholder="Optional" value="'+esc(p.reference)+'"></div><button type="button" class="btn sm danger" data-sp-remove aria-label="Remove payment '+(i+1)+'">×</button></div>'}).join('')+'</div><div class="split-actions"><button type="button" class="btn sm" data-sp-add>+ Add Payment</button><button type="button" class="btn sm" data-sp-full>Paid in full</button></div><div class="mem-sum" data-split-summary aria-live="polite"></div>';
+    host.querySelectorAll('[data-split-row]').forEach(function(row){
+      var i=+row.dataset.splitRow;
+      row.querySelector('[data-sp-amount]').oninput=function(e){rows[i].amount=e.target.value;summary()};
+      row.querySelector('[data-sp-mode]').onchange=function(e){rows[i].mode=e.target.value;summary()};
+      row.querySelector('[data-sp-ref]').oninput=function(e){rows[i].reference=e.target.value};
+      row.querySelector('[data-sp-remove]').onclick=function(){rows.splice(i,1);if(!rows.length)rows.push({amount:'',mode:'Cash',reference:''});draw()};
+    });
+    host.querySelector('[data-sp-add]').onclick=function(){rows.push({amount:'',mode:'Cash',reference:''});draw();var inputs=host.querySelectorAll('[data-sp-amount]');inputs[inputs.length-1].focus()};
+    host.querySelector('[data-sp-full]').onclick=function(){
+      var prior=rows.slice(0,-1).reduce(function(t,p){return t+(+p.amount||0)},0);
+      rows[rows.length-1].amount=String(r2(Math.max(0,totalFn()-prior)));if(+rows[rows.length-1].amount===0)rows[rows.length-1].amount='';draw();
+    };
+    summary();
+  }
+  host._splitSummary=summary;draw();
+  return {setAmount:function(amount){rows.splice(0,rows.length,{amount:amount||'',mode:'Cash',reference:''});draw()},refresh:summary};
+}
+function refreshSplit(id){var h=document.getElementById(id);if(h&&h._splitSummary)h._splitSummary()}
+function writeSplitReceipts(d,base){
+  var msg=splitError(d,false);if(msg)return Promise.reject(new Error(msg));
+  var payments=splitRows(d).filter(function(p){return +p.amount>0}),seq=nextReceiptNo().seq,created=[],chain=Promise.resolve();
+  payments.forEach(function(p,i){chain=chain.then(function(){
+    var r=Object.assign({},base,{id:newId('r'),seq:seq+i,no:'RCT-'+pad(seq+i),amount:r2(p.amount),mode:p.mode,reference:String(p.reference||'').trim()});
+    return put('receipts',r).then(function(){created.push(r)});
+  })});
+  return chain.catch(function(e){
+    return Promise.all(created.map(function(r){return remove('receipts',r.id)})).then(function(){throw e});
+  });
+}
+
 function newDraft(){return {id:null,date:todayStr(),clientId:'',items:[blankItem()],roundOn:true,payAmount:'',payMode:'Cash',payRef:'',useMem:true,memId:''}}
 function lineCalc(it,mp){var gross=r2((+it.qty||0)*(+it.rate||0)),pct=Math.min(Math.max(+it.discPct||0,0),100),disc=r2(gross*pct/100),after=r2(gross-disc),md=mp?r2(after*mp/100):0,amt=r2(after-md),tax=r2(amt*(+it.gst||0)/100);return {gross:gross,disc:disc,memDisc:md,amount:amt,tax:tax,total:r2(amt+tax)}}
 function discPctOf(it){if(it.discPct!=null&&it.discMode!=='amt')return +it.discPct||0;var g=r2((+it.qty||0)*(+it.rate||0));return g>0?r2((+it.disc||0)/g*100):0}
@@ -2032,7 +2092,7 @@ SECTIONS['invoice-form']={
       '<div style="margin-top:10px"><button type="button" class="btn" id="f-additem">'+PLUS+' Add another service</button></div>'+
       '<div class="form-bottom"><div></div><div class="totals" id="f-totals"></div></div>'+
       (editing?'<p class="hint" style="margin-top:14px">Payments for this invoice are recorded in Receipts.</p>':
-      '<div class="pay-box" id="f-paybox"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="f-pay">Amount (₹)</label><input type="number" id="f-pay" min="0" step="0.01" placeholder="0.00" value="'+esc(draft.payAmount)+'"></div><div class="field"><label for="f-mode">Payment mode</label><select id="f-mode">'+optList(MODES,draft.payMode)+'</select></div><div class="field"><label for="f-ref">Reference</label><input type="text" id="f-ref" placeholder="UPI or card ref (optional)" value="'+esc(draft.payRef)+'"></div></div><div style="margin-top:10px"><button type="button" class="btn sm" id="f-full">Paid in full</button> <span class="hint">Leave it empty to bill on credit. Anything above the total is kept as an advance.</span></div></div>')+
+      '<div class="pay-box" id="f-paybox"><h3>Payment received now</h3><div id="f-split"></div><p class="hint">Leave payments blank to bill on credit. Extra payments are kept as advance.</p></div>')+
       '<p class="err" id="f-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary" id="f-save">'+(editing?'Save changes':'Save invoice')+'</button><button type="button" class="btn" id="f-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>');
     if(editing) $('#f-cancel').onclick=function(){draft=null;go('invoices')};
     if(readOnly) return;
@@ -2045,10 +2105,7 @@ SECTIONS['invoice-form']={
     $('#f-newclient').onclick=function(){editClient(null,function(c){draft.clientId=c.id;if(!S.clients.some(function(x){return x.id===c.id}))S.clients.push(c);cc.set(c.id);acctHint()})};
     $('#f-additem').onclick=function(){draft.items.push(blankItem());renderItems();var s=$$('.line .combo-in');if(s.length)s[s.length-3].focus()};
     if(!editing){
-      $('#f-pay').oninput=function(e){draft.payAmount=e.target.value};
-      $('#f-mode').onchange=function(e){draft.payMode=e.target.value};
-      $('#f-ref').oninput=function(e){draft.payRef=e.target.value};
-      $('#f-full').onclick=function(){var sp=memSplit(draft.items),t=sp?(sp.inv.length?sumItems(sp.inv):null):sumItems(draft.items);draft.payAmount=t?String(t.total):'';$('#f-pay').value=draft.payAmount};
+      mountSplit($('#f-split'),draft,function(){var sp=memSplit(draft.items);return sp?(sp.inv.length?sumItems(sp.inv).total:0):sumItems(draft.items).total});
     }
     $('#f-reset').onclick=function(){var wasEdit=!!draft.id;draft=null;if(wasEdit)go('invoices');else go('invoice-form')};
     $('#inv-form').onsubmit=function(e){e.preventDefault();saveInvoice()};
@@ -2111,6 +2168,7 @@ function renderItems(){
   renderTotals();
 }
 function renderTotals(){
+  refreshSplit('f-split');
   var el=$('#f-totals'); if(!el) return; var sp=memSplit(draft.items), t=sumItems(draft.items), rnd=function(tt){return '<div class="r"><label class="check"><input type="checkbox" id="f-round"'+(draft.roundOn?' checked':'')+'> Round off</label><span>'+(tt.roundOff<0?'− ':(tt.roundOff>0?'+ ':''))+money(Math.abs(tt.roundOff))+'</span></div>'};
   if(!sp){
     el.innerHTML='<div class="r"><span>Subtotal</span><span>'+money(t.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(t.discount)+'</span></div><div class="r"><span>Taxable amount</span><span>'+money(t.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(t.tax)+'</span></div>'+
@@ -2125,7 +2183,7 @@ function renderTotals(){
   var ci=clubInfo(draft.items); if(ci.saving>0) el.innerHTML+='<div class="r club-save"><span>★ Member savings</span><span>'+money(ci.saving)+'</span></div>';
   var fr=$('#f-round'); if(fr) fr.onchange=function(e){draft.roundOn=e.target.checked;renderTotals()};
   var full=sp&&!sp.inv.length;
-  var pb=$('#f-paybox'); if(pb){pb.hidden=!!full; if(full&&draft.payAmount){draft.payAmount='';var fp=$('#f-pay');if(fp)fp.value=''}}
+  var pb=$('#f-paybox'); if(pb){pb.hidden=!!full; if(full&&draft.payAmount){draft.payAmount='';draft.payments=[{amount:'',mode:'Cash',reference:''}];if(pb){var sh=$('#f-split');mountSplit(sh,draft,function(){return 0})}}}
   var sb=$('#f-save'); if(sb&&!draft.id) sb.textContent=full?'Save redemption':(sp&&sp.slip.length?'Save redemption + invoice':'Save invoice');
   var fno=$('#f-no'); if(fno&&!draft.id&&ready()){fno.textContent=full?'RED-'+pad(nextSeq(S.redemptions)):'INV-'+pad(nextSeq(S.invoices));var fl=fno.parentNode.querySelector('label');if(fl)fl.textContent=full?'Redemption slip':'Invoice number';var dl=document.querySelector('label[for="f-date"]');if(dl)dl.textContent=full?'Date':'Invoice date'}
   $$('#f-items .line').forEach(function(row){var it=draft.items[+row.dataset.i];
@@ -2152,12 +2210,12 @@ function saveInvoice(){
   var ci=clubInfo(saved);
   var t=sumItems(items,mp), total=t.total;
   var now=new Date().toISOString(), editing=!!draft.id, pay=0;
-  if(!editing){pay=r2(draft.payAmount);if(pay<0)return show('Payment can’t be negative.')}
+  if(!editing){pay=splitTotal(draft);var pe=splitError(draft,false);if(pe)return show(pe)}
   var seq=editing?draft.seq:nextSeq(S.invoices);
   var inv={id:draft.id||newId('i'),seq:seq,no:editing?draft.no:'INV-'+pad(seq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone,items:saved,subtotal:t.subtotal,discount:t.discount,taxable:t.taxable,tax:t.tax,roundOn:!!draft.roundOn,roundOff:t.roundOff,total:total,clubSaving:ci.saving,clubId:ci.id,clubNo:ci.no,clubPlan:ci.plan,createdAt:draft.createdAt||now,updatedAt:now};
   var btn=$('#inv-form [type=submit]'); btn.disabled=true;
   put('invoices',inv).then(function(){
-    if(pay>0){var rs=nextReceiptNo().seq;return put('receipts',{id:newId('r'),seq:rs,no:'RCT-'+pad(rs),date:draft.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,amount:pay,mode:draft.payMode,reference:draft.payRef.trim(),createdAt:now})}
+    if(pay>0)return writeSplitReceipts(draft,{date:draft.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,createdAt:now});
   }).then(function(){
     toast(editing?'Invoice '+inv.no+' updated':'Invoice '+inv.no+' saved'+(pay>0?' with payment':''));
     draft=null; go('invoices'); viewInvoice(inv.id,inv);
@@ -2386,12 +2444,10 @@ function recordPayment(billId,clientId){
   openModal('<h2>Record payment</h2><form id="pf" novalidate><div class="f-grid">'+
     '<div class="field span2"><label for="pf-client">Client <span class="req">*</span></label><div id="pf-client-host"></div></div>'+
     '<div class="field span2"><label for="pf-inv">Towards</label><select id="pf-inv"></select></div>'+
-    '<div class="field"><label for="pf-amt">Amount (₹) <span class="req">*</span></label><input type="number" id="pf-amt" min="0" step="0.01"></div>'+
+    '<div class="field span2"><div id="pf-split"></div></div>'+
     '<div class="field"><label for="pf-date">Date</label><input type="date" id="pf-date" value="'+todayStr()+'"></div>'+
-    '<div class="field"><label for="pf-mode">Payment mode</label><select id="pf-mode">'+optList(MODES,'Cash')+'</select></div>'+
-    '<div class="field"><label for="pf-ref">Reference</label><input type="text" id="pf-ref" placeholder="Optional"></div>'+
     '</div><p class="hint" id="pf-due"></p><div id="pf-ledger"></div><p class="err" id="pf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Save receipt</button></div></form>','--m5',false,function(m){
-      var sel=m.querySelector('#pf-inv'), amt=m.querySelector('#pf-amt'), due=m.querySelector('#pf-due');
+      var sel=m.querySelector('#pf-inv'), payments=null, due=m.querySelector('#pf-due');
       function billsOf(al){return allBills().filter(function(b){return b.clientId===st.client&&!b.opening&&(billInfo(b,al).bal>0.004||b.id===st.bill)}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')})}
       function fill(){
         var al=allocate(), list=billsOf(al);
@@ -2403,23 +2459,24 @@ function recordPayment(billId,clientId){
         m.querySelector('#pf-ledger').innerHTML=ledgerDetails('all',st.client); bindCommon();
         if(!st.client){due.textContent='Choose the client who paid.';return}
         var al=allocate(), a=clientAccount(st.client,al), b=st.bill&&allBills().find(function(x){return x.id===st.bill});
-        if(b){var bal=billInfo(b,al).bal;if(setAmt)amt.value=bal>0?bal:'';due.textContent='Balance due on '+b.no+': '+money(bal)+'. Any extra is kept as an advance.'}
-        else{if(setAmt)amt.value=a.due>0?a.due:'';due.textContent=a.due>0.004?'Total due from this client (all departments): '+money(a.due)+'. The payment settles the oldest bills first; any extra is kept as an advance.':(a.advance>0.004?'This client already has an advance of '+money(a.advance)+'. This payment adds to it.':'Nothing is due. This payment is kept as an advance for future bills.')}
+        if(b){var bal=billInfo(b,al).bal;if(setAmt&&payments)payments.setAmount(bal>0?bal:'');due.textContent='Balance due on '+b.no+': '+money(bal)+'. Any extra is kept as an advance.'}
+        else{if(setAmt&&payments)payments.setAmount(a.due>0?a.due:'');due.textContent=a.due>0.004?'Total due from this client (all departments): '+money(a.due)+'. The payment settles the oldest bills first; any extra is kept as an advance.':(a.advance>0.004?'This client already has an advance of '+money(a.advance)+'. This payment adds to it.':'Nothing is due. This payment is kept as an advance for future bills.')}
       }
       combo(m.querySelector('#pf-client-host'),{id:'pf-client',label:'Client',placeholder:'Type to search name or phone',value:st.client,
         options:function(){var al=allocate();return S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){var a=clientAccount(c.id,al);return [c.id,c.name,c.phone+(a.due>0.004?' · due '+money0(a.due):(a.advance>0.004?' · advance '+money0(a.advance):''))]})},
         onChange:function(v){st.client=v;st.bill='';fill()}});
       sel.onchange=function(){st.bill=sel.value;info(true)};
+      payments=mountSplit(m.querySelector('#pf-split'),st,function(){var al=allocate(),b=st.bill&&allBills().find(function(x){return x.id===st.bill});return b?Math.max(0,billInfo(b,al).bal):(st.client?clientAccount(st.client,al).due:0)});
       fill();
       m.querySelector('[data-x]').onclick=closeModal;
       m.querySelector('#pf').onsubmit=function(e){
         e.preventDefault();
-        var err=m.querySelector('#pf-err'), c=clientById(st.client), b=st.bill&&allBills().find(function(x){return x.id===st.bill}), a=r2(amt.value), d=m.querySelector('#pf-date').value;
-        var msg=''; if(!c) msg='Choose the client who paid.'; else if(!(a>0)) msg='Enter an amount greater than zero.'; else if(!d) msg='Choose the payment date.';
+        var err=m.querySelector('#pf-err'), c=clientById(st.client), b=st.bill&&allBills().find(function(x){return x.id===st.bill}), a=splitTotal(st), d=m.querySelector('#pf-date').value;
+        var msg=''; if(!c) msg='Choose the client who paid.'; else if(splitError(st,true)) msg=splitError(st,true); else if(!d) msg='Choose the payment date.';
         if(msg){err.textContent=msg;err.hidden=false;return}
         var n=nextReceiptNo(), btn=m.querySelector('[type=submit]'); btn.disabled=true;
-        var r={id:newId('r'),seq:n.seq,no:n.no,date:d,clientId:c.id,clientName:c.name,invoiceId:b&&b.kind==='inv'?b.id:'',invoiceNo:b&&b.kind==='inv'?b.no:'',saleId:b&&b.kind==='sale'?b.id:'',saleNo:b&&b.kind==='sale'?b.no:'',aeInvId:b&&b.kind==='ae'?b.id:'',aeInvNo:b&&b.kind==='ae'?b.no:'',amount:a,mode:m.querySelector('#pf-mode').value,reference:m.querySelector('#pf-ref').value.trim(),module:dept,createdAt:new Date().toISOString()};
-        put('receipts',r).then(function(){closeModal();toast(r.no+' saved: '+money(a)+(b?' for '+b.no:' on '+c.name+'’s account'))}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+        var r={id:newId('r'),seq:n.seq,no:n.no,date:d,clientId:c.id,clientName:c.name,invoiceId:b&&b.kind==='inv'?b.id:'',invoiceNo:b&&b.kind==='inv'?b.no:'',saleId:b&&b.kind==='sale'?b.id:'',saleNo:b&&b.kind==='sale'?b.no:'',aeInvId:b&&b.kind==='ae'?b.id:'',aeInvNo:b&&b.kind==='ae'?b.no:'',amount:a,module:dept,createdAt:new Date().toISOString()};
+        writeSplitReceipts(st,r).then(function(){closeModal();toast('Payment receipts saved: '+money(a)+(b?' for '+b.no:' on '+c.name+'’s account'))}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
       };
     });
 }
@@ -2890,7 +2947,7 @@ function phEntryMount(kind){
     '<h3 class="sec-h">Items</h3><div id="pe-lines" class="lines"></div>'+
     '<div style="margin-top:10px"><button type="button" class="btn" id="pe-add">'+PLUS+' Add another item</button></div>'+
     '<div class="form-bottom"><div></div><div class="totals" id="pe-totals"></div></div>'+
-    (d.type==='Sale'&&!editing?'<div class="pay-box"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="pe-pay">Amount (₹)</label><input type="number" id="pe-pay" min="0" step="0.01" placeholder="0.00" value="'+esc(d.payAmount)+'"></div><div class="field"><label for="pe-mode">Payment mode</label><select id="pe-mode">'+optList(MODES,d.payMode)+'</select></div><div class="field"><label for="pe-ref">Reference</label><input type="text" id="pe-ref" placeholder="UPI or card ref (optional)" value="'+esc(d.payRef)+'"></div></div><div style="margin-top:10px"><button type="button" class="btn sm" id="pe-full">Paid in full</button> <span class="hint">Walk-in sales must be paid in full. For a client, leave it empty to sell on credit.</span></div></div>':'')+
+    (d.type==='Sale'&&!editing?'<div class="pay-box"><h3>Payment received now</h3><div id="pe-split"></div><p class="hint">Walk-in sales must be paid in full. For a client, leave payments blank to sell on credit.</p></div>':'')+
     (d.type==='Sale'&&editing?'<p class="hint" style="margin-top:14px">Payments for this bill are recorded in Receipts.</p>':'')+
     '<p class="err" id="pe-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary">'+(editing?'Save changes':'Save '+d.type.toLowerCase())+'</button><button type="button" class="btn" id="pe-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>';
   $('#pe-back').onclick=function(){phMode[kind]='list';go(current)};
@@ -2914,10 +2971,7 @@ function phEntryMount(kind){
     phPartyUpdate(d);
   }
   if(d.type==='Sale'&&!editing){
-    $('#pe-pay').oninput=function(e){d.payAmount=e.target.value};
-    $('#pe-mode').onchange=function(e){d.payMode=e.target.value};
-    $('#pe-ref').oninput=function(e){d.payRef=e.target.value};
-    $('#pe-full').onclick=function(){d.payAmount=String(phTotals(d.type,d.lines,d.roundOn,d.roundManual).total);$('#pe-pay').value=d.payAmount};
+    mountSplit($('#pe-split'),d,function(){return phTotals(d.type,d.lines,d.roundOn,d.roundManual).total});
   }
   $('#pe-add').onclick=function(){d.lines.push(phBlankLine());phRenderLines(d);var s=$$('#pe-lines .line');if(s.length){var f=s[s.length-1].querySelector('.combo-in');if(f)f.focus()}};
   $('#pe-reset').onclick=function(){var wasEdit=!!d.id,t=d.type;phDraft[kind]=wasEdit?null:phNewDraft(kind,t);if(wasEdit){phMode[kind]='list'}go(current)};
@@ -3000,6 +3054,7 @@ function phRenderLines(d){
   phRenderTotals(d);
 }
 function phRenderTotals(d){
+  refreshSplit('pe-split');
   var el=$('#pe-totals'); if(!el) return; var t=phTotals(d.type,d.lines,d.roundOn,d.roundManual), ty=d.type;
   if(document.activeElement&&document.activeElement.id==='pe-roundval'){var tv=$('#pe-total-val');if(tv)tv.textContent=money(t.total);return}
   var rows='';
@@ -3038,7 +3093,7 @@ function phSave(d){
   var tot=phTotals(t,lines,d.roundOn,d.roundManual), now=new Date().toISOString(), editing=!!d.id;
   if(d.roundOn&&Math.abs(tot.roundOff)>=100) return show('Round off must be less than ₹100.');
   var pay=0;
-  if(t==='Sale'&&!editing){pay=r2(d.payAmount);if(pay<0)return show('Payment can’t be negative.');if(!cl&&pay+0.004<tot.total)return show('A walk-in sale must be paid in full ('+money(tot.total)+'). Choose a client to sell on credit.')}
+  if(t==='Sale'&&!editing){pay=splitTotal(d);var pe=splitError(d,false);if(pe)return show(pe);if(!cl&&pay+0.004<tot.total)return show('A walk-in sale must be paid in full ('+money(tot.total)+'). Choose a client to sell on credit.')}
   var num=editing?{seq:d.seq,no:d.no}:phNextNo(t);
   var saved=lines.map(function(l){var c=phCalc(t,l);return {itemId:l.itemId,name:l.name,hsn:(phItem(l.itemId)||{}).hsn||l.hsn||'',batch:'ALL',qty:+l.qty,rate:r2(l.rate),mrp:r2(l.mrp),gst:+l.gst||0,discPct:r2(l.discPct||0),disc:c.disc,taxable:c.taxable,tax:c.tax,total:c.total}});
   var doc={id:d.id||newId('pm'),kind:PH_KIND[t],type:t,seq:num.seq,no:num.no,date:d.date,lines:saved,subtotal:tot.subtotal,discount:tot.discount,taxable:tot.taxable,tax:tot.tax,roundOn:!!d.roundOn,roundOff:tot.roundOff,total:tot.total,createdAt:d.createdAt||now,updatedAt:now};
@@ -3047,7 +3102,7 @@ function phSave(d){
   if(t==='Return'){doc.saleId=d.saleId||'';var sm=phMove(d.saleId);doc.saleNo=sm?sm.no:''}
   var btn=$('#pe-form [type=submit]'); btn.disabled=true;
   put('phMoves',doc).then(function(){
-    if(pay>0){var rn=nextReceiptNo();return put('receipts',{id:newId('r'),seq:rn.seq,no:rn.no,date:d.date,clientId:doc.clientId,clientName:doc.clientName||doc.customerName||'Walk-in customer',invoiceId:'',invoiceNo:'',saleId:doc.id,saleNo:doc.no,amount:pay,mode:d.payMode,reference:String(d.payRef||'').trim(),module:'pha',createdAt:now})}
+    if(pay>0)return writeSplitReceipts(d,{date:d.date,clientId:doc.clientId,clientName:doc.clientName||doc.customerName||'Walk-in customer',invoiceId:'',invoiceNo:'',saleId:doc.id,saleNo:doc.no,module:'pha',createdAt:now});
   }).then(function(){
     toast(doc.no+(editing?' updated':' saved')+(pay>0?' with payment':''));
     phDraft[d.kind]=null; phMode[d.kind]='list'; go(current); phViewMove(doc.id,doc);
@@ -4437,7 +4492,7 @@ function aiFormMount(){
     '<div class="field"><label for="af-ogst">GST rate</label><select id="af-ogst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),d.otherGst)+'</select></div>'+
     '<div class="field"><label>GST on other charges</label><div class="ro-box" id="af-otax">'+money(0)+'</div></div></div>'+
     '<div class="form-bottom"><div></div><div class="totals" id="af-totals"></div></div>'+
-    (editing?'':'<div class="pay-box"><h3>Payment received now</h3><div class="f-grid"><div class="field"><label for="af-pay">Amount (₹)</label><input type="number" id="af-pay" min="0" step="0.01" placeholder="0.00" value="'+esc(d.payAmount)+'"></div><div class="field"><label for="af-mode">Payment mode</label><select id="af-mode">'+optList(MODES,d.payMode)+'</select></div><div class="field"><label for="af-ref">Reference</label><input type="text" id="af-ref" placeholder="UPI or card ref (optional)" value="'+esc(d.payRef)+'"></div></div><div style="margin-top:10px"><button type="button" class="btn sm" id="af-full">Paid in full</button></div></div>')+
+    (editing?'':'<div class="pay-box"><h3>Payment received now</h3><div id="af-split"></div></div>')+
     '<p class="err" id="af-err" hidden></p><div class="form-actions"><button type="submit" class="btn primary">'+(editing?'Save changes':'Save invoice')+'</button><button type="button" class="btn" id="af-reset">'+(editing?'Discard changes':'Clear form')+'</button></div></form>';
   $('#af-back').onclick=function(){aiMode='list';go(current)};
   $('#af-date').onchange=function(e){d.date=e.target.value};
@@ -4449,10 +4504,7 @@ function aiFormMount(){
   $('#af-ogst').onchange=function(e){d.otherGst=+e.target.value||0;aiRenderTotals()};
   $('#af-add').onclick=function(){d.lines.push({lid:newId('al'),src:'manual',procId:'',name:'',sac:'',qty:1,rate:0,discPct:0,gst:18});aiRenderLines();var x=$$('#af-lines .combo-in');if(x.length)x[x.length-1].focus()};
   if(!editing){
-    $('#af-pay').oninput=function(e){d.payAmount=e.target.value};
-    $('#af-mode').onchange=function(e){d.payMode=e.target.value};
-    $('#af-ref').oninput=function(e){d.payRef=e.target.value};
-    $('#af-full').onclick=function(){d.payAmount=String(aiTotals(d).total);$('#af-pay').value=d.payAmount};
+    mountSplit($('#af-split'),d,function(){return aiTotals(d).total});
   }
   $('#af-reset').onclick=function(){var wasEdit=!!d.id;aiDraft=wasEdit?null:aiNew();if(wasEdit)aiMode='list';go(current)};
   $('#ai-form').onsubmit=function(e){e.preventDefault();aiSave()};
@@ -4519,6 +4571,7 @@ function aiRenderLines(){
   aiRenderTotals();
 }
 function aiRenderTotals(){
+  refreshSplit('af-split');
   var d=aiDraft, el=$('#af-totals'); if(!el) return; var t=aiTotals(d);
   var ot=$('#af-otax'); if(ot) ot.textContent=money(t.otherTax);
   if(document.activeElement&&document.activeElement.id==='af-roundval'){var tv=$('#af-total-val');if(tv)tv.textContent=money(t.total);return}
@@ -4563,14 +4616,14 @@ function aiSave(){
   var t=aiTotals({lines:lines,other:d.other,otherGst:d.otherGst,roundOn:d.roundOn,roundManual:d.roundManual});
   if(d.roundOn&&Math.abs(t.roundOff)>=100) return show('Round off must be less than ₹100.');
   var editing=!!d.id, pay=0;
-  if(!editing){pay=r2(d.payAmount);if(pay<0)return show('Payment can’t be negative.')}
+  if(!editing){pay=splitTotal(d);var pe=splitError(d,false);if(pe)return show(pe)}
   var now=new Date().toISOString(), seq=editing?d.seq:nextSeq(S.aeInvoices);
   var obj={id:d.id||newId('ai'),seq:seq,no:editing?d.no:'INV-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
     lines:lines.map(function(l){var z=aiCalc(l);return {lid:l.lid,src:l.src,srcId:l.srcId||'',quoteId:l.quoteId||'',quoteLineId:l.quoteLineId||'',ref:l.ref||'',procId:l.procId||'',name:l.name,sac:l.sac||'',qty:+l.qty,rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:z.amount,disc:z.disc,net:z.net,tax:z.tax,total:z.total}}),
     amount:t.amount,discount:t.discount,net:t.net,tax:t.tax,otherDesc:String(d.otherDesc||'').trim(),other:t.other,otherGst:+d.otherGst||0,otherTax:t.otherTax,roundOn:!!d.roundOn,roundOff:t.roundOff,total:t.total,createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#ai-form [type=submit]'); btn.disabled=true;
   put('aeInvoices',obj).then(function(){
-    if(pay>0){var n=nextReceiptNo();return put('receipts',{id:newId('r'),seq:n.seq,no:n.no,date:d.date,clientId:c.id,clientName:c.name,aeInvId:obj.id,aeInvNo:obj.no,amount:pay,mode:d.payMode,reference:String(d.payRef||'').trim(),module:'aes',createdAt:now})}
+    if(pay>0)return writeSplitReceipts(d,{date:d.date,clientId:c.id,clientName:c.name,aeInvId:obj.id,aeInvNo:obj.no,module:'aes',createdAt:now});
   }).then(function(){
     toast(obj.no+(editing?' updated':' saved'+(pay>0?' with payment':'')));
     aiDraft=null; aiMode='list'; go(current); viewAeInv(obj.id,obj);
@@ -5581,8 +5634,8 @@ function memBox(){
 }
 function itemRecord(it){var lc=lineCalc(it),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,stdRate:+it.stdRate>+it.rate?r2(it.stdRate):0,clubId:+it.stdRate>+it.rate?(it.clubId||''):'',performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}}
 function saveWithMembership(sp,c,show){
-  var now=new Date().toISOString(), pay=r2(draft.payAmount||0);
-  if(pay<0) return show('Payment can’t be negative.');
+  var now=new Date().toISOString(), pay=splitTotal(draft);
+  var pe=splitError(draft,false);if(pe)return show(pe);
   if(!sp.inv.length&&pay>0) return show('Nothing to pay: the package covers this whole bill. Clear the payment amount.');
   var rseq=nextSeq(S.redemptions);
   var red={id:newId('rd'),seq:rseq,no:'RED-'+pad(rseq),date:draft.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',memId:sp.m.id,memNo:sp.m.no,memPlan:sp.m.planName,
@@ -5596,7 +5649,7 @@ function saveWithMembership(sp,c,show){
   }
   var btn=$('#inv-form [type=submit]'); btn.disabled=true;
   put('redemptions',red).then(function(){return inv?put('invoices',inv):null}).then(function(){
-    if(inv&&pay>0){var rs=nextReceiptNo();return put('receipts',{id:newId('r'),seq:rs.seq,no:rs.no,date:draft.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,amount:pay,mode:draft.payMode,reference:(draft.payRef||'').trim(),createdAt:now})}
+    if(inv&&pay>0)return writeSplitReceipts(draft,{date:draft.date,invoiceId:inv.id,invoiceNo:inv.no,clientId:c.id,clientName:c.name,createdAt:now});
   }).then(function(){
     toast(red.no+' saved'+(inv?' with invoice '+inv.no:'')+'. Balance '+money(red.balAfter));
     draft=null;
