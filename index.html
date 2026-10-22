@@ -2219,7 +2219,7 @@ SECTIONS.invoices={
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th>Client</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead><tbody>'+
       list.map(function(i){var x=invInfo(i,pm),hasR=x.paid>0;if(!i.cancelled)T.total+=+i.total||0;T.paid+=x.paid;T.bal+=Math.max(0,x.bal);
         return '<tr><td class="nowrap"><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(i.clientId)+'">'+esc(i.clientName)+'</button></td><td class="num">'+money(i.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
-          '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+(hasR?' disabled title="Delete its receipts first"':'')+'>Delete</button></div></td></tr>'}).join('')+
+          '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+'>Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">'+money(T.total)+'</td><td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.bal)+'</td><td colspan="2"></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,S.invoices.length,'invoices')+'</p>';
     $$('[data-edit]',b).forEach(function(x){x.onclick=function(){editInvoice(x.dataset.edit)}});
     $$('[data-ipdf]',b).forEach(function(x){x.onclick=function(){viewInvoice(x.dataset.ipdf);var d=$('#modal [data-dl]');if(d)d.click()}});
@@ -2246,12 +2246,15 @@ function filteredInvoices(){
   }).sort(sortInv);
 }
 function deleteInvoice(id){
+  if(readOnly){toast('You need Contributor access to delete invoices.');return}
   var i=invById(id); if(!i) return;
   if(i.memSaleId&&findIn('members',i.memSaleId)){toast(i.no+' is the invoice for package '+i.memNo+'. Delete the package instead.');return}
   if(i.clubSaleId&&findIn('clubs',i.clubSaleId)){toast(i.no+' is the invoice for membership '+i.clubSaleNo+'. Delete the membership instead.');return}
-  if(S.receipts.some(function(r){return r.invoiceId===id})){toast('Receipts are recorded against '+i.no+'. Delete those receipts first.');return}
-  confirmBox('Delete invoice?','Delete '+i.no+' for '+i.clientName+' ('+money(i.total)+')? This can’t be undone.','Delete invoice',function(){
-    remove('invoices',id).then(function(){closeModal();toast(i.no+' deleted')}).catch(function(e){toast(errText(e))});
+  var recs=S.receipts.filter(function(r){return r.invoiceId===id});
+  confirmBox('Delete invoice?','Delete '+i.no+' for '+i.clientName+' ('+money(i.total)+')?'+(recs.length?' Its receipts will be retained as payments on account, available against other dues or as advance.':'')+' This can’t be undone.','Delete invoice',function(){
+    var chain=Promise.resolve();
+    recs.forEach(function(r){chain=chain.then(function(){return put('receipts',Object.assign({},r,{invoiceId:'',invoiceNo:''}))})});
+    chain.then(function(){return remove('invoices',id)}).then(function(){closeModal();toast(i.no+' deleted')}).catch(function(e){toast(errText(e))});
   });
 }
 function staffLine(it){var p=it.performedByName||userName(it.performedBy),r=it.referredByName||userName(it.referredBy);return [p?'Performed by '+p:'',r?'Referred by '+r:''].filter(Boolean).join(' · ')}
