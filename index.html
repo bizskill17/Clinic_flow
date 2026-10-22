@@ -1600,6 +1600,9 @@ function go(key,opts){
   SECTIONS[key].mount(opts||{});
   if(SECTIONS[key].update) SECTIONS[key].update();
   bindCommon(); pendBadge();
+  // Each navigation starts at the top, including views opened from lower menu items.
+  work.scrollTop=0;
+  window.scrollTo({top:0,left:0,behavior:'instant'});
 }
 /* home header: business name + logo. Shown from a saved copy straight away, then from live data, so the generic text never flashes */
 function brandPaint(name,src){
