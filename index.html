@@ -1806,7 +1806,7 @@ function editClient(id,onSaved){
     '<div class="field"><label for="cf-anniv">Anniversary date</label><input type="date" id="cf-anniv" value="'+esc(c.anniv)+'"></div>'+
     '<div class="field"><label for="cf-wa">Send WhatsApp messages</label><select id="cf-wa">'+optList(['Yes','No'],c.waOff?'No':'Yes')+'</select></div>'+
     '<div class="field span2"><label for="cf-address">Address</label><textarea id="cf-address" rows="3">'+esc(c.address)+'</textarea></div>'+
-    '<div class="field"><label for="cf-state">State</label><select id="cf-state">'+optList([['',S.states.length?'Select a state':'No states yet (add in Masters › States)']].concat(S.states.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(st){return [st.id,st.name]})),selectedState)+'</select></div>'+
+    '<div class="field"><label for="cf-state">State</label><div id="cf-state-host"></div></div>'+
     '<div class="field"><label for="cf-city">City</label><div id="cf-city-host"></div></div>'+
     '<div class="field"><label for="cf-ob">Opening balance (₹)</label><input type="number" id="cf-ob" min="0" step="0.01" value="'+esc(c.openingBal||'')+'" placeholder="0.00"></div>'+
     '<div class="field"><label for="cf-obtype">Balance type</label><select id="cf-obtype">'+optList([['Receivable','Receivable (client owes us)'],['Advance','Advance (we hold client’s money)']],c.obType||'Receivable')+'</select></div>'+
@@ -1824,7 +1824,12 @@ function editClient(id,onSaved){
         input.disabled=!selectedState;input.placeholder=selectedState?'Search cities':'Select a state first';
       }
       updateCityState();
-      m.querySelector('#cf-state').onchange=function(e){selectedState=e.target.value;selectedCity='';cityCombo.set('');cityCombo.refresh();updateCityState()};
+      combo(m.querySelector('#cf-state-host'),{
+        id:'cf-state',label:'State',placeholder:'Search states',value:selectedState,allowEmpty:true,
+        emptyText:'No states yet. Add states in Masters › States.',
+        options:function(){return S.states.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(st){return [st.id,st.name]})},
+        onChange:function(v){selectedState=v;selectedCity='';cityCombo.set('');cityCombo.refresh();updateCityState()}
+      });
       m.querySelector('#cf').onsubmit=function(e){
         e.preventDefault();
         var v=function(k){return m.querySelector('#cf-'+k).value.trim()};
