@@ -2597,13 +2597,13 @@ SECTIONS.categories=simpleMaster({
   afterSave:function(o,old){if(old.name&&old.name!==o.name){S.services.filter(function(s){return s.categoryId===o.id}).forEach(function(s){put('services',Object.assign({},s,{category:o.name})).catch(function(){})})}}
 });
 SECTIONS.states=simpleMaster({
-  kind:'states',prefix:'st',title:'States',singular:'state',singularCap:'State',color:'--m9',searchPh:'State name or code',
+  kind:'states',prefix:'st',title:'States',singular:'state',singularCap:'State',color:'--m9',searchPh:'State name',
   emptyText:'Add the states your clients come from.',
   quick:{label:'Add all Indian states and union territories',run:function(){bulkAdd('states',INDIA_STATES.filter(function(p){return !S.states.some(function(s){return norm(s.name)===norm(p[0])})}).map(function(p){var now=new Date().toISOString();return {id:newId('st'),name:p[0],code:p[1],createdAt:now,updatedAt:now}}),'states')}},
-  fields:[{id:'name',label:'State name',req:true,max:80},{id:'code',label:'Short code',max:4}],
-  cols:[{h:'State',text:function(r){return r.name}},{h:'Code',text:function(r){return r.code||''}},{h:'Cities',num:true,text:function(r){return String(S.cities.filter(function(c){return c.stateId===r.id}).length)}}],
-  search:function(r){return r.name+' '+(r.code||'')},sort:function(a,b){return byText(a.name,b.name)},
-  validate:function(o,id){o.code=o.code.toUpperCase();return dupName('states',o,id)?'This state already exists.':''},
+  fields:[{id:'name',label:'State name',req:true,max:80}],
+  cols:[{h:'State',text:function(r){return r.name}},{h:'Cities',num:true,text:function(r){return String(S.cities.filter(function(c){return c.stateId===r.id}).length)}}],
+  search:function(r){return r.name},sort:function(a,b){return byText(a.name,b.name)},
+  validate:function(o,id){return dupName('states',o,id)?'This state already exists.':''},
   usage:function(r){var n=S.cities.filter(function(c){return c.stateId===r.id}).length;return n?r.name+' has '+n+' cit'+(n===1?'y':'ies')+', so it can’t be deleted.':''}
 });
 SECTIONS.cities=simpleMaster({
@@ -5825,7 +5825,7 @@ var IMP={
       {k:'gst',h:'GST rate',t:'gst',def:18,ex:'18'},{k:'active',h:'Active',t:'yesno',def:true,ex:'Yes'}],
     after:function(o){o.category=(findIn('categories',o.categoryId)||{}).name||'';if(!o.consumables)o.consumables=[]}},
   categories:{title:'Service Categories',file:'service-categories',prefix:'cat',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Massages'}]},
-  states:{title:'States',file:'states',prefix:'st',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'State name',req:1,ex:'Assam'},{k:'code',h:'Short code',ex:'AS'}]},
+  states:{title:'States',file:'states',prefix:'st',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'State name',req:1,ex:'Assam'}]},
   cities:{title:'Cities',file:'cities',prefix:'ci',key:function(o){return norm(o.name)+'|'+o.stateId},keyLabel:'name and state',cols:[{k:'name',h:'City name',req:1,ex:'Guwahati'},{k:'stateId',h:'State',t:'ref',ref:'states',req:1,ex:'Assam'}]},
   users:{title:'Users',file:'users',prefix:'u',key:function(o){return norm(o.userId)},keyLabel:'User ID',single:true,
     cols:[{k:'name',h:'Full name',req:1,ex:'Dr Pankaj Jain'},{k:'userId',h:'User ID',req:1,ex:'DR001'},{k:'email',h:'Email',req:1,t:'email',ex:'pankaj@example.com'},{k:'password',h:'Temporary password',t:'password',ex:'Welcome@123'},
