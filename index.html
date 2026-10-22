@@ -2486,6 +2486,13 @@ function bulkAdd(kind,objs,label){
   objs.forEach(function(o){chain=chain.then(function(){return put(kind,o).then(function(){n++})})});
   chain.then(function(){toast('Added '+n+' '+label)}).catch(function(e){toast(errText(e))});
 }
+function validContactPhone(value){return /^[0-9]{10}$/.test(String(value||''))}
+function bindContactPhone(input){
+  if(!input)return;
+  input.type='tel';input.inputMode='numeric';input.maxLength=10;
+  input.setAttribute('minlength','10');input.setAttribute('pattern','[0-9]{10}');
+  input.addEventListener('input',function(){input.value=input.value.replace(/[^0-9]/g,'').slice(0,10)});
+}
 function simpleMaster(cfg){
   var q='',fv='';
   var sec={
@@ -2545,6 +2552,7 @@ function simpleMaster(cfg){
       }).join('')+
       '</div><p class="err" id="mf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add '+esc(cfg.singular))+'</button></div></form>',cfg.color,!!cfg.wide,function(m){
         m.querySelector('[data-x]').onclick=closeModal;
+        cfg.fields.forEach(function(f){if(f.id==='phone')bindContactPhone(m.querySelector('#mf-'+f.id))});
         var consVals={}, fileVals={};
         var svcVals={}, priceVals={};
         cfg.fields.forEach(function(f){if(f.type==='svcprices'){priceVals[f.id]=Object.assign({},r[f.id]||{});svcPriceTable(m.querySelector('#mf-'+f.id),function(){return priceVals[f.id]},function(v){priceVals[f.id]=v})}});
@@ -2559,6 +2567,7 @@ function simpleMaster(cfg){
           cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
           cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+            if(f.id==='phone'&&obj[f.id]&&!validContactPhone(obj[f.id])){msg='Phone must contain exactly 10 digits (numbers only).';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
           if(!msg) msg=cfg.validate(obj,id)||'';
@@ -2687,6 +2696,7 @@ SECTIONS.business={
       (readOnly?'':'<div><label class="btn" for="bf-logo-file" style="cursor:pointer">'+(bizLogo()?'Replace logo':'Upload logo')+'</label><input type="file" id="bf-logo-file" accept="image/png,image/jpeg,image/webp" hidden> '+(bizLogo()?'<button type="button" class="btn danger" id="bf-logo-rm">Remove logo</button>':'')+'<p class="hint" style="margin:6px 0 0">PNG or JPG.</p><p class="err" id="bf-logo-err" hidden></p></div>')+'</div>'+
       '<p class="err" id="bf-err" hidden></p>'+
       (readOnly?'':'<div class="form-actions"><button type="submit" class="btn primary">Save details</button>'+(p.updatedAt?'<span class="hint">Last saved '+esc(new Date(p.updatedAt).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}))+'</span>':'')+'</div>')+'</form>';
+    bindContactPhone($('#bf-phone',b));
     var f=$('#bf',b);
     f.addEventListener('input',function(e){if(e.target.id!=='bf-logo-file')bizDirty=true});
     var lf=$('#bf-logo-file',b); if(lf) lf.onchange=function(e){var file=e.target.files&&e.target.files[0];e.target.value='';if(file)uploadLogo(file,$('#bf-logo-err',b))};
@@ -2696,6 +2706,7 @@ SECTIONS.business={
       e.preventDefault();
       var v=function(k){return $('#bf-'+k,b).value.trim()}, err=$('#bf-err',b), gst=v('gstin').toUpperCase(), msg='';
       if(!v('name')) msg='Enter the business name.';
+      else if(v('phone')&&!validContactPhone(v('phone'))) msg='Phone must contain exactly 10 digits (numbers only).';
       else if(gst&&!GSTIN_RE.test(gst)) msg='GSTIN should be 15 characters, like 18ABCDE1234F1Z5.';
       else if(v('pin')&&!/^\d{6}$/.test(v('pin'))) msg='PIN code should be 6 digits.';
       if(msg){err.textContent=msg;err.hidden=false;return}
@@ -5818,14 +5829,14 @@ var IMP={
   cities:{title:'Cities',file:'cities',prefix:'ci',key:function(o){return norm(o.name)+'|'+o.stateId},keyLabel:'name and state',cols:[{k:'name',h:'City name',req:1,ex:'Guwahati'},{k:'stateId',h:'State',t:'ref',ref:'states',req:1,ex:'Assam'}]},
   users:{title:'Users',file:'users',prefix:'u',key:function(o){return norm(o.userId)},keyLabel:'User ID',single:true,
     cols:[{k:'name',h:'Full name',req:1,ex:'Dr Pankaj Jain'},{k:'userId',h:'User ID',req:1,ex:'DR001'},{k:'email',h:'Email',req:1,t:'email',ex:'pankaj@example.com'},{k:'password',h:'Temporary password',t:'password',ex:'Welcome@123'},
-      {k:'role',h:'Role',req:1,t:'choice',ch:['Admin','Manager','Aesthetics','Spa','Pharmacy'],ex:'Aesthetics'},{k:'phone',h:'Phone',ex:'9800000000'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
+      {k:'role',h:'Role',req:1,t:'choice',ch:['Admin','Manager','Aesthetics','Spa','Pharmacy'],ex:'Aesthetics'},{k:'phone',h:'Phone',t:'phone',ex:'9800000000'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
   phCats:{title:'Item Categories',file:'item-categories',prefix:'pc',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Tablets'}]},
   phItems:{title:'Items',file:'items',prefix:'pi',key:function(o){return norm(o.name)},keyLabel:'name',
     cols:[{k:'name',h:'Item name',req:1,ex:'Paracetamol 500mg'},{k:'categoryId',h:'Category',t:'ref',ref:'phCats',ex:'Tablets'},{k:'unit',h:'Unit',t:'choice',ch:function(){return PH_UNITS},def:'Strip',ex:'Strip'},{k:'secQty',h:'Secondary qty per unit',t:'int',ex:'10'},
       {k:'hsn',h:'HSN code',t:'code',ex:'3004'},{k:'gst',h:'GST rate',t:'gst',def:12,ex:'12'},{k:'reorder',h:'Reorder level',t:'int',ex:'20'},{k:'openingQty',h:'Opening quantity',t:'int',def:0,ex:'50'},{k:'openingRate',h:'Opening rate before GST',t:'number',ex:'18.50'},
       {k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
   phSuppliers:{title:'Suppliers',file:'suppliers',prefix:'sp',key:function(o){return norm(o.name)},keyLabel:'name',
-    cols:[{k:'name',h:'Supplier name',req:1,ex:'ABC Pharma'},{k:'contact',h:'Contact person',ex:'Rahul'},{k:'phone',h:'Phone',ex:'9811111111'},{k:'email',h:'Email',t:'email',ex:''},{k:'gstin',h:'GSTIN',t:'upper',ex:'18ABCDE1234F1Z5'},
+    cols:[{k:'name',h:'Supplier name',req:1,ex:'ABC Pharma'},{k:'contact',h:'Contact person',ex:'Rahul'},{k:'phone',h:'Phone',t:'phone',ex:'9811111111'},{k:'email',h:'Email',t:'email',ex:''},{k:'gstin',h:'GSTIN',t:'upper',ex:'18ABCDE1234F1Z5'},
       {k:'address',h:'Address',ex:'Fancy Bazaar'},{k:'cityId',h:'City',t:'ref',ref:'cities',stateCol:'_state',ex:'Guwahati'},{k:'_state',h:'State',t:'helper',ex:'Assam'},{k:'openingBal',h:'Opening balance',t:'number',neg:1,ex:'0'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
   aeCats:{title:'Procedure Categories',file:'procedure-categories',prefix:'ac',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Injectables'}]},
   aeProcs:{title:'Procedures',file:'procedures',prefix:'ap',key:function(o){return norm(o.name)},keyLabel:'name',
@@ -5905,7 +5916,7 @@ function impAnalyse(kind,aoa,opt){
       if(t==='text') o[col.k]=String(v);
       else if(t==='upper') o[col.k]=String(v).toUpperCase();
       else if(t==='code'){var cd=String(v).replace(/\s/g,'');if(!/^\d{4,8}$/.test(cd))errs.push(col.h+' should be 4 to 8 digits');else o[col.k]=cd}
-      else if(t==='phone'){var dg=String(v).replace(/\D/g,'');if(dg.length<7)errs.push('Phone looks wrong');else o[col.k]=String(v).replace(/\.0+$/,'')}
+      else if(t==='phone'){var pv=String(v);if(!validContactPhone(pv))errs.push('Phone must contain exactly 10 digits (numbers only)');else o[col.k]=pv}
       else if(t==='email'){if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))errs.push(col.h+' looks wrong');else o[col.k]=String(v)}
       else if(t==='password'){if(String(v).length<8)errs.push('Password must be at least 8 characters');else o[col.k]=String(v)}
       else if(t==='number'||t==='int'){var n=+String(v).replace(/[,₹\s]/g,'');if(isNaN(n))errs.push(col.h+' must be a number');else if(n<0&&!col.neg)errs.push(col.h+' can’t be negative');else o[col.k]=t==='int'?Math.round(n):r2(n)}
@@ -6468,7 +6479,8 @@ SECTIONS['wa-settings']={
       show(''); btn.disabled=true;
       authCall('wa_save',body).then(function(x){waCfgCache=x;WA={configured:x.configured,on:x.on};b.dataset.drawn='';SECTIONS['wa-settings'].update();toast('WhatsApp settings saved')}).catch(function(e){btn.disabled=false;show(errText(e))});
     };
-    $('#wa-test',b).onclick=function(){var btn=this,to=$('#wa-to',b).value.trim();if(!/\d{10}/.test(to.replace(/\D/g,'')))return show('Enter a 10-digit mobile number for the test.');show('');btn.disabled=true;btn.textContent='Sending…';
+    bindContactPhone($('#wa-to',b));
+    $('#wa-test',b).onclick=function(){var btn=this,to=$('#wa-to',b).value.trim();if(!validContactPhone(to))return show('Enter a 10-digit mobile number for the test.');show('');btn.disabled=true;btn.textContent='Sending…';
       authCall('wa_test',{to:to}).then(function(){toast('Test message sent. Check WhatsApp on '+to)}).catch(function(e){show('Test failed: '+errText(e))}).then(function(){btn.disabled=false;btn.textContent='Send test message'})};
   }
 };
