@@ -1796,6 +1796,7 @@ function clientStats(){
 }
 function editClient(id,onSaved){
   var c=id?clientById(id):null; c=c||{};
+  var selectedCity=c.cityId||'', cityRecord=findIn('cities',selectedCity), selectedState=(cityRecord&&cityRecord.stateId)||c.stateId||'';
   openModal('<h2>'+(id?'Edit client':'Add client')+'</h2><form id="cf" novalidate><div class="f-grid">'+
     '<div class="field"><label for="cf-name">Full name <span class="req">*</span></label><input type="text" id="cf-name" value="'+esc(c.name)+'" autocomplete="off"></div>'+
     '<div class="field"><label for="cf-phone">Phone <span class="req">*</span></label><input type="tel" id="cf-phone" inputmode="numeric" maxlength="10" minlength="10" pattern="[0-9]{10}" required value="'+esc(c.phone)+'" autocomplete="off"></div>'+
@@ -1805,14 +1806,25 @@ function editClient(id,onSaved){
     '<div class="field"><label for="cf-anniv">Anniversary date</label><input type="date" id="cf-anniv" value="'+esc(c.anniv)+'"></div>'+
     '<div class="field"><label for="cf-wa">Send WhatsApp messages</label><select id="cf-wa">'+optList(['Yes','No'],c.waOff?'No':'Yes')+'</select></div>'+
     '<div class="field span2"><label for="cf-address">Address</label><textarea id="cf-address" rows="3">'+esc(c.address)+'</textarea></div>'+
-    '<div class="field"><label for="cf-city">City</label><select id="cf-city">'+optList([['',S.cities.length?'Select a city':'No cities yet (add in Masters › Cities)']].concat(S.cities.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(ct){return [ct.id,ct.name]})),c.cityId||'')+'</select></div>'+
-    '<div class="field"><label>State</label><div class="ro-field" id="cf-state" aria-live="polite">'+esc(cityLabel(c.cityId).state||'—')+'</div></div>'+
+    '<div class="field"><label for="cf-state">State</label><select id="cf-state">'+optList([['',S.states.length?'Select a state':'No states yet (add in Masters › States)']].concat(S.states.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(st){return [st.id,st.name]})),selectedState)+'</select></div>'+
+    '<div class="field"><label for="cf-city">City</label><div id="cf-city-host"></div></div>'+
     '<div class="field"><label for="cf-ob">Opening balance (₹)</label><input type="number" id="cf-ob" min="0" step="0.01" value="'+esc(c.openingBal||'')+'" placeholder="0.00"></div>'+
     '<div class="field"><label for="cf-obtype">Balance type</label><select id="cf-obtype">'+optList([['Receivable','Receivable (client owes us)'],['Advance','Advance (we hold client’s money)']],c.obType||'Receivable')+'</select></div>'+
     '</div><p class="err" id="cf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add client')+'</button></div></form>','--m1',false,function(m){
       m.querySelector('[data-x]').onclick=closeModal;
       m.querySelector('#cf-phone').addEventListener('input',function(e){e.target.value=e.target.value.replace(/[^0-9]/g,'').slice(0,10)});
-      m.querySelector('#cf-city').onchange=function(e){m.querySelector('#cf-state').textContent=cityLabel(e.target.value).state||'—'};
+      var cityCombo=combo(m.querySelector('#cf-city-host'),{
+        id:'cf-city',label:'City',placeholder:'Search cities',value:selectedCity,allowEmpty:true,
+        emptyText:'No cities in this state. Add cities in Masters › Cities.',
+        options:function(){return S.cities.filter(function(ct){return !!selectedState&&ct.stateId===selectedState}).sort(function(a,b){return byText(a.name,b.name)}).map(function(ct){return [ct.id,ct.name]})},
+        onChange:function(v){selectedCity=v}
+      });
+      function updateCityState(){
+        var input=m.querySelector('#cf-city');
+        input.disabled=!selectedState;input.placeholder=selectedState?'Search cities':'Select a state first';
+      }
+      updateCityState();
+      m.querySelector('#cf-state').onchange=function(e){selectedState=e.target.value;selectedCity='';cityCombo.set('');cityCombo.refresh();updateCityState()};
       m.querySelector('#cf').onsubmit=function(e){
         e.preventDefault();
         var v=function(k){return m.querySelector('#cf-'+k).value.trim()};
@@ -1821,11 +1833,12 @@ function editClient(id,onSaved){
         var msg='';
         if(!name) msg='Enter the client’s name.';
         else if(!/^[0-9]{10}$/.test(phone)) msg='Phone must contain exactly 10 digits (numbers only).';
+        else if(selectedCity&&(!findIn('cities',selectedCity)||findIn('cities',selectedCity).stateId!==selectedState)) msg='Choose a city from the selected state.';
         else if(v('ob')!==''&&(isNaN(+v('ob'))||+v('ob')<0)) msg='Opening balance must be 0 or more.';
         else { var dup=S.clients.find(function(x){return x.id!==id&&String(x.phone||'').replace(/\D/g,'').slice(-10)===digits.slice(-10)}); if(dup) msg='This phone number already belongs to '+dup.name+'.'; }
         if(msg){err.textContent=msg;err.hidden=false;return}
         var now=new Date().toISOString();
-        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),anniv:v('anniv'),waOff:v('wa')==='No',address:v('address'),cityId:v('city'),openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
+        var obj={id:id||newId('c'),name:name,phone:phone,email:v('email'),gender:v('gender'),dob:v('dob'),anniv:v('anniv'),waOff:v('wa')==='No',address:v('address'),cityId:selectedCity,stateId:selectedState,openingBal:r2(v('ob')),obType:v('obtype'),createdAt:c.createdAt||now,updatedAt:now};
         var btn=m.querySelector('[type=submit]'); btn.disabled=true;
         put('clients',obj).then(function(){
           closeModal(); toast(id?'Client updated':'Client added');
