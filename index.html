@@ -93,7 +93,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .dept-title .icon{width:40px;height:40px;border-radius:11px;background:var(--spa-soft);color:var(--spa)}
 .dept-title .icon svg{width:22px;height:22px}
 .layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:20px;align-items:start;margin-top:8px}
-.side{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.side{max-height:calc(100vh - 200px);max-height:calc(100dvh - 200px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
 .sidebar-user{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.su-card{background:color-mix(in srgb,var(--ink) 5%,var(--surface));border-radius:14px;padding:12px}.su-row{display:flex;align-items:center;gap:10px}.su-av{flex:none;width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:.03em}.su-who{min-width:0;display:flex;flex-direction:column;align-items:flex-start;line-height:1.25}.su-who strong{font-size:13.5px;color:var(--ink);overflow-wrap:anywhere}.su-role{margin-top:3px;font-size:11px;font-weight:700;color:var(--m5);background:color-mix(in srgb,var(--m5) 16%,transparent);border-radius:999px;padding:1px 8px}.su-out{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:9px;border:1px solid var(--line);background:var(--surface);font:inherit;font-weight:600;color:var(--m6);cursor:pointer;transition:background .15s}.su-out:hover{background:color-mix(in srgb,var(--m6) 8%,var(--surface))}
 .side-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 10px 10px}
 .menu{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
@@ -1606,6 +1606,23 @@ function csv(rows){return rows.map(function(r){return r.map(function(v){v=String
 /* ---------- navigation ---------- */
 var current='dashboard', lastKey={spa:'dashboard',pha:'ph-dashboard',aes:'ae-dashboard'};
 var SECTIONS={};
+function sizeActiveMenu(){
+  var nav=$('#nav-'+dept);if(!nav)return;
+  if(window.matchMedia('(max-width:760px)').matches){nav.style.maxHeight='100dvh';return}
+  var top=Math.max(0,nav.getBoundingClientRect().top);
+  nav.style.maxHeight=Math.max(100,window.innerHeight-top-12)+'px';
+}
+function revealActiveMenu(){
+  var nav=$('#nav-'+dept);if(!nav)return;
+  sizeActiveMenu();
+  var item=nav.querySelector('.mi[aria-current="page"]');if(!item)return;
+  var n=nav.getBoundingClientRect(),r=item.getBoundingClientRect();
+  var top=n.top+nav.clientTop+12,bottom=n.top+nav.clientTop+nav.clientHeight-12;
+  if(r.top<top)nav.scrollTop-=top-r.top;
+  else if(r.bottom>bottom)nav.scrollTop+=r.bottom-bottom;
+}
+window.addEventListener('resize',revealActiveMenu);
+window.addEventListener('scroll',sizeActiveMenu,{passive:true});
 function go(key,opts){
   current=key;
   var nav=$('#nav-'+dept);
@@ -1619,6 +1636,7 @@ function go(key,opts){
   // Each navigation starts at the top, including views opened from lower menu items.
   work.scrollTop=0;
   window.scrollTo({top:0,left:0,behavior:'instant'});
+  revealActiveMenu();
 }
 /* home header: business name + logo. Shown from a saved copy straight away, then from live data, so the generic text never flashes */
 function brandPaint(name,src){
