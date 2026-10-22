@@ -1798,7 +1798,7 @@ function editClient(id,onSaved){
   var c=id?clientById(id):null; c=c||{};
   openModal('<h2>'+(id?'Edit client':'Add client')+'</h2><form id="cf" novalidate><div class="f-grid">'+
     '<div class="field"><label for="cf-name">Full name <span class="req">*</span></label><input type="text" id="cf-name" value="'+esc(c.name)+'" autocomplete="off"></div>'+
-    '<div class="field"><label for="cf-phone">Phone <span class="req">*</span></label><input type="tel" id="cf-phone" value="'+esc(c.phone)+'" autocomplete="off"></div>'+
+    '<div class="field"><label for="cf-phone">Phone <span class="req">*</span></label><input type="tel" id="cf-phone" inputmode="numeric" maxlength="10" minlength="10" pattern="[0-9]{10}" required value="'+esc(c.phone)+'" autocomplete="off"></div>'+
     '<div class="field"><label for="cf-email">Email</label><input type="email" id="cf-email" value="'+esc(c.email)+'"></div>'+
     '<div class="field"><label for="cf-gender">Gender</label><select id="cf-gender">'+optList([['','Not specified'],'Female','Male','Other'],c.gender||'')+'</select></div>'+
     '<div class="field"><label for="cf-dob">Date of birth</label><input type="date" id="cf-dob" value="'+esc(c.dob)+'"></div>'+
@@ -1811,6 +1811,7 @@ function editClient(id,onSaved){
     '<div class="field"><label for="cf-obtype">Balance type</label><select id="cf-obtype">'+optList([['Receivable','Receivable (client owes us)'],['Advance','Advance (we hold client’s money)']],c.obType||'Receivable')+'</select></div>'+
     '</div><p class="err" id="cf-err" hidden></p><div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">'+(id?'Save changes':'Add client')+'</button></div></form>','--m1',false,function(m){
       m.querySelector('[data-x]').onclick=closeModal;
+      m.querySelector('#cf-phone').addEventListener('input',function(e){e.target.value=e.target.value.replace(/[^0-9]/g,'').slice(0,10)});
       m.querySelector('#cf-city').onchange=function(e){m.querySelector('#cf-state').textContent=cityLabel(e.target.value).state||'—'};
       m.querySelector('#cf').onsubmit=function(e){
         e.preventDefault();
@@ -1819,7 +1820,7 @@ function editClient(id,onSaved){
         var digits=phone.replace(/\D/g,'');
         var msg='';
         if(!name) msg='Enter the client’s name.';
-        else if(digits.length<7) msg='Enter a valid phone number.';
+        else if(!/^[0-9]{10}$/.test(phone)) msg='Phone must contain exactly 10 digits (numbers only).';
         else if(v('ob')!==''&&(isNaN(+v('ob'))||+v('ob')<0)) msg='Opening balance must be 0 or more.';
         else { var dup=S.clients.find(function(x){return x.id!==id&&String(x.phone||'').replace(/\D/g,'').slice(-10)===digits.slice(-10)}); if(dup) msg='This phone number already belongs to '+dup.name+'.'; }
         if(msg){err.textContent=msg;err.hidden=false;return}
