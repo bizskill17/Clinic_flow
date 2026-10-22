@@ -280,7 +280,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 /* Modal + toast */
 [hidden]{display:none!important}
-.overlay{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 32px) 16px 32px;overflow-y:auto;z-index:50}
+.overlay{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 32px) 16px 32px;overflow:hidden;z-index:50}
 .modal{--wc:var(--m1);background:var(--surface);color:var(--ink);border-radius:14px;width:100%;max-width:640px;padding:22px 24px;border-top:5px solid var(--wc);box-shadow:0 24px 60px -20px rgba(0,0,0,.4)}
 .modal{max-height:calc(100vh - env(safe-area-inset-top,0px) - 64px);max-height:calc(100dvh - env(safe-area-inset-top,0px) - 64px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;min-height:0}
 body:has(.overlay:not([hidden])){overflow:hidden}
@@ -1512,7 +1512,23 @@ var dept='spa', work=$('#work-spa');
 var toastTimer;
 function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.hidden=true},3200)}
 var modalRefresh=null, modalOpen=false;
+var modalPageState=null;
+function lockModalPage(){
+  if(modalPageState)return;
+  var b=document.body,h=document.documentElement;
+  modalPageState={x:window.scrollX||0,y:window.scrollY||0,bodyStyle:b.getAttribute('style'),htmlOverflow:h.style.overflow};
+  b.style.position='fixed';b.style.top='-'+modalPageState.y+'px';b.style.left='-'+modalPageState.x+'px';b.style.width='100%';b.style.overflow='hidden';
+  h.style.overflow='hidden';
+}
+function unlockModalPage(){
+  if(!modalPageState)return;
+  var state=modalPageState;modalPageState=null;
+  if(state.bodyStyle===null)document.body.removeAttribute('style');else document.body.setAttribute('style',state.bodyStyle);
+  document.documentElement.style.overflow=state.htmlOverflow;
+  window.scrollTo({left:state.x,top:state.y,behavior:'instant'});
+}
 function openModal(html,color,wide,onMount){
+  lockModalPage();
   var ov=$('#modal');
   ov.innerHTML='<div class="modal'+(wide?' wide':'')+'" role="dialog" aria-modal="true" style="--wc:var('+(color||'--m1')+');--wsoft:var('+(color||'--m1')+'-soft)">'+html+'</div>';
   ov.hidden=false; modalOpen=true; modalRefresh=null;
@@ -1557,9 +1573,9 @@ function cancelBill(kind,id){
   };
 }
 function cancelNote(doc){return doc&&doc.cancelled?'<div class="cx-note"><strong>CANCELLED</strong> '+(doc.cancelledAt?'on '+esc(istStamp(doc.cancelledAt)):'')+(doc.cancelledBy?' by '+esc(doc.cancelledBy):'')+(doc.cancelReason?'<div>Reason: '+esc(doc.cancelReason)+'</div>':'')+'</div>':''}
-function closeModal(){var ov=$('#modal');ov.hidden=true;ov.innerHTML='';modalOpen=false;modalRefresh=null}
-$('#modal').addEventListener('mousedown',function(e){if(e.target.id==='modal')closeModal()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modalOpen)closeModal()});
+function closeModal(){var ov=$('#modal');ov.hidden=true;ov.innerHTML='';modalOpen=false;modalRefresh=null;unlockModalPage()}
+// Backdrop clicks leave the dialog and entered values intact.
+// Dialogs close through their explicit Save, Cancel or Close actions.
 function confirmBox(title,text,yesLabel,onYes){
   openModal('<h2>'+esc(title)+'</h2><p>'+esc(text)+'</p><div class="m-actions"><button class="btn" data-x>Cancel</button><button class="btn primary" data-yes>'+esc(yesLabel)+'</button></div>','--m6',false,function(m){
     m.querySelector('[data-x]').onclick=closeModal;
