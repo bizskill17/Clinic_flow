@@ -1431,6 +1431,7 @@ function errText(e){
   return 'Could not save. Check your connection and try again.';
 }
 function put(kind,obj){
+  var previous=obj&&findIn(kind,obj.id);if(previous&&previous.cancelled)return Promise.reject(new Error("Cancelled records cannot be edited."));
   var isNew=!!obj&&!S[kind].some(function(x){return x.id===obj.id});
   return putRaw(kind,obj).then(function(r){if(isNew)waOnSaved(kind,obj);return r});
 }
@@ -1446,6 +1447,76 @@ function remove(kind,id){
   S[kind]=S[kind].filter(function(x){return x.id!==id}); scheduleRefresh(); return Promise.resolve();
 }
 
+/* Transaction cancellation: retain source records; derive all balances from active records. */
+var VOUCHER_KINDS=['invoices','receipts','phReceipts','phMoves','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptUsage','members','redemptions','phPays','clubs','expenses','vpays','aeAppts'];
+function activeVouchers(kind){return (S[kind]||[]).filter(function(x){return !x.cancelled})}
+function cancellationTargets(kind,doc){
+  var targets=[{kind:kind,doc:doc}];
+  if(kind==='members'||kind==='clubs'){
+    var inv=doc.invoiceId&&findIn('invoices',doc.invoiceId);
+    if(inv&&!inv.cancelled)targets.push({kind:'invoices',doc:inv});
+  }
+  return targets;
+}
+function cancellationBlock(kind,doc){
+  if(!doc||doc.cancelled)return 'This voucher is already cancelled.';
+  if(kind==='invoices'&&((doc.memSaleId&&activeVouchers('members').some(function(m){return m.id===doc.memSaleId}))||(doc.clubSaleId&&activeVouchers('clubs').some(function(m){return m.id===doc.clubSaleId}))))return 'Cancel the linked package or membership first. Its invoice will be cancelled with it.';
+  if(kind==='redemptions'&&doc.invoiceId&&activeVouchers('invoices').some(function(i){return i.id===doc.invoiceId}))return 'Cancel the linked tax invoice first.';
+  if(kind==='aeCons'&&aiBilledMap().con[doc.id])return 'Cancel the invoice billing this consultation first.';
+  if(kind==='aeSessions'&&aiBilledMap().ses[doc.id])return 'Cancel the invoice billing this session first.';
+  if(kind==='members'&&activeVouchers('redemptions').some(function(r){return r.memId===doc.id}))return 'Cancel the package redemptions first.';
+  if(kind==='clubs'&&clubSavings(doc).length)return 'Cancel invoices using this membership first.';
+  var refs={aeAppts:['apptId'],aeCons:['conId'],aeQuotes:['quoteId'],aeSessions:['sesId'],aeConsents:['consentId'],redemptions:['redId','redemptionId']};
+  if(refs[kind]){
+    for(var k=0;k<VOUCHER_KINDS.length;k++){
+      var collection=VOUCHER_KINDS[k];
+      var linked=activeVouchers(collection).find(function(r){return !(collection===kind&&r.id===doc.id)&&refs[kind].some(function(f){return r[f]===doc.id||(r.items||[]).concat(r.lines||[]).some(function(it){return it[f]===doc.id})})});
+      if(linked)return 'Cancel linked voucher '+(linked.no||linked.id)+' first.';
+    }
+  }
+  if(kind==='aeConsents'&&activeVouchers('aeSessions').some(function(r){return r.quoteId===doc.quoteId&&r.quoteLineId===doc.quoteLineId}))return 'Cancel the related sessions first.';
+  if(kind==='phMoves'&&doc.type==='Sale'&&activeVouchers('phMoves').some(function(r){return r.type==='Return'&&r.saleId===doc.id}))return 'Cancel the linked sales returns first.';
+  if(kind==='phMoves'){
+    var before=phBatches(), spa=deptStock('spa'), aes=deptStock('aes'), after,sp2,ae2;
+    var hadFlag=Object.prototype.hasOwnProperty.call(doc,"cancelled"),oldFlag=doc.cancelled;doc.cancelled=true;
+    try{after=phBatches();sp2=deptStock('spa');ae2=deptStock('aes')}finally{if(hadFlag)doc.cancelled=oldFlag;else delete doc.cancelled}
+    if(Object.keys(after).some(function(k){return after[k].qty<Math.min(0,(before[k]||{}).qty||0)-0.00001})||[[spa,sp2],[aes,ae2]].some(function(pair){return Object.keys(pair[1]).some(function(k){return pair[1][k].bal<Math.min(0,(pair[0][k]||{}).bal||0)-0.00001})}))return 'Stock from this voucher has been used. Cancel the related issues or consumption first.';
+  }
+  return '';
+}
+function commitCancellation(kind,id,reason){
+  var doc=findIn(kind,id), why=cancellationBlock(kind,doc);
+  if(!canCancel())return Promise.reject(new Error('Only Admin or Manager can cancel vouchers.'));
+  if(!reason||!reason.trim()||reason.trim().length>300)return Promise.reject(new Error('Enter a reason of up to 300 characters.'));
+  if(why)return Promise.reject(new Error(why));
+  var targets=cancellationTargets(kind,doc),stamp=new Date().toISOString(),saved=[];
+  if(CURRENT_USER&&DB){
+    var snapshot={};VOUCHER_KINDS.concat(['phItems','deptOpen']).forEach(function(k){snapshot[COL[k]]=S[k]||[]});
+    return authCall('cancel_voucher',{collection:COL[kind],id:id,reason:reason.trim(),snapshot:snapshot}).then(function(result){result.records.forEach(function(r){var k=Object.keys(COL).find(function(k){return COL[k]===r.collection}),list=S[k],i=list.findIndex(function(x){return x.id===r.record.id});if(i>=0)list[i]=r.record});scheduleRefresh()});
+  }
+  // Write the linked invoice first; restore completed writes if the parent write fails.
+  targets.reverse();
+  return targets.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,Object.assign({},t.doc,{cancelled:true,cancelReason:reason.trim(),cancelledAt:stamp,cancelledBy:CURRENT_USER?CURRENT_USER.name:'',updatedAt:stamp})).then(function(){saved.push(t)})})},Promise.resolve()).catch(function(e){return saved.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,t.doc)})},Promise.resolve()).then(function(){throw e})});
+}
+function cancelVoucher(kind,id){
+  var doc=findIn(kind,id);if(!doc)return;
+  if(!canCancel()){toast('Only Admin or Manager can cancel vouchers.');return}
+  var why=cancellationBlock(kind,doc);if(why){toast(why);return}
+  var m=openModal('<h2>Cancel '+esc(doc.no||'voucher')+'?</h2><p class="hint">The voucher and its number stay in cancellation history. Its account, stock and benefit effects are reversed. Receipts remain recorded; released client credit settles other dues or remains as advance. No refund is recorded automatically.</p><form id="voucher-cancel"><div class="field"><label for="cancel-reason">Reason *</label><textarea id="cancel-reason" required maxlength="300" rows="3"></textarea></div><p class="err" hidden></p><div class="m-actions"><button type="button" class="btn" data-keep>Keep voucher</button><button class="btn danger" type="submit">Cancel voucher</button></div></form>','--m6');
+  m.querySelector('[data-keep]').onclick=closeModal;
+  m.querySelector('form').onsubmit=function(e){e.preventDefault();var btn=m.querySelector('[type=submit]'),err=m.querySelector('.err');btn.disabled=true;commitCancellation(kind,id,m.querySelector('textarea').value).then(function(){closeModal();toast((doc.no||'Voucher')+' cancelled')}).catch(function(e){btn.disabled=false;err.hidden=false;err.textContent=e.message||errText(e)})};
+}
+function showCancellationHistory(){
+  var rows=[];VOUCHER_KINDS.forEach(function(k){(S[k]||[]).forEach(function(d){if(d.cancelled)rows.push({kind:k,doc:d})})});
+  rows.sort(function(a,b){return (b.doc.cancelledAt||'').localeCompare(a.doc.cancelledAt||'')});
+  // Follow the same expense visibility rules as the normal expense views.
+  rows=rows.filter(function(x){return (x.kind!=='expenses'&&x.kind!=='vpays')||isAdmin()||!x.doc.adminOnly});
+  var m=openModal('<h2>Cancellation history</h2><p class="hint">Cancelled vouchers are retained for reference and excluded from active balances and reports.</p><div class="field"><label>Search</label><input id="cancel-search" placeholder="Voucher, client, reason or user"></div><div class="tbl"><table><thead><tr><th>Voucher</th><th>Type</th><th>Party</th><th>Amount</th><th>Cancelled</th><th>By</th><th>Reason</th></tr></thead><tbody>'+rows.map(function(x){var d=x.doc;return '<tr><td>'+esc(d.no||d.id)+'</td><td>'+esc(d.type||x.kind)+'</td><td>'+esc(d.clientName||d.supplierName||d.vendorName||'')+'</td><td>'+money(d.total||d.amount||d.worth||d.value||0)+'</td><td>'+esc(d.cancelledAt?istStamp(d.cancelledAt):'')+'</td><td>'+esc(d.cancelledBy||'')+'</td><td>'+esc(d.cancelReason||'')+'</td></tr>'}).join('')+'</tbody></table></div>'+(!rows.length?'<p class="hint">No cancelled vouchers.</p>':''),'--m3');
+  m.querySelector('#cancel-search').oninput=function(){var q=this.value.toLowerCase();m.querySelectorAll('tbody tr').forEach(function(r){r.hidden=r.textContent.toLowerCase().indexOf(q)<0})};
+}
+document.addEventListener('click',function(e){if(e.target.closest('[data-cancellation-history]'))showCancellationHistory()});
+new MutationObserver(function(){if(!document)return;document.querySelectorAll('button').forEach(function(b){if(b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick))){if(b.textContent.trim()==='Delete')b.textContent='⊘ Cancel';b.hidden=!canCancel()}})}).observe(document.body,{childList:true,subtree:true});
+
 /* ---------- derived ---------- */
 /* Payments belong to a client. A receipt may name an invoice (it settles that invoice first);
    anything left over, and every receipt with no invoice, settles that client's oldest unpaid invoices.
@@ -1456,7 +1527,7 @@ function openingItems(){
     return {id:'ob:'+c.id,no:'Opening balance',opening:true,date:String(c.createdAt||'').slice(0,10)||todayStr(),seq:-1,clientId:c.id,clientName:c.name,clientPhone:c.phone,total:r2(c.openingBal)};
   });
 }
-function allInvoices(){return openingItems().concat(S.invoices)}
+function allInvoices(){return openingItems().concat(activeVouchers('invoices'))}
 function allocCore(invs,recs,pool){
   var paid={},invMap={},byClient={};
   invs.forEach(function(i){paid[i.id]=0;invMap[i.id]=i;(byClient[i.clientId]=byClient[i.clientId]||[]).push(i)});
@@ -1477,19 +1548,19 @@ function allocCore(invs,recs,pool){
    Credits: every receipt (Spa or Pharmacy), Pharmacy returns, and an advance opening balance. */
 function allBills(){
   var b=allInvoices().filter(function(i){return !i.cancelled}).map(function(i){return {id:i.id,clientId:i.clientId,date:i.date,seq:i.seq,total:+i.total||0,opening:!!i.opening,no:i.no,module:i.opening?'—':'Spa',kind:i.opening?'ob':'inv',clientName:i.clientName,clientPhone:i.clientPhone}});
-  S.phMoves.forEach(function(m){if(m.type==='Sale'&&m.clientId&&!m.cancelled)b.push({id:m.id,clientId:m.clientId,date:m.date,seq:m.seq,total:+m.total||0,no:m.no,module:'Pharmacy',kind:'sale',clientName:m.clientName,clientPhone:m.clientPhone})});
-  S.aeInvoices.forEach(function(v){if(v.clientId&&!v.cancelled)b.push({id:v.id,clientId:v.clientId,date:v.date,seq:v.seq,total:+v.total||0,no:v.no,module:'Aesthetics',kind:'ae',clientName:v.clientName,clientPhone:v.clientPhone})});
+  activeVouchers('phMoves').forEach(function(m){if(m.type==='Sale'&&m.clientId&&!m.cancelled)b.push({id:m.id,clientId:m.clientId,date:m.date,seq:m.seq,total:+m.total||0,no:m.no,module:'Pharmacy',kind:'sale',clientName:m.clientName,clientPhone:m.clientPhone})});
+  activeVouchers('aeInvoices').forEach(function(v){if(v.clientId&&!v.cancelled)b.push({id:v.id,clientId:v.clientId,date:v.date,seq:v.seq,total:+v.total||0,no:v.no,module:'Aesthetics',kind:'ae',clientName:v.clientName,clientPhone:v.clientPhone})});
   return b;
 }
 function allReceipts(){
-  return S.receipts.map(function(r){return Object.assign({},r,{src:'receipts'})})
-    .concat(S.phReceipts.map(function(r){return Object.assign({},r,{src:'phReceipts'})}));
+  return activeVouchers('receipts').map(function(r){return Object.assign({},r,{src:'receipts'})})
+    .concat(activeVouchers('phReceipts').map(function(r){return Object.assign({},r,{src:'phReceipts'})}));
 }
 function allocate(){
   var pool={};
   S.clients.forEach(function(c){if((+c.openingBal||0)>0&&c.obType==='Advance')pool[c.id]=r2(c.openingBal)});
   var recs=allReceipts().filter(function(r){return r.clientId}).map(function(r){return {clientId:r.clientId,invoiceId:r.invoiceId||r.saleId||r.aeInvId||'',amount:r.amount,date:r.date,seq:r.seq}})
-    .concat(S.phMoves.filter(function(m){return m.type==='Return'&&m.clientId}).map(function(m){return {clientId:m.clientId,invoiceId:m.saleId||'',amount:m.total,date:m.date,seq:1e6+(+m.seq||0)}}));
+    .concat(activeVouchers('phMoves').filter(function(m){return m.type==='Return'&&m.clientId}).map(function(m){return {clientId:m.clientId,invoiceId:m.saleId||'',amount:m.total,date:m.date,seq:1e6+(+m.seq||0)}}));
   return allocCore(allBills(),recs,pool);
 }
 function paidMap(){return allocate().paid}
@@ -1497,7 +1568,7 @@ function clientAccount(cid,al){
   al=al||allocate(); var billed=0,received=0,due=0;
   allBills().forEach(function(b){if(b.clientId!==cid)return;if(!b.opening)billed+=b.total;due+=Math.max(0,r2(b.total-(al.paid[b.id]||0)))});
   allReceipts().forEach(function(r){if(r.clientId===cid)received+=+r.amount||0});
-  S.phMoves.forEach(function(m){if(m.type==='Return'&&m.clientId===cid)received+=+m.total||0});
+  activeVouchers('phMoves').forEach(function(m){if(m.type==='Return'&&m.clientId===cid)received+=+m.total||0});
   return {billed:r2(billed),received:r2(received),due:r2(due),advance:r2(al.advance[cid]||0)};
 }
 function billInfo(b,al){if(b&&b.cancelled)return {paid:0,bal:0,status:'cancelled'};var paid=r2((al||allocate()).paid[b.id]||0),bal=r2(b.total-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
@@ -1568,23 +1639,7 @@ function pdfView(name,data){
 }
 function canCancel(){return !readOnly&&(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')}
 /* cancel an invoice / pharmacy sale: keeps its number, removed from sales and dues; payments become advance */
-function cancelBill(kind,id){
-  var doc=findIn(kind,id); if(!doc) return;
-  if(!canCancel()){toast('Only Admin or Manager can cancel invoices.');return}
-  if(doc.memSaleId&&findIn('members',doc.memSaleId)){toast(doc.no+' is a package invoice. Delete the package instead.');return}
-  if(doc.clubSaleId&&findIn('clubs',doc.clubSaleId)){toast(doc.no+' is a membership invoice. Delete the membership instead.');return}
-  var m=openModal('<h2>Cancel '+esc(doc.no)+'?</h2><p class="hint" style="margin-top:-6px">The number stays used and the invoice is marked CANCELLED. It is removed from sales, GST and outstanding. Any payment on it becomes the client’s advance.</p>'+
-    '<form id="cxf" novalidate><div class="field"><label for="cx-reason">Reason <span class="req">*</span></label><textarea id="cx-reason" rows="3" maxlength="300"></textarea></div><p class="err" id="cx-err" hidden></p>'+
-    '<div class="m-actions"><button type="button" class="btn" data-x>Keep invoice</button><button type="submit" class="btn danger w">Cancel invoice</button></div></form>','--m6');
-  m.querySelector('[data-x]').onclick=closeModal;
-  m.querySelector('#cxf').onsubmit=function(e){e.preventDefault();
-    var r=m.querySelector('#cx-reason').value.trim(), err=m.querySelector('#cx-err');
-    if(!r){err.textContent='Enter the reason for cancelling.';err.hidden=false;return}
-    var btn=m.querySelector('[type=submit]');btn.disabled=true;
-    put(kind,Object.assign({},doc,{cancelled:true,cancelReason:r,cancelledAt:new Date().toISOString(),cancelledBy:CURRENT_USER?CURRENT_USER.name:'',updatedAt:new Date().toISOString()}))
-      .then(function(){closeModal();toast(doc.no+' cancelled')}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
-  };
-}
+function cancelBill(kind,id){return cancelVoucher(kind,id);}
 function cancelNote(doc){return doc&&doc.cancelled?'<div class="cx-note"><strong>CANCELLED</strong> '+(doc.cancelledAt?'on '+esc(istStamp(doc.cancelledAt)):'')+(doc.cancelledBy?' by '+esc(doc.cancelledBy):'')+(doc.cancelReason?'<div>Reason: '+esc(doc.cancelReason)+'</div>':'')+'</div>':''}
 function closeModal(){var ov=$('#modal');ov.hidden=true;ov.innerHTML='';modalOpen=false;modalRefresh=null;unlockModalPage()}
 // Backdrop clicks leave the dialog and entered values intact.
@@ -1595,7 +1650,7 @@ function confirmBox(title,text,yesLabel,onYes){
     m.querySelector('[data-yes]').onclick=function(){closeModal();onYes()};
   });
 }
-function head(title,actions){return '<div class="w-head"><h1>'+esc(title)+'</h1><div class="actions">'+(actions||'')+'</div></div>'+(bannerMsg?'<div class="banner" id="banner">'+esc(bannerMsg)+'</div>':'<div id="banner"></div>')}
+function head(title,actions){return '<div class="w-head"><h1>'+esc(title)+'</h1><div class="actions">'+(actions||'')+'<button class="btn sm" data-cancellation-history>Cancellation history</button></div></div>'+(bannerMsg?'<div class="banner" id="banner">'+esc(bannerMsg)+'</div>':'<div id="banner"></div>')}
 function loadingHTML(){return '<div class="empty">Loading records…</div>'}
 function optList(arr,sel){return arr.map(function(v){var val=Array.isArray(v)?v[0]:v,lab=Array.isArray(v)?v[1]:v;return '<option value="'+esc(val)+'"'+(String(val)===String(sel)?' selected':'')+'>'+esc(lab)+'</option>'}).join('')}
 
@@ -1696,7 +1751,7 @@ SECTIONS.dashboard={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.services.length&&!S.clients.length&&!S.invoices.length){
+    if(!S.services.length&&!S.clients.length&&!activeVouchers('invoices').length){
       b.innerHTML='<p class="hint" style="margin:0 0 14px">Set up the Spa in three steps. The dashboard fills in as you bill clients.</p><div class="steps">'+
         step(1,'--m2','Add your services','List each treatment with its price and GST rate.','services','Go to Services')+
         step(2,'--m1','Add your clients','Save names and phone numbers so billing is quick.','clients','Go to Clients')+
@@ -1704,8 +1759,8 @@ SECTIONS.dashboard={
       return;
     }
     var t=todayStr(), ym=t.slice(0,7), pm=paidMap();
-    var invT=S.invoices.filter(function(i){return i.date===t&&!i.cancelled}), recT=S.receipts.filter(function(r){return r.date===t});
-    var invM=S.invoices.filter(function(i){return (i.date||'').slice(0,7)===ym&&!i.cancelled}), recM=S.receipts.filter(function(r){return (r.date||'').slice(0,7)===ym});
+    var invT=activeVouchers('invoices').filter(function(i){return i.date===t&&!i.cancelled}), recT=activeVouchers('receipts').filter(function(r){return r.date===t});
+    var invM=activeVouchers('invoices').filter(function(i){return (i.date||'').slice(0,7)===ym&&!i.cancelled}), recM=activeVouchers('receipts').filter(function(r){return (r.date||'').slice(0,7)===ym});
     var sum=function(a,f){return r2(a.reduce(function(s,x){return s+(+x[f]||0)},0))};
     var outAmt=0,outN=0,alx=allocate(); dueBills(alx).forEach(function(i){outAmt+=billInfo(i,alx).bal;outN++});
     var monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
@@ -1717,7 +1772,7 @@ SECTIONS.dashboard={
 
     // chart: last 14 days sales
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var d=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(d))}
-    var vals=days.map(function(dd){return sum(S.invoices.filter(function(i){return i.date===dd&&!i.cancelled}),'total')});
+    var vals=days.map(function(dd){return sum(activeVouchers('invoices').filter(function(i){return i.date===dd&&!i.cancelled}),'total')});
     html+='<div class="panels"><div class="panel chart"><h3>Sales, last 14 days</h3>'+barChart(days,vals,t)+'</div>';
     // payment modes
     var modeTot={}; recM.forEach(function(r){modeTot[r.mode||'Other']=r2((modeTot[r.mode||'Other']||0)+(+r.amount||0))});
@@ -1726,7 +1781,7 @@ SECTIONS.dashboard={
     html+='<div class="stack"><div class="panel"><h3>Payments received in '+esc(monthName)+'</h3>'+(mk.length?mk.map(function(k,ix){return hbar(k,money0(modeTot[k]),modeTot[k]/mmax,mcol[ix%mcol.length])}).join(''):'<p class="hint">No payments recorded this month yet.</p>')+'</div>'+memDashPanel()+'</div></div>';
 
     // recent invoices + top services
-    var recent=S.invoices.slice().sort(sortInv).slice(0,6);
+    var recent=activeVouchers('invoices').slice().sort(sortInv).slice(0,6);
     html+='<div class="panels"><div class="panel"><h3>Recent invoices</h3>'+(recent.length?'<div class="tbl"><table><thead><tr><th>Invoice</th><th>Client</th><th class="num">Total</th><th>Status</th></tr></thead><tbody>'+
       recent.map(function(i){var x=invInfo(i,pm);return '<tr><td class="nowrap"><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button><div class="sub">'+fmtDate(i.date)+'</div></td><td>'+esc(i.clientName)+'</td><td class="num">'+money(i.total)+'</td><td>'+statusPill(x.status)+'</td></tr>'}).join('')+
       '</tbody></table></div>':'<p class="hint">No invoices yet.</p>')+'</div>';
@@ -1792,7 +1847,7 @@ SECTIONS.clients={
 function clientStats(){
   var al=allocate(),st={};
   S.clients.forEach(function(c){var a=clientAccount(c.id,al);st[c.id]={n:0,last:'',billed:a.billed,received:a.received,due:a.due,advance:a.advance,acct:a}});
-  S.invoices.forEach(function(i){var s=st[i.clientId];if(!s)return;s.n++;if((i.date||'')>s.last)s.last=i.date});
+  activeVouchers('invoices').forEach(function(i){var s=st[i.clientId];if(!s)return;s.n++;if((i.date||'')>s.last)s.last=i.date});
   return st;
 }
 function editClient(id,onSaved){
@@ -1849,7 +1904,7 @@ function editClient(id,onSaved){
         put('clients',obj).then(function(){
           closeModal(); toast(id?'Client updated':'Client added');
           // keep invoice names in step on rename
-          if(id&&c.name!==name){S.invoices.filter(function(i){return i.clientId===id}).forEach(function(i){var n=Object.assign({},i,{clientName:name,clientPhone:phone});put('invoices',n).catch(function(){})})}
+          if(id&&c.name!==name){activeVouchers('invoices').filter(function(i){return i.clientId===id}).forEach(function(i){var n=Object.assign({},i,{clientName:name,clientPhone:phone});put('invoices',n).catch(function(){})})}
           if(onSaved) onSaved(obj);
         }).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
       };
@@ -1857,7 +1912,7 @@ function editClient(id,onSaved){
 }
 function deleteClient(id){
   var c=clientById(id); if(!c) return;
-  if(S.invoices.some(function(i){return i.clientId===id})||S.receipts.some(function(r){return r.clientId===id})||S.phMoves.some(function(m){return m.clientId===id})||S.phReceipts.some(function(r){return r.clientId===id})){toast(c.name+' has invoices or receipts, so the record can’t be deleted.');return}
+  if(activeVouchers('invoices').some(function(i){return i.clientId===id})||activeVouchers('receipts').some(function(r){return r.clientId===id})||activeVouchers('phMoves').some(function(m){return m.clientId===id})||activeVouchers('phReceipts').some(function(r){return r.clientId===id})){toast(c.name+' has invoices or receipts, so the record can’t be deleted.');return}
   confirmBox('Delete client?','Delete '+c.name+' ('+c.phone+')? This can’t be undone.','Delete client',function(){
     remove('clients',id).then(function(){toast('Client deleted')}).catch(function(e){toast(errText(e))});
   });
@@ -1865,8 +1920,8 @@ function deleteClient(id){
 function viewClient(id){
   var render=function(m){
     var c=clientById(id); if(!c){closeModal();return}
-    var al=allocate(), pm=al.paid, inv=S.invoices.filter(function(i){return i.clientId===id}).sort(sortInv), a=clientAccount(id,al);
-    var recs=S.receipts.filter(function(r){return r.clientId===id}).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||(+y.seq||0)-(+x.seq||0)});
+    var al=allocate(), pm=al.paid, inv=activeVouchers('invoices').filter(function(i){return i.clientId===id}).sort(sortInv), a=clientAccount(id,al);
+    var recs=activeVouchers('receipts').filter(function(r){return r.clientId===id}).sort(function(x,y){return (y.date||'').localeCompare(x.date||'')||(+y.seq||0)-(+x.seq||0)});
     m.innerHTML='<h2>'+esc(c.name)+'</h2><div class="doc-head"><dl class="kv"><dt>Phone</dt><dd>'+esc(c.phone)+'</dd>'+(c.email?'<dt>Email</dt><dd>'+esc(c.email)+'</dd>':'')+(c.gender?'<dt>Gender</dt><dd>'+esc(c.gender)+'</dd>':'')+(c.dob?'<dt>Birthday</dt><dd>'+fmtDate(c.dob)+'</dd>':'')+(c.anniv?'<dt>Anniversary</dt><dd>'+fmtDate(c.anniv)+'</dd>':'')+(c.address?'<dt>Address</dt><dd style="white-space:pre-line">'+esc(c.address)+'</dd>':'')+(cityLabel(c.cityId).city?'<dt>City</dt><dd>'+esc(cityLabel(c.cityId).city)+'</dd><dt>State</dt><dd>'+esc(cityLabel(c.cityId).state)+'</dd>':'')+'</dl>'+
       (dept!=='spa'?'</div>':'<dl class="kv"><dt>Visits</dt><dd class="num">'+inv.length+'</dd>'+((+c.openingBal||0)>0?'<dt>Opening balance</dt><dd class="num">'+money(c.openingBal)+' <span class="sub">'+(c.obType==='Advance'?'advance':'receivable')+'</span></dd>':'')+'<dt>Billed</dt><dd class="num">'+money(a.billed)+'</dd><dt>Received</dt><dd class="num">'+money(a.received)+'</dd><dt>Balance</dt><dd class="num">'+balanceCell(a)+'</dd></dl></div>')+
       (dept!=='spa'?'':clientMemSection(id)+clientClubSection(id))+
@@ -2260,14 +2315,14 @@ SECTIONS.invoices={
     if(!ready()){b.innerHTML=loadingHTML();return}
     if(invF.view==='red'){
       var rl=filteredRedemptions();
-      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
+      if(!activeVouchers('redemptions').length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
       if(!rl.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No redemption matches these filters.</div>';return}
       var W=0;
       b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Date</th><th>Client</th><th>Package</th><th>Services</th><th class="num">Used</th><th class="num">Balance after</th><th>Tax invoice</th></tr></thead><tbody>'+
         rl.map(function(r){W+=+r.worth||0;return '<tr><td class="nowrap"><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button></td><td class="nowrap">'+fmtDate(r.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(r.clientId)+'">'+esc(r.clientName)+'</button></td>'+
           '<td class="nowrap"><button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button><div class="sub">'+esc(r.memPlan||'')+'</div></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td><td class="num">'+money(r.balAfter)+'</td>'+
           '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+
-        '</tbody><tfoot><tr><td colspan="5">Total</td><td class="num">'+money(W)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(rl.length,S.redemptions.length,'redemptions')+'</p>';
+        '</tbody><tfoot><tr><td colspan="5">Total</td><td class="num">'+money(W)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(rl.length,activeVouchers('redemptions').length,'redemptions')+'</p>';
       return;
     }
     if(!S.invoices.length){b.innerHTML='<div class="empty"><strong>No invoices yet</strong>Create one from the Invoice Form.</div>';return}
@@ -2277,8 +2332,8 @@ SECTIONS.invoices={
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Invoice</th><th>Date</th><th>Client</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th></th></tr></thead><tbody>'+
       list.map(function(i){var x=invInfo(i,pm),hasR=x.paid>0;if(!i.cancelled)T.total+=+i.total||0;T.paid+=x.paid;T.bal+=Math.max(0,x.bal);
         return '<tr><td class="nowrap"><button class="link" data-inv="'+esc(i.id)+'">'+esc(i.no)+'</button></td><td class="nowrap">'+fmtDate(i.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(i.clientId)+'">'+esc(i.clientName)+'</button></td><td class="num">'+money(i.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
-          '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'"'+'>Delete</button></div></td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">'+money(T.total)+'</td><td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.bal)+'</td><td colspan="2"></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,S.invoices.length,'invoices')+'</p>';
+          '<td><div class="row-acts"><button class="btn sm" data-ipdf="'+esc(i.id)+'" aria-label="View PDF of '+esc(i.no)+'" title="View PDF">'+EYE+'</button>'+(x.bal>0.004?'<button class="btn sm w" data-pay="'+esc(i.id)+'">Record payment</button>':'')+(i.cancelled?'':'<button class="btn sm w" data-edit="'+esc(i.id)+'">Edit</button><button class="btn sm danger w" data-del="'+esc(i.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+
+      '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">'+money(T.total)+'</td><td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.bal)+'</td><td colspan="2"></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,activeVouchers('invoices').length,'invoices')+'</p>';
     $$('[data-edit]',b).forEach(function(x){x.onclick=function(){editInvoice(x.dataset.edit)}});
     $$('[data-ipdf]',b).forEach(function(x){x.onclick=function(){viewInvoice(x.dataset.ipdf);var d=$('#modal [data-dl]');if(d)d.click()}});
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){deleteInvoice(x.dataset.del)}});
@@ -2286,7 +2341,7 @@ SECTIONS.invoices={
 };
 function filteredRedemptions(){
   var q=norm(invF.q);
-  return S.redemptions.filter(function(r){
+  return activeVouchers('redemptions').filter(function(r){
     if(q&&norm(r.no+' '+r.clientName+' '+(r.clientPhone||'')+' '+(r.memNo||'')+' '+(r.memPlan||'')+' '+(r.items||[]).map(function(it){return it.name}).join(' ')).indexOf(q)<0) return false;
     if(invF.from&&r.date<invF.from) return false;
     if(invF.to&&r.date>invF.to) return false;
@@ -2295,7 +2350,7 @@ function filteredRedemptions(){
 }
 function filteredInvoices(){
   var pm=paidMap(), q=norm(invF.q);
-  return S.invoices.filter(function(i){
+  return (invF.status==='cancelled'?S.invoices:activeVouchers('invoices')).filter(function(i){
     if(q&&norm(i.no+' '+i.clientName+' '+i.clientPhone).indexOf(q)<0) return false;
     if(invF.status&&invInfo(i,pm).status!==invF.status) return false;
     if(invF.from&&i.date<invF.from) return false;
@@ -2303,24 +2358,13 @@ function filteredInvoices(){
     return true;
   }).sort(sortInv);
 }
-function deleteInvoice(id){
-  if(readOnly){toast('You need Contributor access to delete invoices.');return}
-  var i=invById(id); if(!i) return;
-  if(i.memSaleId&&findIn('members',i.memSaleId)){toast(i.no+' is the invoice for package '+i.memNo+'. Delete the package instead.');return}
-  if(i.clubSaleId&&findIn('clubs',i.clubSaleId)){toast(i.no+' is the invoice for membership '+i.clubSaleNo+'. Delete the membership instead.');return}
-  var recs=S.receipts.filter(function(r){return r.invoiceId===id});
-  confirmBox('Delete invoice?','Delete '+i.no+' for '+i.clientName+' ('+money(i.total)+')?'+(recs.length?' Its receipts will be retained as payments on account, available against other dues or as advance.':'')+' This can’t be undone.','Delete invoice',function(){
-    var chain=Promise.resolve();
-    recs.forEach(function(r){chain=chain.then(function(){return put('receipts',Object.assign({},r,{invoiceId:'',invoiceNo:''}))})});
-    chain.then(function(){return remove('invoices',id)}).then(function(){closeModal();toast(i.no+' deleted')}).catch(function(e){toast(errText(e))});
-  });
-}
+function deleteInvoice(id){return cancelVoucher('invoices',id);}
 function staffLine(it){var p=it.performedByName||userName(it.performedBy),r=it.referredByName||userName(it.referredBy);return [p?'Performed by '+p:'',r?'Referred by '+r:''].filter(Boolean).join(' · ')}
 function gstSplit(tax){var c=r2(tax/2);return [c,r2(tax-c)]}
 function viewInvoice(id,fallback){
   var render=function(m){
     var i=invById(id)||fallback; if(!i){closeModal();return}
-    var pm=paidMap(), x=invInfo(i,pm), recs=S.receipts.filter(function(r){return r.invoiceId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}), g=gstSplit(i.tax);
+    var pm=paidMap(), x=invInfo(i,pm), recs=activeVouchers('receipts').filter(function(r){return r.invoiceId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}), g=gstSplit(i.tax);
     var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), memPart=r2(Math.min(+i.memPaid||0,x.paid)), fromAdv=r2(Math.max(0,x.paid-Math.min(linked,x.paid)-memPart));
     m.innerHTML='<h2>Invoice '+esc(i.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(i.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(i.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(i.date)+'</dd></dl><div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(i.total)+'</div>'+(x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>'+
@@ -2409,7 +2453,7 @@ SECTIONS.receipts={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.receipts.length&&!S.phReceipts.length){b.innerHTML='<div class="empty"><strong>No receipts yet</strong>Record a payment against a bill, or as an advance.</div>';return}
+    if(!activeVouchers('receipts').length&&!activeVouchers('phReceipts').length){b.innerHTML='<div class="empty"><strong>No receipts yet</strong>Record a payment against a bill, or as an advance.</div>';return}
     var list=filteredReceipts();
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No receipt matches these filters.</div>';return}
     var tot=0, byMode={};
@@ -2418,11 +2462,7 @@ SECTIONS.receipts={
       list.map(function(r){return '<tr><td class="nowrap"><strong>'+esc(r.no)+'</strong></td><td class="nowrap">'+fmtDate(r.date)+'</td><td>'+esc(r.clientName)+'</td><td class="nowrap">'+towardsCell(r)+'</td><td>'+esc(r.mode)+'</td><td>'+esc(r.reference||'')+'</td><td class="num">'+money(r.amount)+'</td><td><div class="row-acts">'+(r.clientId?'<button class="btn sm" data-ledger="'+esc(r.clientId)+'">Ledger</button>':'')+(WA.configured&&r.clientId&&!readOnly?'<button class="btn sm" data-wares="receipt|'+esc(r.id)+'" title="Send on WhatsApp">'+WA_ICON+'</button>':'')+'<button class="btn sm" data-dl="'+esc(r.src+':'+r.id)+'">'+EYE+' View PDF</button><button class="btn sm danger w" data-del="'+esc(r.src+':'+r.id)+'">Delete</button></div></td></tr>'}).join('')+
       '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(tot)+'</td><td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,allReceipts().length,'receipts')+' · '+Object.keys(byMode).map(function(k){return esc(k)+' '+money0(byMode[k])}).join(' · ')+'</p>';
     var find=function(key){var p=key.split(':');return {src:p[0],r:findIn(p[0],p.slice(1).join(':'))}};
-    $$('[data-del]',b).forEach(function(x){x.onclick=function(){
-      var f=find(x.dataset.del),r=f.r; if(!r) return;
-      if(r.memId&&findIn('members',r.memId)){toast(r.no+' is the payment for package '+r.memNo+'. Delete the package instead.');return}
-      confirmBox('Delete receipt?','Delete '+r.no+' ('+money(r.amount)+' from '+r.clientName+')? The amount will be taken off the client’s account.','Delete receipt',function(){remove(f.src,r.id).then(function(){toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})});
-    }});
+    $$('[data-del]',b).forEach(function(x){x.onclick=function(){var f=find(x.dataset.del);if(f.r)cancelVoucher(f.src,f.r.id)}});
     $$('[data-dl]',b).forEach(function(x){x.onclick=function(){var r=find(x.dataset.dl).r;if(!r)return;var pdf=receiptPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)}});
   }
 };
@@ -2701,7 +2741,7 @@ SECTIONS.users=simpleMaster({
   },
   usage:function(r){return (userLineCount(r.id,'performedBy')+userLineCount(r.id,'referredBy'))?r.name+' appears on invoices, so the record can’t be deleted. Set the status to Inactive instead.':''}
 });
-function userLineCount(id,field){var n=0;S.invoices.concat(S.redemptions).forEach(function(i){(i.items||[]).forEach(function(it){if(it[field]===id)n++})});return n}
+function userLineCount(id,field){var n=0;activeVouchers('invoices').concat(activeVouchers('redemptions')).forEach(function(i){(i.items||[]).forEach(function(it){if(it[field]===id)n++})});return n}
 
 /* =========================================================
    BUSINESS DETAILS (one record, used on invoices and receipts)
@@ -2822,7 +2862,7 @@ SECTIONS['ph-items']=simpleMaster({
     if(o.secQty!==''&&!(+o.secQty>=1)) return 'Secondary qty per unit must be 1 or more.';
     return dupName('phItems',o,id)?'An item with this name already exists.':'';
   },
-  usage:function(r){var n=S.phMoves.filter(function(m){return (m.lines||[]).some(function(l){return l.itemId===r.id})}).length+S.aeCons.filter(function(c){return (c.meds||[]).some(function(x){return x.itemId===r.id})}).length;return n?r.name+' appears in '+n+' stock entr'+(n===1?'y':'ies')+', so it can’t be deleted. Set the status to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('phMoves').filter(function(m){return (m.lines||[]).some(function(l){return l.itemId===r.id})}).length+activeVouchers('aeCons').filter(function(c){return (c.meds||[]).some(function(x){return x.itemId===r.id})}).length;return n?r.name+' appears in '+n+' stock entr'+(n===1?'y':'ies')+', so it can’t be deleted. Set the status to Inactive instead.':''}
 });
 SECTIONS['ph-suppliers']=simpleMaster({
   kind:'phSuppliers',prefix:'ps',title:'Suppliers',singular:'supplier',singularCap:'Supplier',color:'--m13',searchPh:'Name, contact, phone or GSTIN',wide:true,
@@ -2846,7 +2886,7 @@ SECTIONS['ph-suppliers']=simpleMaster({
     if(o.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return 'Enter a valid email address.';
     return dupName('phSuppliers',o,id)?'A supplier with this name already exists.':'';
   },
-  usage:function(r){var n=S.phMoves.filter(function(m){return m.supplierId===r.id}).length;return n?r.name+' has '+n+' purchase'+(n===1?'':'s')+', so the record can’t be deleted. Set the status to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('phMoves').filter(function(m){return m.supplierId===r.id}).length;return n?r.name+' has '+n+' purchase'+(n===1?'':'s')+', so the record can’t be deleted. Set the status to Inactive instead.':''}
 });
 
 /* =========================================================
@@ -2872,7 +2912,7 @@ function phBatches(excludeId){
   var m={};
   function get(itemId){var k=itemId+'|ALL';return m[k]=m[k]||{key:k,itemId:itemId,batch:'ALL',mrp:0,rate:0,qty:0,lastDate:''}}
   S.phItems.forEach(function(i){var q=+i.openingQty||0,rt=+i.openingRate||0;if(q||rt){var b=get(i.id);b.qty+=q;if(rt)b.rate=rt}});
-  S.phMoves.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(mv){
+  activeVouchers('phMoves').slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(mv){
     if(mv.id===excludeId||mv.cancelled) return;
     (mv.lines||[]).forEach(function(l){
       var b=get(l.itemId), q=+l.qty||0;
@@ -2919,8 +2959,8 @@ function phSaleInfo(m,al){
 function phClientAccount(cid,al){return clientAccount(cid,al)}
 function phSupplierPayable(sid){
   var s=findIn('phSuppliers',sid)||{}, ob=+s.openingBal||0, pur=0, paid=0;
-  S.phMoves.forEach(function(m){if(m.type==='Purchase'&&m.supplierId===sid)pur+=+m.total||0});
-  S.phPays.forEach(function(p){if(p.supplierId===sid)paid+=+p.amount||0});
+  activeVouchers('phMoves').forEach(function(m){if(m.type==='Purchase'&&m.supplierId===sid)pur+=+m.total||0});
+  activeVouchers('phPays').forEach(function(p){if(p.supplierId===sid)paid+=+p.amount||0});
   return {opening:r2(ob),purchases:r2(pur),paid:r2(paid),net:r2(ob+pur-paid)};
 }
 
@@ -2983,7 +3023,7 @@ function phPartyUpdate(d){
   var acct=$('#pe-acct');
   if(acct){if(d.clientId){var a=phClientAccount(d.clientId);acct.innerHTML=a.advance>0.004?'<span class="adv">Advance available: '+money(a.advance)+'</span>. It will be adjusted automatically.':(a.due>0.004?'<span class="due">Earlier dues (all departments): '+money(a.due)+'</span>':'')}else acct.innerHTML='Leave empty for a walk-in sale.'}
   var ss=$('#pe-sale');
-  if(ss){var sales=S.phMoves.filter(function(m){return m.type==='Sale'&&m.clientId&&m.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  if(ss){var sales=activeVouchers('phMoves').filter(function(m){return m.type==='Sale'&&m.clientId&&m.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
     ss.innerHTML=optList([['',d.clientId?(sales.length?'Not linked to a bill':'No sale bills for this client'):'Choose the client first']].concat(sales.map(function(m){return [m.id,m.no+' · '+fmtDate(m.date)+' · '+money(m.total)]})),d.saleId);ss.disabled=!d.clientId}
 }
 function phEntryUpdate(kind){
@@ -3120,7 +3160,7 @@ function phTypeCols(t){return PH_TYPE_COLS[t]||['qty','rate','mrp','total']}
 function phItemParty(m){var p=phPartyName(m);if(p)return p;return m.type==='Spa Issue'?'Spa':(m.type==='Aesthetics Issue'?'Aesthetics':m.type)}
 function phItemRows(kind){
   var f=phListF[kind], q=norm(f.q), out=[];
-  S.phMoves.forEach(function(m){
+  activeVouchers('phMoves').forEach(function(m){
     if(m.kind!==kind) return;
     if(f.type&&m.type!==f.type) return;
     if(f.from&&m.date<f.from) return;
@@ -3165,7 +3205,7 @@ function phItemsCsv(kind){
 }
 function phListMount(kind){
   var f=phListF[kind], types=kind==='in'?['Purchase','Return']:['Sale','Expiry','Damage','Spa Issue','Aesthetics Issue'], title=kind==='in'?'Item In':'Item Issue';
-  var iv=f.view==='items', used={}; S.phMoves.forEach(function(m){if(m.kind===kind)(m.lines||[]).forEach(function(l){if(l.itemId)used[l.itemId]=l.name})});
+  var iv=f.view==='items', used={}; activeVouchers('phMoves').forEach(function(m){if(m.kind===kind)(m.lines||[]).forEach(function(l){if(l.itemId)used[l.itemId]=l.name})});
   var itemOpts=Object.keys(used).map(function(k){var it=phItem(k);return [k,(it&&it.name)||used[k]]}).sort(function(a,c){return byText(a[1],c[1])});
   work.innerHTML=head(title,'<button class="btn" id="pl-export">Export CSV</button><button class="btn primary w" id="pl-new">'+PLUS+' New '+(kind==='in'?'item in':'item issue')+'</button>')+
     '<div class="toolbar"><div class="actions" role="group" aria-label="View"><button class="btn'+(!iv?' primary':'')+'" data-phview="bills">Bills</button><button class="btn'+(iv?' primary':'')+'" data-phview="items">Items</button></div></div>'+
@@ -3186,7 +3226,7 @@ function phListMount(kind){
 }
 function phFiltered(kind){
   var f=phListF[kind], q=norm(f.q);
-  return S.phMoves.filter(function(m){
+  return activeVouchers('phMoves').filter(function(m){
     if(m.kind!==kind) return false;
     if(f.type&&m.type!==f.type) return false;
     if(f.from&&m.date<f.from) return false;
@@ -3198,7 +3238,7 @@ function phFiltered(kind){
 function phListUpdate(kind){
   var b=$('#body',work); if(!b) return;
   if(!ready()){b.innerHTML=loadingHTML();return}
-  var all=S.phMoves.filter(function(m){return m.kind===kind});
+  var all=activeVouchers('phMoves').filter(function(m){return m.kind===kind});
   if(!all.length){b.innerHTML='<div class="empty"><strong>No entries yet</strong>'+(kind==='in'?'Record purchases from suppliers and items returned by clients.':'Record sales, expired or damaged stock, and stock issued to Spa or Aesthetics.')+'</div>';return}
   if(phListF[kind].view==='items'){phItemsUpdate(kind);return}
   var list=phFiltered(kind);
@@ -3222,15 +3262,7 @@ function phEdit(id){
   phMode[m.kind]='form'; closeModal();
   var key=m.kind==='in'?'ph-item-in':'ph-item-issue'; if(current!==key) go(key); else go(current);
 }
-function phDelete(id){
-  var m=phMove(id); if(!m) return;
-  if(m.type==='Sale'&&allReceipts().some(function(r){return r.saleId===id})){toast('Receipts are recorded against '+m.no+'. Delete those receipts first.');return}
-  if(m.type==='Sale'&&S.phMoves.some(function(r){return r.type==='Return'&&r.saleId===id})){toast('A return is linked to '+m.no+'. Delete or unlink that return first.');return}
-  if(PH_KIND[m.type]==='in'){var bm=phBatches(id);var neg=Object.keys(bm).some(function(k){return bm[k].qty<0});if(neg){toast('Stock from '+m.no+' has already been issued. Delete those issues first.');return}}
-  confirmBox('Delete '+m.no+'?','Delete this '+m.type.toLowerCase()+' entry dated '+fmtDate(m.date)+' ('+money(m.total)+')? Stock will be adjusted. This can’t be undone.','Delete',function(){
-    remove('phMoves',id).then(function(){closeModal();toast(m.no+' deleted')}).catch(function(e){toast(errText(e))});
-  });
-}
+function phDelete(id){return cancelVoucher('phMoves',id);}
 function phViewMove(id,fallback){
   var render=function(m0){
     var m=phMove(id)||fallback; if(!m){closeModal();return}
@@ -3283,7 +3315,7 @@ function phRecordPayment(saleId,clientId){recordPayment(saleId,clientId)}
 /* =========================================================
    PHARMACY REPORTS: Outstanding, Inventory
    ========================================================= */
-function phDueSales(al){return S.phMoves.filter(function(m){return m.type==='Sale'&&m.clientId&&phSaleInfo(m,al).bal>0.004})}
+function phDueSales(al){return activeVouchers('phMoves').filter(function(m){return m.type==='Sale'&&m.clientId&&phSaleInfo(m,al).bal>0.004})}
 
 var phInvF={q:'',cat:'',show:'all'};
 SECTIONS['ph-inventory']={
@@ -3322,7 +3354,7 @@ function viewItemLedger(itemId){
   var render=function(m){
     var it=phItem(itemId); if(!it){closeModal();return}
     var rows=[], op=+it.openingQty||0;
-    S.phMoves.forEach(function(mv){(mv.lines||[]).forEach(function(l){if(l.itemId!==itemId)return;var inn=PH_KIND[mv.type]==='in';rows.push({date:mv.date,created:mv.createdAt||'',type:mv.type,no:mv.no,id:mv.id,party:phPartyName(mv),inQ:inn?+l.qty||0:0,outQ:inn?0:+l.qty||0,rate:+l.rate||0})})});
+    activeVouchers('phMoves').forEach(function(mv){(mv.lines||[]).forEach(function(l){if(l.itemId!==itemId)return;var inn=PH_KIND[mv.type]==='in';rows.push({date:mv.date,created:mv.createdAt||'',type:mv.type,no:mv.no,id:mv.id,party:phPartyName(mv),inQ:inn?+l.qty||0:0,outQ:inn?0:+l.qty||0,rate:+l.rate||0})})});
     rows.sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||a.created.localeCompare(b.created)});
     var bal=op,tin=0,tout=0; rows.forEach(function(r){bal+=r.inQ-r.outQ;r.bal=bal;tin+=r.inQ;tout+=r.outQ});
     m.innerHTML='<h2>'+esc(it.name)+' · stock ledger</h2><p class="hint" style="margin:-6px 0 14px">'+esc(phCatName(it.categoryId)||'No category')+(it.unit?' · '+esc(it.unit):'')+(it.hsn?' · HSN '+esc(it.hsn):'')+'. Every movement in date order, with the running stock.</p>'+
@@ -3340,7 +3372,7 @@ function viewItemLedger(itemId){
 }
 function phInvRows(unfiltered){
   var bm=phBatches(), q=norm(phInvF.q), mv={};
-  S.phMoves.forEach(function(m){if(m.cancelled)return;(m.lines||[]).forEach(function(l){var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
+  activeVouchers('phMoves').forEach(function(m){if(m.cancelled)return;(m.lines||[]).forEach(function(l){var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
   return S.phItems.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(it){
     var sr=phStockRec(bm,it.id), x=mv[it.id]||{i:0,o:0}, reorder=it.reorder===''||it.reorder==null?null:+it.reorder;
     return {item:it,opening:+it.openingQty||0,inQty:x.i,outQty:x.o,qty:sr.qty,rate:sr.rate,mrp:sr.mrp,value:r2(sr.qty*sr.rate),mrpValue:r2(sr.qty*sr.mrp),reorder:reorder,low:reorder!=null&&sr.qty<=reorder};
@@ -3362,13 +3394,13 @@ function ledgerRows(dk,cid){
   var rows=[], c=clientById(cid)||{};
   var ob=+c.openingBal||0;
   if(ob>0) rows.push({date:String(c.createdAt||'').slice(0,10),ord:0,seq:0,part:'Opening balance',mod:'',ref:'',dr:c.obType==='Advance'?0:ob,cr:c.obType==='Advance'?ob:0});
-  S.invoices.forEach(function(i){if(i.clientId===cid)rows.push({date:i.date,ord:1,seq:+i.seq||0,part:'Invoice',mod:'Spa',ref:i.no,open:'inv:'+i.id,dr:+i.total||0,cr:0})});
-  S.phMoves.forEach(function(m){
+  activeVouchers('invoices').forEach(function(i){if(i.clientId===cid)rows.push({date:i.date,ord:1,seq:+i.seq||0,part:'Invoice',mod:'Spa',ref:i.no,open:'inv:'+i.id,dr:+i.total||0,cr:0})});
+  activeVouchers('phMoves').forEach(function(m){
     if(m.clientId!==cid) return;
     if(m.type==='Sale') rows.push({date:m.date,ord:1,seq:+m.seq||0,part:'Sale bill',mod:'Pharmacy',ref:m.no,open:'pm:'+m.id,dr:+m.total||0,cr:0});
     if(m.type==='Return') rows.push({date:m.date,ord:3,seq:+m.seq||0,part:'Items returned'+(m.saleNo?' against '+m.saleNo:''),mod:'Pharmacy',ref:m.no,open:'pm:'+m.id,dr:0,cr:+m.total||0});
   });
-  S.aeInvoices.forEach(function(v){if(v.clientId===cid)rows.push({date:v.date,ord:1,seq:+v.seq||0,part:'Invoice',mod:'Aesthetics',ref:v.no,open:'ae:'+v.id,dr:+v.total||0,cr:0})});
+  activeVouchers('aeInvoices').forEach(function(v){if(v.clientId===cid)rows.push({date:v.date,ord:1,seq:+v.seq||0,part:'Invoice',mod:'Aesthetics',ref:v.no,open:'ae:'+v.id,dr:+v.total||0,cr:0})});
   allReceipts().forEach(function(r){if(r.clientId===cid)rows.push({date:r.date,ord:2,seq:+r.seq||0,part:r.memId?'Package '+(r.memNo||'')+' ('+r.mode+')':'Payment received ('+r.mode+')'+((r.invoiceNo||r.saleNo||r.aeInvNo)?' against '+(r.invoiceNo||r.saleNo||r.aeInvNo):' on account'),mod:'',ref:r.no,dr:0,cr:+r.amount||0})});
   rows.sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||a.ord-b.ord||a.seq-b.seq});
   var bal=0; rows.forEach(function(r){bal=r2(bal+r.dr-r.cr);r.bal=bal});
@@ -3439,7 +3471,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     if(o.sac&&!/^\d{4,8}$/.test(o.sac)) return 'SAC code should be 4 to 8 digits.';
     return dupName('aeProcs',o,id)?'A procedure with this name already exists.':'';
   },
-  usage:function(r){var n=S.aeCons.filter(function(c){return (c.procs||[]).some(function(p){return p.procId===r.id})}).length+S.aeQuotes.filter(function(q){return (q.lines||[]).some(function(l){return l.procId===r.id})}).length;return n?r.name+' is used in '+n+' consultation'+(n===1?'':'s')+' or quotation'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('aeCons').filter(function(c){return (c.procs||[]).some(function(p){return p.procId===r.id})}).length+activeVouchers('aeQuotes').filter(function(q){return (q.lines||[]).some(function(l){return l.procId===r.id})}).length;return n?r.name+' is used in '+n+' consultation'+(n===1?'':'s')+' or quotation'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
 });
 
 /* =========================================================
@@ -3455,7 +3487,7 @@ function hhmm(m){return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m
 function apFrom(a){return a.from||a.time||''}
 function apTo(a){return a.to||(a.time?hhmm(toMin(a.time)+(+a.duration||0)):'')}
 function qtStaff(q,key){
-  var prev=S.aeAppts.filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key&&a.status!=='Cancelled'&&apStaff(a).length}).sort(function(x,y){return (y.date+apFrom(y)).localeCompare(x.date+apFrom(x))})[0];
+  var prev=activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key&&a.status!=='Cancelled'&&apStaff(a).length}).sort(function(x,y){return (y.date+apFrom(y)).localeCompare(x.date+apFrom(x))})[0];
   if(prev) return apStaff(prev).slice();
   var con=q.conId&&findIn('aeCons',q.conId);
   return con&&con.staffIds?con.staffIds.slice():[];
@@ -3468,7 +3500,7 @@ function apWhat(a){return a.type==='Procedure'?(a.procedureName||(findIn('aeProc
 function apMissed(a){return a.status==='No-show'||(a.date<todayStr()&&AP_ACTIVE.indexOf(a.status)>=0)}
 function apList(){
   var q=norm(apF.q), t=todayStr();
-  return S.aeAppts.filter(function(a){
+  return activeVouchers('aeAppts').filter(function(a){
     if(apF.view==='day'&&a.date!==apF.date) return false;
     if(apF.view==='upcoming'&&(a.date<t||a.status==='Cancelled'||a.status==='Completed'||a.status==='No-show')) return false;
     if(apF.view==='missed'&&!apMissed(a)) return false;
@@ -3509,7 +3541,7 @@ SECTIONS['ae-appointments']={
     var sf=$('#ap-staff',work); if(sf) sf.innerHTML=optList([['','All staff']].concat(S.users.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(u){return [u.id,u.name]})),apF.staff);
     if(!ready()){b.innerHTML=loadingHTML();return}
     var list=apList(), html='';
-    if(!S.aeAppts.length){b.innerHTML=html+'<div class="empty"><strong>No appointments yet</strong>Book a consultation or a procedure with New appointment.</div>';return}
+    if(!activeVouchers('aeAppts').length){b.innerHTML=html+'<div class="empty"><strong>No appointments yet</strong>Book a consultation or a procedure with New appointment.</div>';return}
     if(!list.length){b.innerHTML=html+'<div class="empty"><strong>'+(apF.view==='day'?'No appointments on this day':apF.view==='all'?'No appointments':apF.view==='missed'?'No missed appointments':'No upcoming appointments')+'</strong>'+(apF.q||apF.type||apF.status||apF.staff?'Try clearing the filters.':'Use New appointment to book one.')+'</div>';return}
     html+='<div class="tbl"><table class="ap-tbl"><thead><tr>'+(apF.view!=='day'?'<th>Date</th>':'')+'<th>Time (IST)</th><th>Client</th><th>Type</th><th>Doctor / staff</th><th>Status</th><th></th></tr></thead><tbody>'+
       list.map(function(a){return '<tr>'+(apF.view!=='day'?'<td class="nowrap">'+fmtDate(a.date)+'</td>':'')+'<td class="nowrap"><strong>'+esc(fmtTime(apFrom(a)))+'</strong><div class="sub">to '+esc(fmtTime(apTo(a)))+'</div></td>'+
@@ -3518,18 +3550,17 @@ SECTIONS['ae-appointments']={
         '<td>'+esc(apStaffNames(a)||'—')+'</td>'+
         '<td><select class="ap-st" data-id="'+esc(a.id)+'" aria-label="Status of '+esc(a.no)+'" style="min-height:32px;padding:4px 8px;width:auto"'+(readOnly?' disabled':'')+'>'+optList(AP_STATUS,a.status)+'</select></td>'+
         '<td><div class="row-acts w">'+(apMissed(a)&&!readOnly?'<button class="btn sm primary" data-apres="'+esc(a.id)+'">Reschedule</button>':'')+'<button class="btn sm" data-apedit="'+esc(a.id)+'">Edit</button><button class="btn sm danger" data-apdel="'+esc(a.id)+'">Delete</button></div></td></tr>'}).join('')+
-      '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,S.aeAppts.length,'appointments')+'</p>';
+      '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,activeVouchers('aeAppts').length,'appointments')+'</p>';
     b.innerHTML=html;
     $$('.ap-st',b).forEach(function(x){x.onchange=function(){var a=findIn('aeAppts',x.dataset.id);if(!a)return;var n=Object.assign({},a,{status:x.value,updatedAt:new Date().toISOString()});x.disabled=true;put('aeAppts',n).then(function(){toast(a.no+' marked '+x.value)}).catch(function(e){x.disabled=false;x.value=a.status;toast(errText(e))})}});
     $$('[data-apedit]',b).forEach(function(x){x.onclick=function(){editAppt(x.dataset.apedit)}});
     $$('[data-apres]',b).forEach(function(x){x.onclick=function(){editAppt(x.dataset.apres,{_resched:true,date:todayStr()})}});
-    $$('[data-apdel]',b).forEach(function(x){x.onclick=function(){var a=findIn('aeAppts',x.dataset.apdel);if(!a)return;var lc=S.aeCons.find(function(c){return c.apptId===a.id});if(lc){toast('Consultation '+lc.no+' is linked to '+a.no+'. Delete that consultation first.');return}
-      confirmBox('Delete appointment?','Delete '+a.no+' for '+a.clientName+' on '+fmtDate(a.date)+' at '+fmtTime(apFrom(a))+'? To keep a record, set the status to Cancelled instead.','Delete',function(){remove('aeAppts',a.id).then(function(){toast(a.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+    $$('[data-apdel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeAppts',x.dataset.apdel)}});
   }
 };
 function apBusy(date,staffIds,exceptId){
   /* minutes already taken for any of these staff on this date */
-  return S.aeAppts.filter(function(x){return x.id!==exceptId&&x.date===date&&x.status!=='Cancelled'&&x.status!=='No-show'&&apStaff(x).some(function(u){return staffIds.indexOf(u)>=0})})
+  return activeVouchers('aeAppts').filter(function(x){return x.id!==exceptId&&x.date===date&&x.status!=='Cancelled'&&x.status!=='No-show'&&apStaff(x).some(function(u){return staffIds.indexOf(u)>=0})})
     .map(function(x){return {from:toMin(apFrom(x)),to:toMin(apTo(x)),appt:x}});
 }
 function editAppt(id,preset){
@@ -3684,7 +3715,7 @@ function conListMount(){
 }
 function conFiltered(){
   var q=norm(conF.q);
-  return S.aeCons.filter(function(c){
+  return activeVouchers('aeCons').filter(function(c){
     if(conF.from&&c.date<conF.from) return false;
     if(conF.to&&c.date>conF.to) return false;
     if(q&&norm(c.no+' '+c.clientName+' '+(c.clientPhone||'')+' '+(c.diagnosis||'')+' '+(c.meds||[]).map(function(m){return m.name}).join(' ')+' '+(c.procs||[]).map(function(p){return p.name}).join(' ')).indexOf(q)<0) return false;
@@ -3694,18 +3725,17 @@ function conFiltered(){
 function conListUpdate(){
   var b=$('#body',work); if(!b) return;
   if(!ready()){b.innerHTML=loadingHTML();return}
-  if(!S.aeCons.length){b.innerHTML='<div class="empty"><strong>No consultations yet</strong>Book an appointment for the client first, then record the consultation against it.</div>';return}
+  if(!activeVouchers('aeCons').length){b.innerHTML='<div class="empty"><strong>No consultations yet</strong>Book an appointment for the client first, then record the consultation against it.</div>';return}
   var list=conFiltered();
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No consultation matches these filters.</div>';return}
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Doctor</th><th>Diagnosis</th><th class="num">Medicines</th><th class="num">Procedures</th><th></th></tr></thead><tbody>'+
     list.map(function(c){return '<tr><td class="nowrap"><button class="link" data-con="'+esc(c.id)+'">'+esc(c.no)+'</button><div class="sub">'+esc(c.apptNo||'')+'</div></td><td class="nowrap">'+fmtDate(c.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(c.clientId)+'">'+esc(c.clientName)+'</button></td><td>'+esc(c.doctor||'—')+'</td><td>'+esc(String(c.diagnosis||'').slice(0,80))+(String(c.diagnosis||'').length>80?'…':'')+'</td><td class="num">'+(c.meds||[]).length+'</td><td class="num">'+(c.procs||[]).length+'</td><td><div class="row-acts"><button class="btn sm" data-condl="'+esc(c.id)+'">'+EYE+' Consultation</button><button class="btn sm" data-conrx="'+esc(c.id)+'">'+EYE+' Prescription</button><button class="btn sm w" data-conedit="'+esc(c.id)+'">Edit</button><button class="btn sm danger w" data-condel="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
-    '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,S.aeCons.length,'consultations')+'</p>';
+    '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,activeVouchers('aeCons').length,'consultations')+'</p>';
   $$('[data-con]',b).forEach(function(x){x.onclick=function(){viewCon(x.dataset.con)}});
   $$('[data-condl]',b).forEach(function(x){x.onclick=function(){conPdf(findIn('aeCons',x.dataset.condl),'consultation')}});
   $$('[data-conrx]',b).forEach(function(x){x.onclick=function(){conPdf(findIn('aeCons',x.dataset.conrx),'prescription')}});
   $$('[data-conedit]',b).forEach(function(x){x.onclick=function(){conEdit(x.dataset.conedit)}});
-  $$('[data-condel]',b).forEach(function(x){x.onclick=function(){var c=findIn('aeCons',x.dataset.condel);if(!c)return;var bc=aiBilledMap().con[c.id];if(bc){toast(c.no+' is billed on '+bc+'. Remove it from that invoice first.');return}var lq=S.aeQuotes.find(function(q){return q.conId===c.id});if(lq){toast('Quotation '+lq.no+' is based on '+c.no+'. Delete that quotation first.');return}
-    confirmBox('Delete consultation?','Delete '+c.no+' for '+c.clientName+' on '+fmtDate(c.date)+'? The linked appointment stays as it is. This can’t be undone.','Delete',function(){remove('aeCons',c.id).then(function(){toast(c.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+  $$('[data-condel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeCons',x.dataset.condel)}});
 }
 function conEdit(id){
   var c=findIn('aeCons',id); if(!c) return;
@@ -3716,8 +3746,8 @@ function conEdit(id){
   conMode='form'; closeModal(); if(current!=='ae-consultations') go('ae-consultations'); else go(current);
 }
 function conApptOptions(d){
-  var used={}; S.aeCons.forEach(function(c){if(c.id!==d.id&&c.apptId)used[c.apptId]=c.no});
-  return S.aeAppts.filter(function(a){return a.clientId===d.clientId&&((AP_ACTIVE.indexOf(a.status)>=0&&!used[a.id])||a.id===d.apptId)})
+  var used={}; activeVouchers('aeCons').forEach(function(c){if(c.id!==d.id&&c.apptId)used[c.apptId]=c.no});
+  return activeVouchers('aeAppts').filter(function(a){return a.clientId===d.clientId&&((AP_ACTIVE.indexOf(a.status)>=0&&!used[a.id])||a.id===d.apptId)})
     .sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||toMin(apFrom(a))-toMin(apFrom(b))});
 }
 function conFormMount(){
@@ -3744,7 +3774,7 @@ function conFormMount(){
   $('#cf-rxdiag').onchange=function(e){d.rxDiag=e.target.checked};
   $('#cf-rxprocs').onchange=function(e){d.rxProcs=e.target.checked};
   conCombos.push(combo($('#cf-client-host'),{id:'cf-client2',label:'Client',placeholder:'Type to search name or phone',value:d.clientId,
-    options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=S.aeAppts.filter(function(a){return a.clientId===c.id&&AP_ACTIVE.indexOf(a.status)>=0}).length;return [c.id,c.name,c.phone+(n?' · '+n+' active appointment'+(n===1?'':'s'):'')]})},
+    options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=activeVouchers('aeAppts').filter(function(a){return a.clientId===c.id&&AP_ACTIVE.indexOf(a.status)>=0}).length;return [c.id,c.name,c.phone+(n?' · '+n+' active appointment'+(n===1?'':'s'):'')]})},
     missing:function(){return d.clientName||''},onChange:function(v){d.clientId=v;d.apptId='';conFillAppts()}}));
   $('#cf-appt').onchange=function(e){d.apptId=e.target.value;var a=findIn('aeAppts',d.apptId);if(a&&!editing){d.date=a.date;$('#cf-date').value=a.date}conApptHint()};
   $('#cf-addmed').onclick=function(){d.meds.push(conBlankMed());conRenderMeds();var x=$$('#cf-meds .combo-in');if(x.length)x[x.length-1].focus()};
@@ -3876,11 +3906,11 @@ function consentText(procId,clientName,procName){
   var p=findIn('aeProcs',procId), t=(p&&String(p.consent||'').trim())||CONSENT_DEFAULT;
   return t.replace(/\{client\}/g,clientName||'the client').replace(/\{procedure\}/g,procName||(p&&p.name)||'the procedure').replace(/\{clinic\}/g,biz().name||'the clinic');
 }
-function consentFor(quoteId,lineKey){return S.aeConsents.find(function(c){return c.quoteId===quoteId&&c.quoteLineId===lineKey})||null}
+function consentFor(quoteId,lineKey){return activeVouchers('aeConsents').find(function(c){return c.quoteId===quoteId&&c.quoteLineId===lineKey})||null}
 /* consent is needed when the item has no session yet (other than the one being edited) */
 function consentNeeded(quoteId,lineKey,exceptSesId){
   if(consentFor(quoteId,lineKey)) return false;
-  return !S.aeSessions.some(function(s){return s.quoteId===quoteId&&s.quoteLineId===lineKey&&s.id!==exceptSesId});
+  return !activeVouchers('aeSessions').some(function(s){return s.quoteId===quoteId&&s.quoteLineId===lineKey&&s.id!==exceptSesId});
 }
 function istStamp(iso){try{return new Date(iso).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})+' IST'}catch(e){return iso||''}}
 /* open the consent dialog for a quotation item; onDone(consent) runs after saving */
@@ -3957,12 +3987,7 @@ function viewConsent(id){
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     var dl=m.querySelector('[data-dl]'); if(dl) dl.onclick=function(){consentPdf(c)};
-    var del=m.querySelector('[data-del]'); if(del) del.onclick=function(){
-      var used=S.aeSessions.some(function(s){return s.quoteId===c.quoteId&&s.quoteLineId===c.quoteLineId});
-      confirmBox('Delete consent?','Delete '+c.no+' for '+c.procName+'?'+(used?' Sessions are already recorded for this procedure; they stay as they are.':' A new consent will be needed before the first session.')+' This can’t be undone.','Delete',function(){
-        remove('aeConsents',c.id).then(function(){closeModal();toast(c.no+' deleted');if(c.file&&c.file.id)getAssets().then(function(a){if(a)a.delete(c.file.id).catch(function(){})})}).catch(function(e){toast(errText(e))});
-      });
-    };
+    var del=m.querySelector('[data-del]'); if(del) del.onclick=function(){cancelVoucher('aeConsents',c.id)};
   };
   var m=openModal('','--m11',true); render(m); modalRefresh=function(){render(m)};
 }
@@ -4036,7 +4061,7 @@ SECTIONS['ae-sessions']={
 };
 function sesFiltered(){
   var q=norm(sesF.q);
-  return S.aeSessions.filter(function(s){
+  return activeVouchers('aeSessions').filter(function(s){
     if(sesF.from&&s.date<sesF.from) return false;
     if(sesF.to&&s.date>sesF.to) return false;
     if(q&&norm(s.no+' '+s.clientName+' '+(s.clientPhone||'')+' '+(s.procName||'')+' '+(s.quoteNo||'')+' '+(s.performedBy||'')).indexOf(q)<0) return false;
@@ -4056,32 +4081,21 @@ function sesListMount(){
 function sesListUpdate(){
   var b=$('#body',work); if(!b) return;
   if(!ready()){b.innerHTML=loadingHTML();return}
-  if(!S.aeSessions.length){b.innerHTML='<div class="empty"><strong>No sessions yet</strong>Record each procedure session here once it is performed.</div>';return}
+  if(!activeVouchers('aeSessions').length){b.innerHTML='<div class="empty"><strong>No sessions yet</strong>Record each procedure session here once it is performed.</div>';return}
   var list=sesFiltered(), bm=aiBilledMap();
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No session matches these filters.</div>';return}
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Procedure</th><th>Performed by</th><th class="num">Photos</th><th>Billing</th><th></th></tr></thead><tbody>'+
     list.map(function(s){var od=sesOrdinal(s), bl=sesBilling(s,bm);return '<tr><td class="nowrap"><button class="link" data-ses="'+esc(s.id)+'">'+esc(s.no)+'</button></td><td class="nowrap">'+fmtDate(s.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(s.clientId)+'">'+esc(s.clientName)+'</button><div class="sub">'+esc(s.clientPhone||'')+'</div></td>'+
       '<td>'+esc(s.procName||'')+'<div class="sub">'+esc([od,s.quoteNo].filter(Boolean).join(' · '))+'</div></td><td>'+esc(s.performedBy||'—')+'</td><td class="num">'+Object.keys(s.photos||{}).length+' / 5</td><td class="nowrap">'+(bl.billed?'<span class="pill paid">Billed</span><div class="sub">'+esc(bl.how)+'</div>':'<span class="pill unpaid">Not billed</span>')+'</td>'+
       '<td><div class="row-acts">'+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">'+EYE+' Prescription</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
-    '</tbody></table></div><p class="hint">'+countOf(list.length,S.aeSessions.length,'sessions')+'</p>';
+    '</tbody></table></div><p class="hint">'+countOf(list.length,activeVouchers('aeSessions').length,'sessions')+'</p>';
   $$('[data-ses]',b).forEach(function(x){x.onclick=function(){viewSes(x.dataset.ses)}});
   $$('[data-sesrx]',b).forEach(function(x){x.onclick=function(){sesPdf(findIn('aeSessions',x.dataset.sesrx))}});
   $$('[data-sesedit]',b).forEach(function(x){x.onclick=function(){sesEdit(x.dataset.sesedit)}});
   $$('[data-sesdel]',b).forEach(function(x){x.onclick=function(){sesDelete(x.dataset.sesdel)}});
   $$('[data-sesbill]',b).forEach(function(x){x.onclick=function(){var s=findIn('aeSessions',x.dataset.sesbill);if(s)aiOpenForm({clientId:s.clientId,sesId:s.id})}});
 }
-function sesDelete(id){
-  var s=findIn('aeSessions',id); if(!s) return;
-  if(readOnly){toast('You need Contributor access to delete sessions.');return}
-  var bn=aiBilledMap().ses[s.id]; if(bn){toast(s.no+' is billed on '+bn+'. Remove it from that invoice first.');return}
-  confirmBox('Delete session?','Delete '+s.no+' ('+(s.procName||'')+' for '+s.clientName+' on '+fmtDate(s.date)+')? Its photos are deleted too, and the Sessions Tracker counts one session less. The linked appointment stays as it is. This can’t be undone.','Delete',function(){
-    remove('aeSessions',s.id).then(function(){
-      toast(s.no+' deleted'); closeModal();
-      var ids=Object.keys(s.photos||{}).map(function(k){return s.photos[k].id}).filter(Boolean);
-      if(ids.length) getAssets().then(function(a){if(a)ids.forEach(function(x){a.delete(x).catch(function(){})})});
-    }).catch(function(e){toast(errText(e))});
-  });
-}
+function sesDelete(id){return cancelVoucher('aeSessions',id);}
 /* open the form, optionally preset from a quotation item */
 function sesOpenForm(preset){
   sesDraft=sesNew(); sesOldPhotos=[];
@@ -4099,11 +4113,11 @@ function sesEdit(id){
   sesOldPhotos=[];
   sesMode='form'; closeModal(); if(current!=='ae-sessions') go('ae-sessions'); else go(current);
 }
-function sesQuoteOptions(d){return d.clientId?S.aeQuotes.filter(function(q){return q.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}):[]}
+function sesQuoteOptions(d){return d.clientId?activeVouchers('aeQuotes').filter(function(q){return q.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}):[]}
 function sesApptOptions(d){
   var q=findIn('aeQuotes',d.quoteId); if(!q||!d.lineKey) return [];
-  var used={}; S.aeSessions.forEach(function(s){if(s.id!==d.id&&s.apptId)used[s.apptId]=1});
-  return S.aeAppts.filter(function(a){return a.quoteId===q.id&&a.quoteLineId===d.lineKey&&a.status!=='Cancelled'&&a.status!=='No-show'&&(!used[a.id]||a.id===d.apptId)})
+  var used={}; activeVouchers('aeSessions').forEach(function(s){if(s.id!==d.id&&s.apptId)used[s.apptId]=1});
+  return activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.quoteLineId===d.lineKey&&a.status!=='Cancelled'&&a.status!=='No-show'&&(!used[a.id]||a.id===d.apptId)})
     .sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||toMin(apFrom(a))-toMin(apFrom(b))});
 }
 /* pick the appointment for this session: same day first, else the earliest still active */
@@ -4318,7 +4332,7 @@ function viewSes(id,fallback){
     var s=findIn('aeSessions',id)||fallback; if(!s){closeModal();return}
     var txt=function(t){return t?'<div style="white-space:pre-line">'+esc(t)+'</div>':'<span class="sub">—</span>'};
     var ph=SES_PHOTOS.filter(function(p){return s.photos&&s.photos[p[0]]});
-    var nx=S.aeAppts.filter(function(a){return a.clientId===s.clientId&&a.id!==s.apptId&&a.date>=todayStr()&&AP_ACTIVE.indexOf(a.status)>=0}).sort(function(a,b){return (a.date+apFrom(a)).localeCompare(b.date+apFrom(b))})[0];
+    var nx=activeVouchers('aeAppts').filter(function(a){return a.clientId===s.clientId&&a.id!==s.apptId&&a.date>=todayStr()&&AP_ACTIVE.indexOf(a.status)>=0}).sort(function(a,b){return (a.date+apFrom(a)).localeCompare(b.date+apFrom(b))})[0];
     var sq=findIn('aeQuotes',s.quoteId), sl=sq&&sesLine(sq,s.quoteLineId), left=sl?qtLineStats(sq,sl.i).left:0;
     var nextBox='<div class="next-box">'+(nx?'<span class="sub">Next appointment</span> <strong>'+esc(nx.no)+' · '+fmtDate(nx.date)+' · '+esc(fmtTime(apFrom(nx)))+'</strong> <span class="sub">'+esc(apWhat(nx))+(apStaffNames(nx)?' · '+esc(apStaffNames(nx)):'')+'</span>'
       :(left>0?'<span>No next appointment booked · '+left+' session'+(left===1?'':'s')+' left</span>'+(readOnly?'':' <button type="button" class="btn sm primary w" data-booknext>Book next session</button>'):'<span>All sessions of this procedure are completed.</span>'))+'</div>';
@@ -4369,9 +4383,9 @@ function aeInvById(id){return findIn('aeInvoices',id)}
 /* what is already billed, optionally ignoring one invoice (the one being edited) */
 function aiBilledMap(exceptId){
   var con={},ses={},pre={};
-  S.aeInvoices.forEach(function(v){if(v.id===exceptId||v.cancelled)return;(v.lines||[]).forEach(function(l){
-    if(l.src==='con'&&l.srcId) con[l.srcId]=v.no;
-    if(l.src==='ses'&&l.srcId) ses[l.srcId]=v.no;
+  activeVouchers('aeInvoices').forEach(function(v){if(v.id===exceptId||v.cancelled)return;(v.lines||[]).forEach(function(l){
+    if(l.src==='con'&&l.srcId) con[l.srcId]=v.no||v.id;
+    if(l.src==='ses'&&l.srcId) ses[l.srcId]=v.no||v.id;
     if(l.src==='qt'&&l.quoteLineId){var k=l.quoteId+'|'+l.quoteLineId;pre[k]=(pre[k]||0)+(+l.qty||0)}
   })});
   return {con:con,ses:ses,pre:pre};
@@ -4381,7 +4395,7 @@ function sesBilling(s,bm){
   bm=bm||aiBilledMap();
   if(bm.ses[s.id]) return {billed:true,how:bm.ses[s.id]};
   var k=s.quoteId+'|'+s.quoteLineId, pre=bm.pre[k]||0; if(!pre) return {billed:false};
-  var mine=S.aeSessions.filter(function(x){return x.quoteId===s.quoteId&&x.quoteLineId===s.quoteLineId&&!bm.ses[x.id]}).sort(function(a,b){return ((a.date||'')+(a.createdAt||'')).localeCompare((b.date||'')+(b.createdAt||''))});
+  var mine=activeVouchers('aeSessions').filter(function(x){return x.quoteId===s.quoteId&&x.quoteLineId===s.quoteLineId&&!bm.ses[x.id]}).sort(function(a,b){return ((a.date||'')+(a.createdAt||'')).localeCompare((b.date||'')+(b.createdAt||''))});
   var pos=mine.findIndex(function(x){return x.id===s.id});
   return pos>=0&&pos<pre?{billed:true,how:'Billed upfront'}:{billed:false};
 }
@@ -4395,16 +4409,16 @@ function aiSesLine(s){
 function aiQuoteRemaining(q,bm,d){
   return (q.lines||[]).map(function(l,i){
     var key=qtLineKey(q,l,i), k=q.id+'|'+key;
-    var single=S.aeSessions.filter(function(s){return s.quoteId===q.id&&s.quoteLineId===key&&bm.ses[s.id]}).length;
+    var single=activeVouchers('aeSessions').filter(function(s){return s.quoteId===q.id&&s.quoteLineId===key&&bm.ses[s.id]}).length;
     var inDraft=0; if(d) d.lines.forEach(function(x){if(x.quoteLineId===key&&x.quoteId===q.id)inDraft+=(x.src==='ses'?1:(+x.qty||0))});
     return {l:l,i:i,key:key,left:Math.max(0,(+l.sessions||0)-single-(bm.pre[k]||0)-inDraft)};
   });
 }
 function aiPending(d){
   var bm=aiBilledMap(d.id);
-  var cons=S.aeCons.filter(function(c){return c.clientId===d.clientId&&!bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
-  var ses=S.aeSessions.filter(function(s){return s.clientId===d.clientId&&!sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
-  var qts=S.aeQuotes.filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,bm,null);return {q:q,rem:rem,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
+  var cons=activeVouchers('aeCons').filter(function(c){return c.clientId===d.clientId&&!bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+  var ses=activeVouchers('aeSessions').filter(function(s){return s.clientId===d.clientId&&!sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+  var qts=activeVouchers('aeQuotes').filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,bm,null);return {q:q,rem:rem,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
   return {bm:bm,cons:cons,ses:ses,qts:qts};
 }
 SECTIONS['ae-invoices']={
@@ -4413,7 +4427,7 @@ SECTIONS['ae-invoices']={
 };
 function aiFiltered(al){
   var q=norm(aiF.q); al=al||allocate();
-  return S.aeInvoices.filter(function(v){
+  return activeVouchers('aeInvoices').filter(function(v){
     if(aiF.from&&v.date<aiF.from) return false;
     if(aiF.to&&v.date>aiF.to) return false;
     if(aiF.status&&billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al).status!==aiF.status) return false;
@@ -4436,7 +4450,7 @@ function aiListMount(){
 function aiListUpdate(){
   var b=$('#body',work); if(!b) return;
   if(!ready()){b.innerHTML=loadingHTML();return}
-  if(!S.aeInvoices.length){b.innerHTML='<div class="empty"><strong>No invoices yet</strong>Bill a client’s consultations and completed sessions with New invoice.</div>';return}
+  if(!activeVouchers('aeInvoices').length){b.innerHTML='<div class="empty"><strong>No invoices yet</strong>Bill a client’s consultations and completed sessions with New invoice.</div>';return}
   var al=allocate(), list=aiFiltered(al);
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No invoice matches these filters.</div>';return}
   var T=0,P=0,B=0;
@@ -4446,19 +4460,13 @@ function aiListUpdate(){
       return '<tr><td class="nowrap"><button class="link" data-aeinv="'+esc(v.id)+'">'+esc(v.no)+'</button></td><td class="nowrap">'+fmtDate(v.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(v.clientId)+'">'+esc(v.clientName)+'</button><div class="sub">'+esc(v.clientPhone||'')+'</div></td>'+
       '<td>'+esc(uniq.slice(0,2).join(', ')+(uniq.length>2?' +'+(uniq.length-2)+' more':''))+'</td><td class="num">'+money(v.total)+'</td><td class="num">'+money(x.paid)+'</td><td class="num'+(x.bal>0.004?' due':'')+'">'+money(Math.max(0,x.bal))+'</td><td>'+statusPill(x.status)+'</td>'+
       '<td><div class="row-acts">'+(x.bal>0.004&&!readOnly?'<button class="btn sm w" data-aipay="'+esc(v.id)+'">Record payment</button>':'')+'<button class="btn sm" data-aipdf="'+esc(v.id)+'">'+EYE+' View PDF</button>'+(readOnly?'':'<button class="btn sm w" data-aiedit="'+esc(v.id)+'">Edit</button><button class="btn sm danger w" data-aidel="'+esc(v.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+
-    '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">'+money(T)+'</td><td class="num">'+money(P)+'</td><td class="num">'+money(B)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.aeInvoices.length,'invoices')+'</p>';
+    '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">'+money(T)+'</td><td class="num">'+money(P)+'</td><td class="num">'+money(B)+'</td><td colspan="2"></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,activeVouchers('aeInvoices').length,'invoices')+'</p>';
   $$('[data-aipay]',b).forEach(function(x){x.onclick=function(){var v=aeInvById(x.dataset.aipay);recordPayment(x.dataset.aipay,v&&v.clientId)}});
   $$('[data-aipdf]',b).forEach(function(x){x.onclick=function(){aiPdf(aeInvById(x.dataset.aipdf))}});
   $$('[data-aiedit]',b).forEach(function(x){x.onclick=function(){aiEdit(x.dataset.aiedit)}});
   $$('[data-aidel]',b).forEach(function(x){x.onclick=function(){aiDelete(x.dataset.aidel)}});
 }
-function aiDelete(id){
-  var v=aeInvById(id); if(!v) return;
-  var recs=S.receipts.filter(function(r){return r.aeInvId===id});
-  confirmBox('Delete invoice?','Delete '+v.no+' for '+v.clientName+' ('+money(v.total)+')? The consultations and sessions on it become unbilled again.'+(recs.length?' Its '+recs.length+' receipt'+(recs.length===1?'':'s')+' stay on the client’s account as advance.':'')+' This can’t be undone.','Delete',function(){
-    remove('aeInvoices',v.id).then(function(){return Promise.all(recs.map(function(r){return put('receipts',Object.assign({},r,{aeInvId:'',aeInvNo:''}))}))}).then(function(){closeModal();toast(v.no+' deleted')}).catch(function(e){toast(errText(e))});
-  });
-}
+function aiDelete(id){return cancelVoucher('aeInvoices',id);}
 function aiOpenForm(preset){
   aiDraft=aiNew();
   if(preset){aiDraft.clientId=preset.clientId||'';var c=clientById(aiDraft.clientId);aiDraft.clientName=c?c.name:'';
@@ -4516,7 +4524,7 @@ function aiRenderPending(){
   var p=aiPending(d), inD=function(src,id){return d.lines.some(function(l){return l.src===src&&l.srcId===id})};
   var shown={con:{},ses:{}}; d.lines.forEach(function(l){if(l.src==='con'||l.src==='ses')shown[l.src][l.srcId]=1});
   var cons=p.cons.filter(function(c){return !shown.con[c.id]}), ses=p.ses.filter(function(s){return !shown.ses[s.id]});
-  var qts=S.aeQuotes.filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,p.bm,d);return {q:q,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
+  var qts=activeVouchers('aeQuotes').filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,p.bm,d);return {q:q,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
   if(!cons.length&&!ses.length&&!qts.length){box.innerHTML='<h3 class="sec-h">Not yet billed</h3><p class="hint">Nothing else is waiting to be billed for this client.</p>';return}
   box.innerHTML='<h3 class="sec-h">Not yet billed</h3><div class="pend">'+
     cons.map(function(c){return '<div class="pend-row"><div><strong>Consultation '+esc(c.no)+'</strong><div class="sub">'+fmtDate(c.date)+(c.doctor?' · '+esc(c.doctor):'')+'</div></div><button type="button" class="btn sm w" data-pcon="'+esc(c.id)+'">'+PLUS+' Add</button></div>'}).join('')+
@@ -4530,7 +4538,7 @@ function aiRenderPending(){
   $$('[data-pqt]',box).forEach(function(b){b.onclick=function(){
     var q=findIn('aeQuotes',b.dataset.pqt); if(!q) return;
     aiQuoteRemaining(q,p.bm,d).forEach(function(x){if(x.left>0)d.lines.push({lid:newId('al'),src:'qt',quoteId:q.id,quoteLineId:x.key,ref:q.no+' · billed upfront',procId:x.l.procId,name:x.l.name,sac:x.l.sac||'',qty:x.left,rate:+x.l.rate||0,discPct:+x.l.discPct||0,gst:+x.l.gst||0})});
-    if(!d.other&&q.other&&!S.aeInvoices.some(function(v){return v.id!==d.id&&(v.lines||[]).some(function(l){return l.quoteId===q.id})})){d.otherDesc=q.otherDesc||'';d.other=q.other;d.otherGst=q.otherGst!=null?q.otherGst:18;$('#af-odesc').value=d.otherDesc;$('#af-oamt').value=d.other;$('#af-ogst').value=d.otherGst}
+    if(!d.other&&q.other&&!activeVouchers('aeInvoices').some(function(v){return v.id!==d.id&&(v.lines||[]).some(function(l){return l.quoteId===q.id})})){d.otherDesc=q.otherDesc||'';d.other=q.other;d.otherGst=q.otherGst!=null?q.otherGst:18;$('#af-odesc').value=d.otherDesc;$('#af-oamt').value=d.other;$('#af-ogst').value=d.otherGst}
     aiRenderPending();aiRenderLines()}});
   var all=$('#af-addall'); if(all) all.onclick=function(){cons.forEach(function(c){addCon(c.id)});ses.forEach(function(s){addSes(s.id)});aiRenderPending();aiRenderLines()};
 }
@@ -4610,7 +4618,7 @@ function aiSave(){
   }
   var qmap={}; lines.forEach(function(x){if(x.quoteLineId&&(x.src==='qt'||x.src==='ses')){var k2=x.quoteId+'|'+x.quoteLineId;qmap[k2]=(qmap[k2]||0)+(x.src==='qt'?+x.qty:1)}});
   for(var k3 in qmap){var p2=k3.split('|'),q=findIn('aeQuotes',p2[0]),ln=sesLine(q,p2[1]);if(!ln)continue;
-    var single=S.aeSessions.filter(function(s){return s.quoteId===q.id&&s.quoteLineId===p2[1]&&bm.ses[s.id]}).length, left=(+ln.l.sessions||0)-single-(bm.pre[k3]||0);
+    var single=activeVouchers('aeSessions').filter(function(s){return s.quoteId===q.id&&s.quoteLineId===p2[1]&&bm.ses[s.id]}).length, left=(+ln.l.sessions||0)-single-(bm.pre[k3]||0);
     if(qmap[k3]>left) return show(ln.l.name+' on '+q.no+' has only '+Math.max(0,left)+' session'+(left===1?'':'s')+' left to bill.')}
   if(d.other!==''&&(isNaN(+d.other)||+d.other<0)) return show('Other charges must be 0 or more.');
   var t=aiTotals({lines:lines,other:d.other,otherGst:d.otherGst,roundOn:d.roundOn,roundManual:d.roundManual});
@@ -4630,7 +4638,7 @@ function aiSave(){
   }).catch(function(e){btn.disabled=false;show(errText(e))});
 }
 function aiReceipts(v,al){
-  var x=billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al), recs=S.receipts.filter(function(r){return r.aeInvId===v.id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+  var x=billInfo({id:v.id,total:+v.total||0,cancelled:v.cancelled},al), recs=activeVouchers('receipts').filter(function(r){return r.aeInvId===v.id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
   var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), fromAdv=r2(x.paid-Math.min(linked,x.paid));
   return {x:x,recs:recs,fromAdv:fromAdv};
 }
@@ -4671,7 +4679,7 @@ function aiPdf(v){
 function viewLinePhotos(quoteId,lineKey){
   var render=function(m){
     var q=findIn('aeQuotes',quoteId), ln=sesLine(q,lineKey); if(!ln){closeModal();return}
-    var list=S.aeSessions.filter(function(s){return s.quoteId===quoteId&&s.quoteLineId===lineKey}).sort(function(a,b){return ((b.date||'')+(b.createdAt||'')).localeCompare((a.date||'')+(a.createdAt||''))});
+    var list=activeVouchers('aeSessions').filter(function(s){return s.quoteId===quoteId&&s.quoteLineId===lineKey}).sort(function(a,b){return ((b.date||'')+(b.createdAt||'')).localeCompare((a.date||'')+(a.createdAt||''))});
     var withPh=list.filter(function(s){return Object.keys(s.photos||{}).length});
     m.innerHTML='<h2>Photos</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(q.clientName)+'</strong> '+esc(q.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(ln.l.name)+'</strong> · '+esc(q.no)+'</dd></dl></div>'+
       (!list.length?'<p class="hint">No sessions recorded yet.</p>':(!withPh.length?'<p class="hint">No photos in the '+list.length+' session'+(list.length===1?'':'s')+' recorded so far.</p>':''))+
@@ -4699,20 +4707,20 @@ function fmtSec(itemId,q){var s=secSplit(itemId,q);return esc(String(r2(q)))+(s?
 function deptUsages(dk){
   var out=[];
   if(dk==='aes'){
-    S.aeSessions.forEach(function(s){if((s.consumables||[]).length)out.push({date:s.date,ref:s.no,client:s.clientName,what:s.procName||'Session',src:'Session',lines:s.consumables,rid:'ses:'+s.id})});
-    S.aeCons.forEach(function(c){if((c.consumables||[]).length)out.push({date:c.date,ref:c.no,client:c.clientName,what:'Consultation',src:'Consultation',lines:c.consumables,rid:'con:'+c.id})});
+    activeVouchers('aeSessions').forEach(function(s){if((s.consumables||[]).length)out.push({date:s.date,ref:s.no,client:s.clientName,what:s.procName||'Session',src:'Session',lines:s.consumables,rid:'ses:'+s.id})});
+    activeVouchers('aeCons').forEach(function(c){if((c.consumables||[]).length)out.push({date:c.date,ref:c.no,client:c.clientName,what:'Consultation',src:'Consultation',lines:c.consumables,rid:'con:'+c.id})});
   } else {
-    S.invoices.forEach(function(v){if(v.cancelled)return;(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Invoice',lines:it.consumables,rid:'inv:'+v.id})})});
-    S.redemptions.forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Package',lines:it.consumables,rid:'red:'+v.id})})});
+    activeVouchers('invoices').forEach(function(v){if(v.cancelled)return;(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Invoice',lines:it.consumables,rid:'inv:'+v.id})})});
+    activeVouchers('redemptions').forEach(function(v){(v.items||[]).forEach(function(it){if((it.consumables||[]).length)out.push({date:v.date,ref:v.no,client:v.clientName,what:it.name,src:'Package',lines:it.consumables,rid:'red:'+v.id})})});
   }
-  S.deptUsage.forEach(function(u){if(u.dept===dk)out.push({date:u.date,ref:u.no,client:'',what:u.note||'General use',src:'General use',lines:u.lines||[],rid:'use:'+u.id,usage:u})});
+  activeVouchers('deptUsage').forEach(function(u){if(u.dept===dk)out.push({date:u.date,ref:u.no,client:'',what:u.note||'General use',src:'General use',lines:u.lines||[],rid:'use:'+u.id,usage:u})});
   return out;
 }
 /* every stock movement of a department, in secondary qty */
 function deptMoves(dk){
   var out=[], issue=DEPT_ISSUE[dk];
   S.deptOpen.forEach(function(o){if(o.dept===dk&&+o.qty)out.push({date:o.date||'',ord:0,itemId:o.itemId,name:o.name,qty:+o.qty,kind:'opening',part:'Opening stock',ref:''})});
-  S.phMoves.forEach(function(m){if(m.type!==issue)return;(m.lines||[]).forEach(function(l){out.push({date:m.date,ord:1,itemId:l.itemId,name:l.name,qty:r2((+l.qty||0)*secQty(phItem(l.itemId))),kind:'received',part:'Received from Pharmacy ('+(+l.qty||0)+' '+((phItem(l.itemId)||{}).unit||'pc')+')',ref:m.no})})});
+  activeVouchers('phMoves').forEach(function(m){if(m.type!==issue)return;(m.lines||[]).forEach(function(l){out.push({date:m.date,ord:1,itemId:l.itemId,name:l.name,qty:r2((+l.qty||0)*secQty(phItem(l.itemId))),kind:'received',part:'Received from Pharmacy ('+(+l.qty||0)+' '+((phItem(l.itemId)||{}).unit||'pc')+')',ref:m.no})})});
   deptUsages(dk).forEach(function(u){(u.lines||[]).forEach(function(l){out.push({date:u.date,ord:2,itemId:l.itemId,name:l.name,qty:-r2(+l.qty||0),kind:'used',part:u.src==='General use'?'Used: '+u.what:'Used for '+u.what+(u.client?' · '+u.client:''),ref:u.ref})})});
   return out;
 }
@@ -4768,7 +4776,7 @@ var diF={spa:{q:'',from:'',to:'',view:'stock'},aes:{q:'',from:'',to:'',view:'sto
 function deptInvSection(dk){
   var type=DEPT_ISSUE[dk], key=dk==='spa'?'spa-inventory':'ae-inventory';
   function inRange(d){var f=diF[dk];return (!f.from||d>=f.from)&&(!f.to||d<=f.to)}
-  function moves(){var f=diF[dk],q=norm(f.q);return S.phMoves.filter(function(m){
+  function moves(){var f=diF[dk],q=norm(f.q);return activeVouchers('phMoves').filter(function(m){
     if(m.type!==type||!inRange(m.date)) return false;
     if(q&&norm(m.no+' '+(m.lines||[]).map(function(l){return l.name}).join(' ')).indexOf(q)<0) return false;
     return true}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(+b.seq||0)-(+a.seq||0)})}
@@ -4807,17 +4815,17 @@ function deptInvSection(dk){
         var us=deptUsages(dk).filter(function(u){return inRange(u.date)}), grp={};
         us.forEach(function(u){(u.lines||[]).forEach(function(l){if(q&&norm(l.name).indexOf(q)<0)return;var k=l.itemId+'|'+u.what;var g=grp[k]=grp[k]||{itemId:l.itemId,name:l.name,what:u.what,qty:0,n:0};g.qty=r2(g.qty+(+l.qty||0));g.n++})});
         var gl=Object.keys(grp).map(function(k){return grp[k]}).sort(function(a,b){return byText(a.name,b.name)||b.qty-a.qty});
-        var gen=S.deptUsage.filter(function(u){return u.dept===dk&&inRange(u.date)}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+        var gen=activeVouchers('deptUsage').filter(function(u){return u.dept===dk&&inRange(u.date)}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
         var html=gl.length?'<div class="tbl"><table><thead><tr><th>Item</th><th>Used for</th><th class="num">Times</th><th class="num">Qty used</th></tr></thead><tbody>'+
           gl.map(function(g){return '<tr><td><strong>'+esc(g.name)+'</strong></td><td>'+esc(g.what)+'</td><td class="num">'+g.n+'</td><td class="num">'+fmtSec(g.itemId,g.qty)+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty"><strong>No usage in this period</strong>Usage is recorded on '+(dk==='spa'?'invoice service lines':'sessions and consultations')+', or with Record usage.</div>';
         if(gen.length) html+='<h3 class="sec-h">General use entries</h3><div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Note</th><th>Items</th><th></th></tr></thead><tbody>'+
           gen.map(function(u){return '<tr><td class="nowrap"><strong>'+esc(u.no)+'</strong></td><td class="nowrap">'+fmtDate(u.date)+'</td><td>'+esc(u.note||'—')+'</td><td>'+esc((u.lines||[]).map(function(l){return l.name+' × '+l.qty}).join(', '))+'</td><td><div class="row-acts">'+(readOnly?'':consLocked(u)?'<span class="sub" title="'+esc(LOCK_NOTE)+'">🔒 Locked</span>':'<button class="btn sm w" data-guedit="'+esc(u.id)+'">Edit</button><button class="btn sm danger w" data-gudel="'+esc(u.id)+'">Delete</button>')+'</div></td></tr>'}).join('')+'</tbody></table></div>';
         b.innerHTML=html;
         $$('[data-guedit]',b).forEach(function(x){x.onclick=function(){deptUsageDialog(dk,x.dataset.guedit)}});
-        $$('[data-gudel]',b).forEach(function(x){x.onclick=function(){var u=findIn('deptUsage',x.dataset.gudel);if(!u)return;confirmBox('Delete usage entry?','Delete '+u.no+'? The quantities go back into stock.','Delete',function(){remove('deptUsage',u.id).then(function(){toast(u.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+        $$('[data-gudel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('deptUsage',x.dataset.gudel)}});
         return;
       }
-      var all=S.phMoves.filter(function(m){return m.type===type});
+      var all=activeVouchers('phMoves').filter(function(m){return m.type===type});
       if(!all.length){b.innerHTML='<div class="empty"><strong>Nothing received yet</strong>Items appear here when Pharmacy records an '+esc(type)+' in Item Issue.</div>';return}
       var list=moves();
       if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>Nothing matches these filters.</div>';return}
@@ -4901,18 +4909,18 @@ SECTIONS['ae-inventory']=deptInvSection('aes');
 function qtLineKey(q,l,i){return l.lid||(q.id+':'+i)}
 function qtLineStats(q,i){
   var l=q.lines[i], key=qtLineKey(q,l,i);
-  var ap=S.aeAppts.filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key});
-  var ses=S.aeSessions.filter(function(x){return x.quoteId===q.id&&x.quoteLineId===key}), linked={};
+  var ap=activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key});
+  var ses=activeVouchers('aeSessions').filter(function(x){return x.quoteId===q.id&&x.quoteLineId===key}), linked={};
   ses.forEach(function(x){if(x.apptId)linked[x.apptId]=1});
   /* a session record counts as done; a Completed appointment counts too unless a session record already covers it */
   var done=ses.length+ap.filter(function(a){return a.status==='Completed'&&!linked[a.id]}).length, booked=ap.filter(function(a){return AP_ACTIVE.indexOf(a.status)>=0&&!linked[a.id]}).length;
   return {key:key,done:done,booked:booked,left:Math.max(0,(+l.sessions||0)-done),open:Math.max(0,(+l.sessions||0)-done-booked),appts:ap,sessions:ses};
 }
-function qtUpcoming(q){var t=todayStr();return S.aeAppts.filter(function(a){return a.quoteId===q.id&&a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}).length}
+function qtUpcoming(q){var t=todayStr();return activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}).length}
 function qtProgress(q){var t=0,dn=0;(q.lines||[]).forEach(function(l,i){t+=+l.sessions||0;dn+=qtLineStats(q,i).done});return {total:t,done:dn}}
 function clientQuoteItems(cid){
   var out=[];
-  S.aeQuotes.filter(function(q){return q.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).forEach(function(q){
+  activeVouchers('aeQuotes').filter(function(q){return q.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).forEach(function(q){
     (q.lines||[]).forEach(function(l,i){var st=qtLineStats(q,i);out.push({q:q,l:l,i:i,st:st,val:q.id+'|'+st.key})});
   });
   return out;
@@ -4959,7 +4967,7 @@ function progBar(done,total){var p=total?Math.round(done/total*100):0;return '<d
 var ssF={q:'',show:'pending'};
 function ssRows(){
   var t=todayStr(), out=[];
-  S.aeQuotes.forEach(function(q){(q.lines||[]).forEach(function(l,i){
+  activeVouchers('aeQuotes').forEach(function(q){(q.lines||[]).forEach(function(l,i){
     var st=qtLineStats(q,i), total=+l.sessions||0;
     var up=st.appts.filter(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}).sort(function(a,b){return (a.date+apFrom(a)).localeCompare(b.date+apFrom(b))});
     out.push({q:q,l:l,i:i,st:st,total:total,upcoming:up.length,next:up[0]||null});
@@ -4985,8 +4993,8 @@ SECTIONS['ae-procedures']={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.aeQuotes.length){b.innerHTML='<div class="empty"><strong>No sessions yet</strong>Sessions come from quotations. Create a quotation to start tracking.</div>';return}
-    var rows=ssRows(), all=0; S.aeQuotes.forEach(function(q){all+=(q.lines||[]).length});
+    if(!activeVouchers('aeQuotes').length){b.innerHTML='<div class="empty"><strong>No sessions yet</strong>Sessions come from quotations. Create a quotation to start tracking.</div>';return}
+    var rows=ssRows(), all=0; activeVouchers('aeQuotes').forEach(function(q){all+=(q.lines||[]).length});
     if(!rows.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No quotation item matches these filters.</div>';return}
     b.innerHTML='<div class="tbl"><table class="ap-tbl"><thead><tr><th>Client</th><th>Quotation</th><th>Procedure</th><th>Sessions done</th><th class="num">Upcoming</th><th class="num">Left</th><th>Next appointment</th><th>Consent</th><th></th></tr></thead><tbody>'+
       rows.map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'">'+esc(r.q.clientName)+'</button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td>'+
@@ -5018,7 +5026,7 @@ function qtBook(q){
 }
 function qtFiltered(){
   var q=norm(qtF.q);
-  return S.aeQuotes.filter(function(x){
+  return activeVouchers('aeQuotes').filter(function(x){
     if(qtF.from&&x.date<qtF.from) return false;
     if(qtF.to&&x.date>qtF.to) return false;
     if(q&&norm(x.no+' '+x.clientName+' '+(x.clientPhone||'')+' '+(x.conNo||'')+' '+(x.lines||[]).map(function(l){return l.name}).join(' ')).indexOf(q)<0) return false;
@@ -5038,21 +5046,20 @@ function qtListMount(){
 function qtListUpdate(){
   var b=$('#body',work); if(!b) return;
   if(!ready()){b.innerHTML=loadingHTML();return}
-  if(!S.aeQuotes.length){b.innerHTML='<div class="empty"><strong>No quotations yet</strong>Record a consultation with recommended procedures, then create a quotation from it.</div>';return}
+  if(!activeVouchers('aeQuotes').length){b.innerHTML='<div class="empty"><strong>No quotations yet</strong>Record a consultation with recommended procedures, then create a quotation from it.</div>';return}
   var list=qtFiltered();
   if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No quotation matches these filters.</div>';return}
   var T=0;
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Consultation</th><th class="num">Procedures</th><th class="num">Upcoming appointments</th><th>Sessions done</th><th class="num">Total</th><th></th></tr></thead><tbody>'+
     list.map(function(x){T+=+x.total||0;var pg=qtProgress(x);return '<tr><td class="nowrap"><button class="link" data-qt="'+esc(x.id)+'">'+esc(x.no)+'</button></td><td class="nowrap">'+fmtDate(x.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(x.clientId)+'">'+esc(x.clientName)+'</button></td><td class="nowrap">'+(findIn('aeCons',x.conId)?'<button class="link" data-con-open="'+esc(x.conId)+'">'+esc(x.conNo)+'</button>':esc(x.conNo||'—'))+'</td><td class="num">'+(x.lines||[]).length+'</td><td class="num">'+qtUpcoming(x)+'</td><td class="nowrap">'+progBar(pg.done,pg.total)+'</td><td class="num">'+money(x.total)+'</td>'+
       '<td><div class="row-acts"><button class="btn sm w" data-qtappt="'+esc(x.id)+'">Appointment</button><button class="btn sm" data-qtpdf="'+esc(x.id)+'">'+EYE+' View PDF</button><button class="btn sm w" data-qtedit="'+esc(x.id)+'">Edit</button><button class="btn sm danger w" data-qtdel="'+esc(x.id)+'">Delete</button></div></td></tr>'}).join('')+
-    '</tbody><tfoot><tr><td colspan="7">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.aeQuotes.length,'quotations')+'</p>';
+    '</tbody><tfoot><tr><td colspan="7">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,activeVouchers('aeQuotes').length,'quotations')+'</p>';
   $$('[data-qt]',b).forEach(function(x){x.onclick=function(){viewQt(x.dataset.qt)}});
   $$('[data-con-open]',b).forEach(function(x){x.onclick=function(){viewCon(x.dataset.conOpen)}});
   $$('[data-qtpdf]',b).forEach(function(x){x.onclick=function(){qtPdf(findIn('aeQuotes',x.dataset.qtpdf))}});
   $$('[data-qtappt]',b).forEach(function(x){x.onclick=function(){qtBook(findIn('aeQuotes',x.dataset.qtappt))}});
   $$('[data-qtedit]',b).forEach(function(x){x.onclick=function(){qtEdit(x.dataset.qtedit)}});
-  $$('[data-qtdel]',b).forEach(function(x){x.onclick=function(){var q=findIn('aeQuotes',x.dataset.qtdel);if(!q)return;var lc=S.aeConsents.find(function(z){return z.quoteId===q.id});if(lc){toast('Consent '+lc.no+' is recorded against '+q.no+'. Delete it first.');return}var ls=S.aeSessions.find(function(z){return z.quoteId===q.id});if(ls){toast('Session '+ls.no+' is recorded against '+q.no+'. Delete those sessions first.');return}var la=S.aeAppts.find(function(a){return a.quoteId===q.id});if(la){toast('Appointment '+la.no+' is booked against '+q.no+'. Delete or unlink those appointments first.');return}
-    confirmBox('Delete quotation?','Delete '+q.no+' for '+q.clientName+' ('+money(q.total)+')? This can’t be undone.','Delete',function(){remove('aeQuotes',q.id).then(function(){toast(q.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+  $$('[data-qtdel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeQuotes',x.dataset.qtdel)}});
 }
 function qtEdit(id){
   var q=findIn('aeQuotes',id); if(!q) return;
@@ -5084,7 +5091,7 @@ function qtFormMount(){
   $('#qf-back').onclick=function(){qtMode='list';go(current)};
   $('#qf-date').onchange=function(e){d.date=e.target.value};
   qtCombos.push(combo($('#qf-client-host'),{id:'qf-client',label:'Client',placeholder:'Type to search name or phone',value:d.clientId,
-    options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=S.aeCons.filter(function(k){return k.clientId===c.id}).length;return [c.id,c.name,c.phone+(n?' · '+n+' consultation'+(n===1?'':'s'):'')]})},
+    options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=activeVouchers('aeCons').filter(function(k){return k.clientId===c.id}).length;return [c.id,c.name,c.phone+(n?' · '+n+' consultation'+(n===1?'':'s'):'')]})},
     missing:function(){return d.clientName||''},onChange:function(v){d.clientId=v;d.conId='';qtFillCons()}}));
   $('#qf-con').onchange=function(e){
     d.conId=e.target.value;var c=findIn('aeCons',d.conId);
@@ -5102,15 +5109,15 @@ function qtFormMount(){
 }
 function qtFillCons(){
   var d=qtDraft, sel=$('#qf-con'); if(!sel) return;
-  var list=d.clientId?S.aeCons.filter(function(c){return c.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}):[];
-  sel.innerHTML=optList([['',!d.clientId?'Choose the client first':(list.length?'Select a consultation':'No consultations for this client')]].concat(list.map(function(c){var nq=S.aeQuotes.filter(function(q){return q.conId===c.id&&q.id!==d.id}).length;return [c.id,c.no+' · '+fmtDate(c.date)+' · '+(c.procs||[]).length+' procedure'+((c.procs||[]).length===1?'':'s')+(c.doctor?' · '+c.doctor:'')+(nq?' · already quoted':'')]})),d.conId);
+  var list=d.clientId?activeVouchers('aeCons').filter(function(c){return c.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}):[];
+  sel.innerHTML=optList([['',!d.clientId?'Choose the client first':(list.length?'Select a consultation':'No consultations for this client')]].concat(list.map(function(c){var nq=activeVouchers('aeQuotes').filter(function(q){return q.conId===c.id&&q.id!==d.id}).length;return [c.id,c.no+' · '+fmtDate(c.date)+' · '+(c.procs||[]).length+' procedure'+((c.procs||[]).length===1?'':'s')+(c.doctor?' · '+c.doctor:'')+(nq?' · already quoted':'')]})),d.conId);
   sel.disabled=!d.clientId; qtConHint();
 }
 function qtConHint(){
   var d=qtDraft, h=$('#qf-con-hint'); if(!h) return;
   var c=findIn('aeCons',d.conId);
   if(c) h.textContent='Procedures and sessions were loaded from '+c.no+'. Edit, add or remove them as needed.';
-  else if(d.clientId&&!S.aeCons.some(function(k){return k.clientId===d.clientId})) h.textContent='Record a consultation for this client first.';
+  else if(d.clientId&&!activeVouchers('aeCons').some(function(k){return k.clientId===d.clientId})) h.textContent='Record a consultation for this client first.';
   else h.textContent='';
 }
 function qtFormUpdate(){
@@ -5181,12 +5188,12 @@ function qtSave(){
   var t=qtTotals({lines:lines,other:d.other,otherGst:d.otherGst,roundOn:d.roundOn,roundManual:d.roundManual});
   if(d.roundOn&&Math.abs(t.roundOff)>=100) return show('Round off must be less than ₹100.');
   if(d.id){
-    var cx=S.aeConsents.filter(function(z){return z.quoteId===d.id});
+    var cx=activeVouchers('aeConsents').filter(function(z){return z.quoteId===d.id});
     for(var y0=0;y0<cx.length;y0++){if(!lines.find(function(x){return x.lid===cx[y0].quoteLineId})) return show('Consent '+cx[y0].no+' is recorded for a procedure you removed. Delete that consent first.')}
-    var sx=S.aeSessions.filter(function(z){return z.quoteId===d.id});
+    var sx=activeVouchers('aeSessions').filter(function(z){return z.quoteId===d.id});
     for(var y=0;y<sx.length;y++){var sl=lines.find(function(x){return x.lid===sx[y].quoteLineId});if(!sl) return show(sx[y].no+' is recorded for a procedure you removed. Delete that session first.')}
     for(var y2=0;y2<lines.length;y2++){var di=d.lines.indexOf(lines[y2]),qq=findIn('aeQuotes',d.id),idx=qq?(qq.lines||[]).findIndex(function(x,i){return qtLineKey(qq,x,i)===lines[y2].lid}):-1;if(idx>=0){var dn=qtLineStats(qq,idx).done;if(+lines[y2].sessions<dn) return show(lines[y2].name+' already has '+dn+' session'+(dn===1?'':'s')+' done, so sessions can’t be fewer than '+dn+'.')}}
-    var linked=S.aeAppts.filter(function(a){return a.quoteId===d.id&&a.status!=='Cancelled'&&a.status!=='No-show'});
+    var linked=activeVouchers('aeAppts').filter(function(a){return a.quoteId===d.id&&a.status!=='Cancelled'&&a.status!=='No-show'});
     for(var z=0;z<linked.length;z++){
       var la=linked[z], ln=lines.find(function(x){return x.lid===la.quoteLineId});
       if(!ln) return show(la.no+' is booked for a procedure you removed. Cancel or move that appointment first.');
@@ -5245,7 +5252,7 @@ function placeholder(title){return {mount:function(){work.innerHTML=head(title,'
 var lsF={q:'',cat:'',show:'all'}, lsSel={};
 function lastPurchase(itemId){
   var best=null;
-  S.phMoves.forEach(function(m){if(m.type!=='Purchase')return;(m.lines||[]).forEach(function(l){if(l.itemId===itemId&&(!best||(m.date||'')>(best.m.date||'')||((m.date||'')===(best.m.date||'')&&(m.createdAt||'')>(best.m.createdAt||''))))best={m:m,l:l}})});
+  activeVouchers('phMoves').forEach(function(m){if(m.type!=='Purchase')return;(m.lines||[]).forEach(function(l){if(l.itemId===itemId&&(!best||(m.date||'')>(best.m.date||'')||((m.date||'')===(best.m.date||'')&&(m.createdAt||'')>(best.m.createdAt||''))))best={m:m,l:l}})});
   return best;
 }
 function lsRows(){
@@ -5310,7 +5317,7 @@ SECTIONS['ph-dashboard']={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.phItems.length&&!S.phMoves.length){
+    if(!S.phItems.length&&!activeVouchers('phMoves').length){
       b.innerHTML='<p class="hint" style="margin:0 0 14px">Set up the pharmacy in three steps. The dashboard fills in as you buy and sell.</p><div class="steps">'+
         step(1,'--m12','Add item categories','Group your stock, for example Tablets or Syrups.','ph-item-categories','Go to Item Categories')+
         step(2,'--m11','Add your items','Enter each item with HSN, GST, opening stock and reorder level.','ph-items','Go to Items')+
@@ -5318,10 +5325,10 @@ SECTIONS['ph-dashboard']={
       return;
     }
     var t=todayStr(), ym=t.slice(0,7), monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
-    var of=function(type,pred){return S.phMoves.filter(function(m){return m.type===type&&!m.cancelled&&pred(m)})};
+    var of=function(type,pred){return activeVouchers('phMoves').filter(function(m){return m.type===type&&!m.cancelled&&pred(m)})};
     var sum=function(a,f){return r2(a.reduce(function(x,m){return x+(+m[f||'total']||0)},0))};
     var isT=function(m){return m.date===t}, isM=function(m){return (m.date||'').slice(0,7)===ym};
-    var salesT=of('Sale',isT), salesM=of('Sale',isM), retM=of('Return',isM), purM=of('Purchase',isM), lossM=S.phMoves.filter(function(m){return (m.type==='Expiry'||m.type==='Damage')&&isM(m)});
+    var salesT=of('Sale',isT), salesM=of('Sale',isM), retM=of('Return',isM), purM=of('Purchase',isM), lossM=activeVouchers('phMoves').filter(function(m){return (m.type==='Expiry'||m.type==='Damage')&&isM(m)});
     var phRec=function(r){return r.module==='pha'||!!r.saleId||r.src==='phReceipts'};
     var recT=allReceipts().filter(function(r){return phRec(r)&&r.date===t});
     /* stock */
@@ -5330,7 +5337,7 @@ SECTIONS['ph-dashboard']={
     low.sort(function(a,c){return (a.qty-(a.reorder||0))-(c.qty-(c.reorder||0))});
     /* dues */
     var al=allocate(), phDue=0, phDueN=0;
-    S.phMoves.forEach(function(m){if(m.type==='Sale'&&m.clientId){var x=phSaleInfo(m,al);if(x.bal>0.004){phDue+=x.bal;phDueN++}}});
+    activeVouchers('phMoves').forEach(function(m){if(m.type==='Sale'&&m.clientId){var x=phSaleInfo(m,al);if(x.bal>0.004){phDue+=x.bal;phDueN++}}});
     var payable=r2(S.phSuppliers.reduce(function(x,sp){return x+Math.max(0,phSupplierPayable(sp.id).net)},0));
     var html='<div class="tiles">'+
       tile('--m3','Sales today',money0(sum(salesT)),salesT.length+' bill'+(salesT.length===1?'':'s')+' · collected '+money0(sum(recT,'amount')),openList('ph-item-issue',phListF.out,todayStr(),function(f){f.type='Sale';f.item='';phMode.out='list'}))+
@@ -5344,14 +5351,14 @@ SECTIONS['ph-dashboard']={
       tile('--m13','Payable to suppliers',money0(payable),'Opening + purchases',function(){go('ph-payable')})+tile('--m6','Expenses in '+monthName,money0(expMonthTotal('pha')),'Pharmacy expenses',openList('expenses',expF,monthStart(),function(f){f.dept=DEPT_NAME['pha'];f.cat='';f.status='';expLastDept=dept}))+'</div>';
     /* chart */
     var days=[],base=nowIST(); for(var k=13;k>=0;k--){var dd=new Date(base.getFullYear(),base.getMonth(),base.getDate()-k);days.push(ds(dd))}
-    var vals=days.map(function(dd){return sum(S.phMoves.filter(function(m){return m.type==='Sale'&&!m.cancelled&&m.date===dd}))});
+    var vals=days.map(function(dd){return sum(activeVouchers('phMoves').filter(function(m){return m.type==='Sale'&&!m.cancelled&&m.date===dd}))});
     /* top items */
     var top={}; salesM.forEach(function(m){(m.lines||[]).forEach(function(l){var x=top[l.itemId]=top[l.itemId]||{name:l.name,q:0,a:0};x.q+=+l.qty||0;x.a=r2(x.a+(+l.total||0))})});
     var tk=Object.keys(top).sort(function(a,c){return top[c].a-top[a].a}).slice(0,6), tmax=tk.length?top[tk[0]].a||1:1;
     html+='<div class="panels"><div class="panel chart"><h3>Pharmacy sales, last 14 days</h3>'+barChart(days,vals,t)+'</div>'+
       '<div class="panel"><h3>Top items in '+esc(monthName)+'</h3>'+(tk.length?tk.map(function(k2){return hbar(esc(top[k2].name)+' <span class="sub">× '+top[k2].q+'</span>',money0(top[k2].a),top[k2].a/tmax,'--m11',true)}).join(''):'<p class="hint">No sales this month yet.</p>')+'</div></div>';
     /* low stock + recent */
-    var recent=S.phMoves.slice().sort(function(a,c){return (c.date||'').localeCompare(a.date||'')||(c.createdAt||'').localeCompare(a.createdAt||'')}).slice(0,7);
+    var recent=activeVouchers('phMoves').slice().sort(function(a,c){return (c.date||'').localeCompare(a.date||'')||(c.createdAt||'').localeCompare(a.createdAt||'')}).slice(0,7);
     html+='<div class="panels"><div class="panel"><h3>Recent entries</h3>'+(recent.length?'<div class="tbl"><table><thead><tr><th>Number</th><th>Type</th><th>Party</th><th class="num">Total</th></tr></thead><tbody>'+
         recent.map(function(m){return '<tr><td class="nowrap"><button class="link" data-pm="'+esc(m.id)+'">'+esc(m.no)+'</button><div class="sub">'+fmtDate(m.date)+'</div></td><td><span class="pill '+PH_TYPE_PILL[m.type]+'">'+esc(m.type)+'</span></td><td>'+esc(phPartyName(m)||'—')+'</td><td class="num">'+money(m.total)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">No entries yet.</p>')+'</div>'+
       '<div class="panel"><h3>Needs reordering</h3>'+(low.length?'<div class="tbl"><table><thead><tr><th>Item</th><th class="num">Stock</th><th class="num">Reorder at</th></tr></thead><tbody>'+
@@ -5373,19 +5380,20 @@ function addMonthsStr(d0,n){var d=parseD(d0),day=d.getDate();d.setDate(1);d.setM
 function memExpiry(start,plan){if(!start||!plan)return '';var n=Math.max(1,Math.round(+plan.validity||0));return plan.validityUnit==='Days'?addDays(start,n-1):addDays(addMonthsStr(start,n),-1)}
 function memValidityText(p){var n=Math.round(+p.validity||0);if(!n)return '';var u=p.validityUnit==='Days'?'day':'month';return n+' '+u+(n===1?'':'s')}
 function memInfo(m,exceptRedId){
-  var uses=S.redemptions.filter(function(r){return r.memId===m.id&&r.id!==exceptRedId}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)});
+  if(m.cancelled)return {uses:[],used:0,bal:0,status:"Cancelled"};
+  var uses=activeVouchers('redemptions').filter(function(r){return r.memId===m.id&&r.id!==exceptRedId}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)});
   var used=r2(uses.reduce(function(s2,r){return s2+(+r.worth||0)},0)), bal=r2(Math.max(0,(+m.value||0)-used)), t=todayStr();
   return {used:used,bal:bal,uses:uses,status:bal<=0.004?'Used up':(m.expiry&&m.expiry<t?'Expired':'Active')};
 }
 var MEM_PILL={Active:'paid','Used up':'off',Expired:'unpaid'};
 function clientMems(cid,date){
-  return S.members.filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)&&memInfo(m).bal>0.004})
+  return activeVouchers('members').filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)&&memInfo(m).bal>0.004})
     .sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')});
 }
 function memLabel(m){return (m.planName||'Package')+' · '+m.no}
 /* Packages section on the client details screen */
 function clientMemSection(cid){
-  var list=S.members.filter(function(m){return m.clientId===cid}).map(function(m){return {m:m,x:memInfo(m)}})
+  var list=activeVouchers('members').filter(function(m){return m.clientId===cid}).map(function(m){return {m:m,x:memInfo(m)}})
     .sort(function(a,b){var o={Active:0,'Used up':1,Expired:2};return (o[a.x.status]-o[b.x.status])||(b.m.date||'').localeCompare(a.m.date||'')});
   if(!list.length) return '';
   return '<h3 class="sec-h">Packages</h3><div class="tbl"><table><thead><tr><th>Package</th><th>Plan</th><th class="num">Worth</th><th class="num">Balance</th><th>Valid till</th><th>Status</th></tr></thead><tbody>'+
@@ -5439,7 +5447,7 @@ SECTIONS['mem-plans']=simpleMaster({
     if(o.sac&&!/^\d{4,8}$/.test(o.sac)) return 'SAC code should be 4 to 8 digits.';
     return dupName('memPlans',o,id)?'A plan with this name already exists.':'';
   },
-  usage:function(r){var n=S.members.filter(function(m){return m.planId===r.id}).length;return n?r.name+' has been sold '+n+' time'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('members').filter(function(m){return m.planId===r.id}).length;return n?r.name+' has been sold '+n+' time'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
 });
 function memSeedPlans(){
   var now=new Date().toISOString(), defs=[['Silver',12000,16000],['Gold',25000,35000],['Platinum',50000,80000]];
@@ -5466,18 +5474,18 @@ SECTIONS.packages={
     if(!ready()){b.innerHTML=loadingHTML();return}
     var q=norm(memF.q);
     if(memF.view==='redemptions'){
-      var rl=S.redemptions.filter(function(r){return !q||norm(r.no+' '+r.clientName+' '+(r.clientPhone||'')+' '+(r.memNo||'')+' '+(r.memPlan||'')).indexOf(q)>=0}).sort(function(a,c){return (c.date||'').localeCompare(a.date||'')||(+c.seq||0)-(+a.seq||0)});
-      if(!S.redemptions.length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
+      var rl=activeVouchers('redemptions').filter(function(r){return !q||norm(r.no+' '+r.clientName+' '+(r.clientPhone||'')+' '+(r.memNo||'')+' '+(r.memPlan||'')).indexOf(q)>=0}).sort(function(a,c){return (c.date||'').localeCompare(a.date||'')||(+c.seq||0)-(+a.seq||0)});
+      if(!activeVouchers('redemptions').length){b.innerHTML='<div class="empty"><strong>No redemptions yet</strong>They are created from the Invoice Form when a client uses their package.</div>';return}
       if(!rl.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No redemption matches this search.</div>';return}
       b.innerHTML='<div class="tbl"><table><thead><tr><th>Slip</th><th>Client</th><th>Package</th><th>Services</th><th class="num">Worth used</th><th>Tax invoice</th></tr></thead><tbody>'+
         rl.map(function(r){return '<tr><td class="nowrap"><button class="link" data-red="'+esc(r.id)+'">'+esc(r.no)+'</button><div class="sub">'+fmtDate(r.date)+'</div></td><td><strong>'+esc(r.clientName)+'</strong><div class="sub">'+esc(r.clientPhone||'')+'</div></td>'+
           '<td class="nowrap"><button class="link" data-mem="'+esc(r.memId)+'">'+esc(r.memNo)+'</button><div class="sub">'+esc(r.memPlan||'')+'</div></td><td>'+esc((r.items||[]).map(function(it){return it.name}).join(', '))+'</td><td class="num">'+money(r.worth)+'</td>'+
-          '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(rl.length,S.redemptions.length,'redemptions')+'</p>';
+          '<td class="nowrap">'+(r.invoiceId&&invById(r.invoiceId)?'<button class="link" data-inv="'+esc(r.invoiceId)+'">'+esc(r.invoiceNo)+'</button>':'—')+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(rl.length,activeVouchers('redemptions').length,'redemptions')+'</p>';
       $$('[data-red]',b).forEach(function(x){x.onclick=function(){viewRedemption(x.dataset.red)}});
       return;
     }
-    if(!S.members.length){b.innerHTML='<div class="empty"><strong>No packages yet</strong>'+(S.memPlans.length?'Use Sell package to enrol a client.':'Add plans in Masters › Package Plans first.')+'</div>';return}
-    var list=S.members.map(function(m){return {m:m,x:memInfo(m)}}).filter(function(r){
+    if(!activeVouchers('members').length){b.innerHTML='<div class="empty"><strong>No packages yet</strong>'+(S.memPlans.length?'Use Sell package to enrol a client.':'Add plans in Masters › Package Plans first.')+'</div>';return}
+    var list=activeVouchers('members').map(function(m){return {m:m,x:memInfo(m)}}).filter(function(r){
       if(memF.status&&r.x.status!==memF.status) return false;
       if(q&&norm(r.m.no+' '+r.m.clientName+' '+(r.m.clientPhone||'')+' '+r.m.planName).indexOf(q)<0) return false;
       return true}).sort(function(a,c){return (c.m.date||'').localeCompare(a.m.date||'')||(+c.m.seq||0)-(+a.m.seq||0)});
@@ -5488,7 +5496,7 @@ SECTIONS.packages={
         '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+money(m.value)+'</td>'+
         '<td class="num">'+money(exp?0:x.bal)+(exp&&x.bal>0.004?'<div class="sub">'+money(x.bal)+' lapsed</div>':'')+'</td>'+
         '<td class="nowrap">'+fmtDate(m.expiry)+'</td><td><span class="pill '+(MEM_PILL[x.status]||'off')+'">'+esc(x.status)+'</span></td></tr>'}).join('')+
-      '</tbody></table></div><p class="hint">'+countOf(list.length,S.members.length,'packages')+'</p>';
+      '</tbody></table></div><p class="hint">'+countOf(list.length,activeVouchers('members').length,'packages')+'</p>';
   }
 };
 function memPriceCalc(p,roundOn){var price=r2(+p.price||+p.paid||0),tax=r2(price*(+p.gst||0)/100),raw=r2(price+tax),ro=roundOn?r2(Math.round(raw)-raw):0;return {price:price,tax:tax,roundOff:ro,total:r2(raw+ro)}}
@@ -5552,12 +5560,7 @@ function viewMembership(id){
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=membershipPdf(mm);if(pdf)pdfView(mm.no+'.pdf',pdf)};
     var bl=m.querySelector('[data-bill]'); if(bl) bl.onclick=function(){closeModal();draft=newDraft();draft.clientId=mm.clientId;draft.memId=mm.id;go('invoice-form')};
-    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){
-      var recs=inv?S.receipts.filter(function(r){return r.invoiceId===inv.id}):[];
-      confirmBox('Delete package?','Delete '+mm.no+' for '+mm.clientName+'? Its invoice '+(mm.invoiceNo||'')+(recs.length?' and '+recs.length+' receipt'+(recs.length===1?'':'s'):'')+' will be deleted too.','Delete',function(){
-        Promise.all(recs.map(function(r){return remove('receipts',r.id)})).then(function(){return inv?remove('invoices',inv.id):null}).then(function(){return remove('members',mm.id)}).then(function(){closeModal();toast(mm.no+' deleted')}).catch(function(e){toast(errText(e))});
-      });
-    };
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){cancelVoucher('members',mm.id)};
     $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
     $$('[data-red]',m).forEach(function(b2){b2.onclick=function(){viewRedemption(b2.dataset.red)}});
   };
@@ -5576,7 +5579,7 @@ function viewRedemption(id){
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly?'<button class="btn danger" data-del>Delete</button>':'')+'<button class="btn" data-dl>'+EYE+' View PDF</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){var pdf=redemptionPdf(r);if(pdf)pdfView(r.no+'.pdf',pdf)};
-    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete redemption?','Delete '+r.no+'? '+money(r.worth)+' goes back to package '+r.memNo+'.'+(inv?' Tax invoice '+inv.no+' is not changed.':''),'Delete',function(){remove('redemptions',r.id).then(function(){closeModal();toast(r.no+' deleted')}).catch(function(e){toast(errText(e))})})};
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){cancelVoucher('redemptions',r.id)};
     $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
     $$('[data-mem]',m).forEach(function(b2){b2.onclick=function(){viewMembership(b2.dataset.mem)}});
   };
@@ -5658,9 +5661,9 @@ function saveWithMembership(sp,c,show){
 }
 /* Spa dashboard panel */
 function memDashPanel(){
-  if(!S.members.length) return '';
-  var t=todayStr(), ym=t.slice(0,7), soldM=S.members.filter(function(m){return (m.date||'').slice(0,7)===ym}), held=0, exp=[];
-  S.members.forEach(function(m){var x=memInfo(m);if(x.status==='Active'){held=r2(held+x.bal);if(m.expiry<=addDays(t,30))exp.push({m:m,x:x})}});
+  if(!activeVouchers('members').length) return '';
+  var t=todayStr(), ym=t.slice(0,7), soldM=activeVouchers('members').filter(function(m){return (m.date||'').slice(0,7)===ym}), held=0, exp=[];
+  activeVouchers('members').forEach(function(m){var x=memInfo(m);if(x.status==='Active'){held=r2(held+x.bal);if(m.expiry<=addDays(t,30))exp.push({m:m,x:x})}});
   exp.sort(function(a,b){return (a.m.expiry||'').localeCompare(b.m.expiry||'')});
   return '<div class="panel"><h3>Packages</h3><div class="mem-sum" style="margin:0 0 10px"><span>Sold this month <strong>'+soldM.length+'</strong></span><span>Unused balance <strong>'+money0(held)+'</strong></span></div>'+
     (exp.length?'<div class="tbl"><table><thead><tr><th>Expiring soon</th><th>Valid till</th><th class="num">Balance</th></tr></thead><tbody>'+exp.slice(0,6).map(function(r){return '<tr><td><button class="link" style="color:inherit" data-mem="'+esc(r.m.id)+'"><strong>'+esc(r.m.clientName)+'</strong></button><div class="sub">'+esc(r.m.planName)+' · '+esc(r.m.no)+'</div></td><td class="nowrap">'+fmtDate(r.m.expiry)+'</td><td class="num">'+money0(r.x.bal)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None expiring in the next 30 days.</p>')+
@@ -5674,8 +5677,8 @@ function memDashPanel(){
    The fee is never adjusted against later bills.
    ========================================================= */
 function clubPlanPrice(plan,sid){var v=plan&&plan.prices?plan.prices[sid]:null;return v===''||v==null||isNaN(+v)?null:+v}
-function clubStatus(m,t){t=t||todayStr();return m.expiry&&m.expiry<t?'Expired':(m.start&&m.start>t?'Upcoming':'Active')}
-function clientClubs(cid,date){return S.clubs.filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)}).sort(function(a,b){return (b.expiry||'').localeCompare(a.expiry||'')})}
+function clubStatus(m,t){if(m.cancelled)return "Cancelled";t=t||todayStr();return m.expiry&&m.expiry<t?'Expired':(m.start&&m.start>t?'Upcoming':'Active')}
+function clientClubs(cid,date){return activeVouchers('clubs').filter(function(m){return m.clientId===cid&&(!m.start||m.start<=date)&&(!m.expiry||m.expiry>=date)}).sort(function(a,b){return (b.expiry||'').localeCompare(a.expiry||'')})}
 /* lowest member price for a service across the client's valid memberships */
 function clubFor(cid,date,sid){
   var best=null;
@@ -5740,7 +5743,7 @@ SECTIONS['club-plans']=simpleMaster({
     {id:'terms',label:'Terms (printed on the invoice note)',type:'textarea'}],
   cols:[{h:'Plan',text:function(r){return r.name}},{h:'Fee',num:true,text:function(r){return money(r.fee)}},{h:'GST',num:true,text:function(r){return (+r.gst||0)+'%'}},
     {h:'Fee incl. GST',num:true,text:function(r){return money(r2((+r.fee||0)*(1+(+r.gst||0)/100)))}},{h:'Validity',text:function(r){return memValidityText(r)}},
-    {h:'Services discounted',num:true,text:function(r){return String(Object.keys(r.prices||{}).length)}},{h:'Members',num:true,text:function(r){return String(S.clubs.filter(function(m){return m.planId===r.id&&clubStatus(m)!=='Expired'}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
+    {h:'Services discounted',num:true,text:function(r){return String(Object.keys(r.prices||{}).length)}},{h:'Members',num:true,text:function(r){return String(activeVouchers('clubs').filter(function(m){return m.planId===r.id&&clubStatus(m)!=='Expired'}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
   search:function(r){return r.name},sort:function(a,b){return (+a.fee||0)-(+b.fee||0)},
   validate:function(o,id){
     o.gst=+o.gst||0;
@@ -5755,11 +5758,11 @@ SECTIONS['club-plans']=simpleMaster({
     if(!Object.keys(pr).length) return 'Enter a member price for at least one service.';
     return dupName('clubPlans',o,id)?'A plan with this name already exists.':'';
   },
-  usage:function(r){var n=S.clubs.filter(function(m){return m.planId===r.id}).length;return n?r.name+' has been sold '+n+' time'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('clubs').filter(function(m){return m.planId===r.id}).length;return n?r.name+' has been sold '+n+' time'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''}
 });
 
 var clubF={q:'',status:'Active'};
-function clubSavings(m){return S.invoices.filter(function(i){return !i.cancelled&&(i.items||[]).some(function(it){return it.clubId===m.id})}).map(function(i){var s=0;(i.items||[]).forEach(function(it){if(it.clubId===m.id)s+=clubSavingOf(it)});return {i:i,saving:r2(s)}})}
+function clubSavings(m){return activeVouchers('invoices').filter(function(i){return !i.cancelled&&(i.items||[]).some(function(it){return it.clubId===m.id})}).map(function(i){var s=0;(i.items||[]).forEach(function(it){if(it.clubId===m.id)s+=clubSavingOf(it)});return {i:i,saving:r2(s)}})}
 SECTIONS.clubs={
   mount:function(){
     work.innerHTML=head('Memberships Sold',readOnly?'':'<button class="btn primary w" id="cb-new">'+PLUS+' Sell membership</button>')+
@@ -5773,9 +5776,9 @@ SECTIONS.clubs={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.clubs.length){b.innerHTML='<div class="empty"><strong>No memberships yet</strong>'+(S.clubPlans.length?'Use Sell membership to enrol a client.':'Add plans in Masters › Membership Plans first.')+'</div>';return}
+    if(!activeVouchers('clubs').length){b.innerHTML='<div class="empty"><strong>No memberships yet</strong>'+(S.clubPlans.length?'Use Sell membership to enrol a client.':'Add plans in Masters › Membership Plans first.')+'</div>';return}
     var q=norm(clubF.q);
-    var list=S.clubs.map(function(m){return {m:m,st:clubStatus(m)}}).filter(function(r){
+    var list=activeVouchers('clubs').map(function(m){return {m:m,st:clubStatus(m)}}).filter(function(r){
       if(clubF.status&&r.st!==clubF.status) return false;
       if(q&&norm(r.m.no+' '+r.m.clientName+' '+(r.m.clientPhone||'')+' '+r.m.planName).indexOf(q)<0) return false;
       return true}).sort(function(a,c){return (c.m.date||'').localeCompare(a.m.date||'')||(+c.m.seq||0)-(+a.m.seq||0)});
@@ -5785,7 +5788,7 @@ SECTIONS.clubs={
         '<td><button class="link" style="color:inherit" data-client-view="'+esc(m.clientId)+'"><strong>'+esc(m.clientName)+'</strong></button><div class="sub">'+esc(m.clientPhone||'')+'</div></td>'+
         '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+money(m.fee)+'</td>'+
         '<td class="nowrap">'+fmtDate(m.expiry)+'</td><td class="num">'+money(sv)+'</td><td><span class="pill '+(r.st==='Active'?'paid':r.st==='Upcoming'?'partial':'unpaid')+'">'+esc(r.st)+'</span></td></tr>'}).join('')+
-      '</tbody></table></div><p class="hint">'+countOf(list.length,S.clubs.length,'memberships')+'</p>';
+      '</tbody></table></div><p class="hint">'+countOf(list.length,activeVouchers('clubs').length,'memberships')+'</p>';
   }
 };
 function sellClub(cid){
@@ -5847,18 +5850,13 @@ function viewClub(id){
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(!readOnly&&!sv.length?'<button class="btn danger" data-del>Delete</button>':'')+(!readOnly&&st==='Active'?'<button class="btn primary w" data-bill>New invoice</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     var bl=m.querySelector('[data-bill]'); if(bl) bl.onclick=function(){closeModal();draft=newDraft();draft.clientId=mm.clientId;go('invoice-form')};
-    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){
-      var recs=inv?S.receipts.filter(function(r){return r.invoiceId===inv.id}):[];
-      confirmBox('Delete membership?','Delete '+mm.no+' for '+mm.clientName+'? Its invoice '+(mm.invoiceNo||'')+(recs.length?' and '+recs.length+' receipt'+(recs.length===1?'':'s'):'')+' will be deleted too.','Delete',function(){
-        Promise.all(recs.map(function(r){return remove('receipts',r.id)})).then(function(){return inv?remove('invoices',inv.id):null}).then(function(){return remove('clubs',mm.id)}).then(function(){closeModal();toast(mm.no+' deleted')}).catch(function(e){toast(errText(e))});
-      });
-    };
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){cancelVoucher('clubs',mm.id)};
     $$('[data-inv]',m).forEach(function(b2){b2.onclick=function(){viewInvoice(b2.dataset.inv)}});
   };
   var m=openModal('','--m3',true); render(m); modalRefresh=function(){render(m)};
 }
 function clientClubSection(cid){
-  var list=S.clubs.filter(function(m){return m.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
+  var list=activeVouchers('clubs').filter(function(m){return m.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')});
   if(!list.length) return '';
   return '<h3 class="sec-h">Memberships</h3><div class="tbl"><table><thead><tr><th>Membership</th><th>Plan</th><th>Valid till</th><th class="num">Saved so far</th><th>Status</th></tr></thead><tbody>'+
     list.map(function(m){var st=clubStatus(m),sv=r2(clubSavings(m).reduce(function(s,x){return s+x.saving},0));return '<tr><td class="nowrap"><button class="link" data-club="'+esc(m.id)+'">'+esc(m.no)+'</button></td><td>'+esc(m.planName)+'</td><td class="nowrap">'+fmtDate(m.expiry)+'</td><td class="num">'+money(sv)+'</td><td><span class="pill '+(st==='Active'?'paid':st==='Upcoming'?'partial':'unpaid')+'">'+esc(st)+'</span></td></tr>'}).join('')+
@@ -6090,10 +6088,10 @@ function bindImport(){$$('[data-import]',work).forEach(function(b){b.onclick=fun
 function phSupAlloc(sid){
   var s=findIn('phSuppliers',sid)||{}, bills=[];
   if((+s.openingBal||0)>0) bills.push({id:'ob:'+sid,no:'Opening balance',date:'',total:r2(s.openingBal),paid:0,opening:true});
-  S.phMoves.filter(function(m){return m.type==='Purchase'&&m.supplierId===sid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
+  activeVouchers('phMoves').filter(function(m){return m.type==='Purchase'&&m.supplierId===sid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
     .forEach(function(m){bills.push({id:m.id,no:m.no,date:m.date,total:r2(m.total),paid:0,billNo:m.supplierBillNo||''})});
   var map={}; bills.forEach(function(b){map[b.id]=b});
-  var pays=S.phPays.filter(function(p){return p.supplierId===sid}), pool=0, paidTot=0;
+  var pays=activeVouchers('phPays').filter(function(p){return p.supplierId===sid}), pool=0, paidTot=0;
   pays.forEach(function(p){var amt=+p.amount||0;paidTot+=amt;var b=p.purchaseId&&map[p.purchaseId];if(b){var use=Math.min(amt,Math.max(0,r2(b.total-b.paid)));b.paid=r2(b.paid+use);amt=r2(amt-use)}pool=r2(pool+amt)});
   bills.forEach(function(b){var room=r2(b.total-b.paid);if(room>0&&pool>0){var use=Math.min(room,pool);b.paid=r2(b.paid+use);pool=r2(pool-use)}b.bal=r2(b.total-b.paid)});
   var neg=(+s.openingBal||0)<0?r2(+s.openingBal):0;
@@ -6138,8 +6136,8 @@ function supLedger(sid){
   var render=function(m){
     var s=findIn('phSuppliers',sid)||{}, a=phSupAlloc(sid), rows=[];
     if(+s.openingBal) rows.push({date:'',ref:'',part:'Opening balance',dr:0,cr:+s.openingBal,ord:0});
-    S.phMoves.forEach(function(x){if(x.type==='Purchase'&&x.supplierId===sid)rows.push({date:x.date,ref:x.no,part:'Purchase'+(x.supplierBillNo?' · bill '+x.supplierBillNo:''),dr:0,cr:+x.total||0,ord:1,seq:x.seq})});
-    S.phPays.forEach(function(p){if(p.supplierId===sid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.purchaseNo?' against '+p.purchaseNo:''),dr:+p.amount||0,cr:0,ord:2,seq:p.seq})});
+    activeVouchers('phMoves').forEach(function(x){if(x.type==='Purchase'&&x.supplierId===sid)rows.push({date:x.date,ref:x.no,part:'Purchase'+(x.supplierBillNo?' · bill '+x.supplierBillNo:''),dr:0,cr:+x.total||0,ord:1,seq:x.seq})});
+    activeVouchers('phPays').forEach(function(p){if(p.supplierId===sid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.purchaseNo?' against '+p.purchaseNo:''),dr:+p.amount||0,cr:0,ord:2,seq:p.seq})});
     rows.sort(function(x,y){return (x.date||'').localeCompare(y.date||'')||x.ord-y.ord||(x.seq||0)-(y.seq||0)});
     var bal=0; rows.forEach(function(r){bal=r2(bal+r.cr-r.dr);r.bal=bal});
     m.innerHTML='<h2>'+esc(s.name||'Supplier')+' · ledger</h2><div class="mem-sum" style="margin-top:-4px"><span>Purchases <strong>'+money(rows.reduce(function(t,r){return t+r.cr},0))+'</strong></span><span>Paid <strong>'+money(a.paid)+'</strong></span><span>Balance payable <strong>'+money(Math.max(0,a.net))+'</strong></span>'+(a.advance>0.004?'<span>Advance with supplier <strong>'+money(a.advance)+'</strong></span>':'')+'</div>'+
@@ -6167,20 +6165,20 @@ SECTIONS['ph-sup-pay']={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.phPays.length){b.innerHTML='<div class="empty"><strong>No supplier payments yet</strong>Use Pay supplier to record a payment.</div>';return}
+    if(!activeVouchers('phPays').length){b.innerHTML='<div class="empty"><strong>No supplier payments yet</strong>Use Pay supplier to record a payment.</div>';return}
     var list=spList(), T=0;
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No payment matches these filters.</div>';return}
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Supplier</th><th>Against</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
       list.map(function(p){T+=+p.amount||0;return '<tr><td class="nowrap"><strong>'+esc(p.no)+'</strong></td><td class="nowrap">'+fmtDate(p.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-supled="'+esc(p.supplierId)+'">'+esc(p.supplierName)+'</button></td><td class="nowrap">'+(p.purchaseId&&phMove(p.purchaseId)?'<button class="link" data-pm="'+esc(p.purchaseId)+'">'+esc(p.purchaseNo)+'</button>':'<span class="pill off">On account</span>')+'</td><td>'+esc(p.mode)+'</td><td>'+esc(p.reference||'')+(p.note?'<div class="sub">'+esc(p.note)+'</div>':'')+'</td><td class="num">'+money(p.amount)+'</td>'+
         '<td>'+(readOnly?'':'<button class="btn sm danger" data-spdel="'+esc(p.id)+'">Delete</button>')+'</td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.phPays.length,'payments')+'</p>';
+      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,activeVouchers('phPays').length,'payments')+'</p>';
     $$('[data-supled]',b).forEach(function(x){x.onclick=function(){supLedger(x.dataset.supled)}});
-    $$('[data-spdel]',b).forEach(function(x){x.onclick=function(){var p=findIn('phPays',x.dataset.spdel);if(!p)return;confirmBox('Delete payment?','Delete '+p.no+' ('+money(p.amount)+' to '+p.supplierName+')?','Delete',function(){remove('phPays',p.id).then(function(){toast(p.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+    $$('[data-spdel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('phPays',x.dataset.spdel)}});
   }
 };
 function spList(){
   var q=norm(spF.q);
-  return S.phPays.filter(function(p){
+  return activeVouchers('phPays').filter(function(p){
     if(q&&norm(p.no+' '+p.supplierName+' '+(p.purchaseNo||'')+' '+(p.reference||'')+' '+(p.note||'')).indexOf(q)<0) return false;
     if(spF.from&&p.date<spF.from) return false;
     if(spF.to&&p.date>spF.to) return false;
@@ -6268,20 +6266,20 @@ SECTIONS['ae-dashboard']={
     var sum=function(a,f){return r2(a.reduce(function(s,x){return s+(+x[f||'total']||0)},0))};
     var pl=function(n,w){return n+' '+w+(n===1?'':'s')};
     /* today */
-    var apT=S.aeAppts.filter(isT).sort(function(a,c){return toMin(apFrom(a))-toMin(apFrom(c))});
+    var apT=activeVouchers('aeAppts').filter(isT).sort(function(a,c){return toMin(apFrom(a))-toMin(apFrom(c))});
     var apLive=apT.filter(function(a){return a.status!=='Cancelled'&&a.status!=='No-show'}), apDone=apT.filter(function(a){return a.status==='Completed'}).length;
-    var sesT=S.aeSessions.filter(isT), conT=S.aeCons.filter(isT);
+    var sesT=activeVouchers('aeSessions').filter(isT), conT=activeVouchers('aeCons').filter(isT);
     /* money */
     var recs=allReceipts().filter(aeRecpt), recT=recs.filter(isT), recM=recs.filter(isM);
-    var aeLive=S.aeInvoices.filter(function(v){return !v.cancelled}), invT=aeLive.filter(isT), invM=aeLive.filter(isM);
+    var aeLive=activeVouchers('aeInvoices').filter(function(v){return !v.cancelled}), invT=aeLive.filter(isT), invM=aeLive.filter(isM);
     var al=allocate(), dues=dueBills(al).filter(function(x){return x.kind==='ae'}), dueTot=0, owe={};
     dues.forEach(function(x){var bal=billInfo(x,al).bal;dueTot+=bal;var o=owe[x.clientId]=owe[x.clientId]||{id:x.clientId,name:x.clientName,phone:x.clientPhone,n:0,bal:0};o.n++;o.bal=r2(o.bal+bal)});
     var owers=Object.keys(owe).map(function(k){return owe[k]}).sort(function(a,c){return c.bal-a.bal});
     /* quotations */
-    var qtM=S.aeQuotes.filter(isM), started=qtM.filter(function(q){return qtProgress(q).done>0||S.aeAppts.some(function(a){return a.quoteId===q.id&&a.status!=='Cancelled'&&a.status!=='No-show'})}).length;
+    var qtM=activeVouchers('aeQuotes').filter(isM), started=qtM.filter(function(q){return qtProgress(q).done>0||activeVouchers('aeAppts').some(function(a){return a.quoteId===q.id&&a.status!=='Cancelled'&&a.status!=='No-show'})}).length;
     /* follow-up + consent */
     var follow=[], consent=[];
-    S.aeQuotes.forEach(function(q){(q.lines||[]).forEach(function(l,i){
+    activeVouchers('aeQuotes').forEach(function(q){(q.lines||[]).forEach(function(l,i){
       var st=qtLineStats(q,i); if(st.left<=0) return;
       var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0});
       var last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
@@ -6340,15 +6338,15 @@ function pendTasks(d){
   if(d==='spa'){
     out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('inv',function(id){viewInvoice(id)})});
     var lim=addDays(t,15);
-    out.push({key:'clubexp',label:'Memberships expiring',hint:'Memberships ending in the next 15 days. Call the client to renew.',ro:true,rows:S.clubs.filter(function(m){return clubStatus(m)==='Active'&&m.expiry<=lim&&!S.clubs.some(function(o){return o.clientId===m.clientId&&o.id!==m.id&&o.expiry>m.expiry})}).sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')}).map(function(m){return {main:m.clientName,sub:(m.clientPhone||'')+' · '+m.planName+' · '+m.no+' · ends '+fmtDate(m.expiry),btn:'Renew',run:function(){sellClub(m.clientId)},view:function(){viewClub(m.id)}}})});
+    out.push({key:'clubexp',label:'Memberships expiring',hint:'Memberships ending in the next 15 days. Call the client to renew.',ro:true,rows:activeVouchers('clubs').filter(function(m){return clubStatus(m)==='Active'&&m.expiry<=lim&&!activeVouchers('clubs').some(function(o){return o.clientId===m.clientId&&o.id!==m.id&&o.expiry>m.expiry})}).sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')}).map(function(m){return {main:m.clientName,sub:(m.clientPhone||'')+' · '+m.planName+' · '+m.no+' · ends '+fmtDate(m.expiry),btn:'Renew',run:function(){sellClub(m.clientId)},view:function(){viewClub(m.id)}}})});
   }
   if(d==='aes'){
     var bm=aiBilledMap();
-    out.push({key:'uncon',label:'Unbilled consultations',hint:'Consultations not on any invoice yet.',rows:S.aeCons.filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
-    out.push({key:'unses',label:'Unbilled sessions',hint:'Completed sessions not on any invoice and not billed upfront.',rows:S.aeSessions.filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){return {main:s.clientName,sub:(s.no||'')+' · '+(function(){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId);return ln&&ln.l?ln.l.name:(s.procedureName||'Session')})()+' · '+fmtDate(s.date),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
+    out.push({key:'uncon',label:'Unbilled consultations',hint:'Consultations not on any invoice yet.',rows:activeVouchers('aeCons').filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
+    out.push({key:'unses',label:'Unbilled sessions',hint:'Completed sessions not on any invoice and not billed upfront.',rows:activeVouchers('aeSessions').filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){return {main:s.clientName,sub:(s.no||'')+' · '+(function(){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId);return ln&&ln.l?ln.l.name:(s.procedureName||'Session')})()+' · '+fmtDate(s.date),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
     out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('ae',function(id){viewAeInv(id)})});
     var follow=[], consent=[];
-    S.aeQuotes.forEach(function(q){(q.lines||[]).forEach(function(l,i){
+    activeVouchers('aeQuotes').forEach(function(q){(q.lines||[]).forEach(function(l,i){
       var st=qtLineStats(q,i); if(st.left<=0) return;
       var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}), key=qtLineKey(q,l,i);
       if(consentNeeded(q.id,st.key)) consent.push({main:q.clientName,sub:l.name+' · '+q.no+(up?' · appointment booked':''),btn:'Take consent',run:function(){openConsent(q.id,st.key)}});
@@ -6357,7 +6355,7 @@ function pendTasks(d){
     })});
     follow.sort(function(a,b){return a.srt.localeCompare(b.srt)});
     out.push({key:'consent',label:'Consents due',hint:'Quotation items whose consent form isn’t signed yet.',rows:consent});
-    out.push({key:'missed',label:'Missed appointments',hint:'No-shows and past appointments never completed or cancelled.',rows:S.aeAppts.filter(apMissed).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,btn:'Reschedule',run:function(){editAppt(a.id,{_resched:true,date:todayStr()})}}})});
+    out.push({key:'missed',label:'Missed appointments',hint:'No-shows and past appointments never completed or cancelled.',rows:activeVouchers('aeAppts').filter(apMissed).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,btn:'Reschedule',run:function(){editAppt(a.id,{_resched:true,date:todayStr()})}}})});
     out.push({key:'follow',label:'Follow-ups',hint:'Sessions left on a quotation but nothing booked.',rows:follow});
   }
   if(d==='pha'){
@@ -6422,7 +6420,7 @@ function waSesProc(s){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quote
 function waBuild(kind,id){
   var B=biz().name||'us', o=null, d;
   if(kind==='inv'){d=invById(id);if(!d||d.cancelled)return null;
-    var pm=paidMap(),x=invInfo(d,pm),recs=S.receipts.filter(function(r){return r.invoiceId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
+    var pm=paidMap(),x=invInfo(d,pm),recs=activeVouchers('receipts').filter(function(r){return r.invoiceId===id}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
     var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)),memPart=r2(Math.min(+d.memPaid||0,x.paid)),fromAdv=r2(Math.max(0,x.paid-Math.min(linked,x.paid)-memPart));
     o={pdf:waCapture(function(){var p=invoicePdf(d,x,recs.concat(memPart>0.004?[{date:'',no:'',mode:'Paid from package '+d.memNo,amount:memPart}]:[]).concat(fromAdv>0.004?[{date:'',no:'',mode:'Adjusted from advance / on-account payments',amount:fromAdv}]:[]));if(p)pdfView(d.no+'.pdf',p)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
   else if(kind==='aeinv'){d=aeInvById(id);if(!d||d.cancelled)return null;o={pdf:waCapture(function(){aiPdf(d)}),params:[waFirst(d.clientName),B,d.no,money(d.total)]}}
@@ -6475,7 +6473,7 @@ function waOnSaved(kind,obj){
     else if(kind==='aeSessions'){
       if(waMeds(obj.meds)) waQueue('sesrx',obj.id);
       var sp=waSesProc(obj);
-      if(sp.id&&sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id&&S.aeSessions.filter(function(x){return x.clientId===obj.clientId&&waSesProc(x).id===sp.id}).length===1) waQueue('edu',obj.id);
+      if(sp.id&&sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id&&activeVouchers('aeSessions').filter(function(x){return x.clientId===obj.clientId&&waSesProc(x).id===sp.id}).length===1) waQueue('edu',obj.id);
     }
   }catch(e){}
 }
@@ -6576,11 +6574,11 @@ SECTIONS['exp-cats']=simpleMaster({
   fields:[{id:'name',label:'Category name',req:true,max:60},
     {id:'visible',label:'Who can see these expenses',type:'select',noBlank:true,def:'Everyone',options:function(){return ['Everyone','Admin only']}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
-  cols:[{h:'Category',text:function(r){return r.name}},{h:'Visible to',text:function(r){return r.adminOnly?'Admin only':'Everyone'}},{h:'Expenses',num:true,text:function(r){return String(S.expenses.filter(function(e){return e.catId===r.id}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
+  cols:[{h:'Category',text:function(r){return r.name}},{h:'Visible to',text:function(r){return r.adminOnly?'Admin only':'Everyone'}},{h:'Expenses',num:true,text:function(r){return String(activeVouchers('expenses').filter(function(e){return e.catId===r.id}).length)}},{h:'Status',text:function(r){return r.status||'Active'}}],
   search:function(r){return r.name},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){o.adminOnly=o.visible==='Admin only';if(o.adminOnly&&!isAdmin())return 'Only Admin can create Admin-only categories.';delete o.visible;return dupName('expCats',o,id)?'This category already exists.':''},
-  usage:function(r){var n=S.expenses.filter(function(e){return e.catId===r.id}).length;return n?r.name+' is used by '+n+' expense'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''},
-  afterSave:function(o,old){if(old.id&&(old.name!==o.name||!!old.adminOnly!==!!o.adminOnly)){S.expenses.filter(function(e){return e.catId===o.id}).forEach(function(e){put('expenses',Object.assign({},e,{catName:o.name,adminOnly:!!o.adminOnly})).catch(function(){})})}}
+  usage:function(r){var n=activeVouchers('expenses').filter(function(e){return e.catId===r.id}).length;return n?r.name+' is used by '+n+' expense'+(n===1?'':'s')+', so it can’t be deleted. Set it to Inactive instead.':''},
+  afterSave:function(o,old){if(old.id&&(old.name!==o.name||!!old.adminOnly!==!!o.adminOnly)){activeVouchers('expenses').filter(function(e){return e.catId===o.id}).forEach(function(e){put('expenses',Object.assign({},e,{catName:o.name,adminOnly:!!o.adminOnly})).catch(function(){})})}}
 });
 /* simpleMaster stores the select value; map it back when editing */
 (function(){var f=SECTIONS['exp-cats'];var m0=f.update;f.update=function(){S.expCats.forEach(function(c){c.visible=c.adminOnly?'Admin only':'Everyone'});return m0.apply(this,arguments)}})();
@@ -6594,18 +6592,18 @@ SECTIONS.vendors=simpleMaster({
   cols:[{h:'Vendor',text:function(r){return r.name}},{h:'Phone',text:function(r){return r.phone||''}},{h:'GSTIN',text:function(r){return r.gstin||''}},{h:'Payable',num:true,text:function(r){return money(Math.max(0,vendorAlloc(r.id).net))}},{h:'Status',text:function(r){return r.status||'Active'}}],
   search:function(r){return r.name+' '+(r.phone||'')+' '+(r.gstin||'')},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){if(o.gstin&&!/^[0-9A-Z]{15}$/.test(o.gstin))return 'GSTIN should be 15 letters and numbers.';o.openingBal=o.openingBal===''?0:r2(o.openingBal);return dupName('vendors',o,id)?'A vendor with this name already exists.':''},
-  usage:function(r){var n=S.expenses.filter(function(e){return e.vendorId===r.id}).length+S.vpays.filter(function(p){return p.vendorId===r.id}).length;return n?r.name+' has expenses or payments, so it can’t be deleted. Set it to Inactive instead.':''}
+  usage:function(r){var n=activeVouchers('expenses').filter(function(e){return e.vendorId===r.id}).length+activeVouchers('vpays').filter(function(p){return p.vendorId===r.id}).length;return n?r.name+' has expenses or payments, so it can’t be deleted. Set it to Inactive instead.':''}
 });
 
 /* bill-wise balances for one vendor (credit expenses + opening balance; payments settle the linked bill first, then the oldest) */
 function vendorAlloc(vid){
   var v=findIn('vendors',vid)||{}, bills=[];
   if((+v.openingBal||0)>0) bills.push({id:'ob:'+vid,no:'Opening balance',date:'',total:r2(v.openingBal),paid:0,opening:true});
-  S.expenses.filter(function(e){return e.vendorId===vid&&!e.paidNow}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
+  activeVouchers('expenses').filter(function(e){return e.vendorId===vid&&!e.paidNow}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)})
     .forEach(function(e){bills.push({id:e.id,no:e.no,date:e.date,total:r2(e.total),paid:0,billNo:e.billNo||'',dept:e.dept,cat:e.catName})});
   var map={}; bills.forEach(function(b){map[b.id]=b});
   var pool=0, paidTot=0;
-  S.vpays.filter(function(p){return p.vendorId===vid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(p){var amt=+p.amount||0;paidTot+=amt;var b=p.expenseId&&map[p.expenseId];if(b){var use=Math.min(amt,Math.max(0,r2(b.total-b.paid)));b.paid=r2(b.paid+use);amt=r2(amt-use)}pool=r2(pool+amt)});
+  activeVouchers('vpays').filter(function(p){return p.vendorId===vid}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(p){var amt=+p.amount||0;paidTot+=amt;var b=p.expenseId&&map[p.expenseId];if(b){var use=Math.min(amt,Math.max(0,r2(b.total-b.paid)));b.paid=r2(b.paid+use);amt=r2(amt-use)}pool=r2(pool+amt)});
   bills.forEach(function(b){var room=r2(b.total-b.paid);if(room>0&&pool>0){var use=Math.min(room,pool);b.paid=r2(b.paid+use);pool=r2(pool-use)}b.bal=r2(b.total-b.paid)});
   return {bills:bills,paid:r2(paidTot),advance:r2(pool),net:r2(bills.reduce(function(t,b){return t+b.total},0)-paidTot)};
 }
@@ -6650,7 +6648,7 @@ function editExpense(id){
     ev.preventDefault();
     var err=m.querySelector('#ex-err'), c=findIn('expCats',m.querySelector('#ex-cat').value), v=findIn('vendors',st.vendorId), k=calc(), d=m.querySelector('#ex-date').value, msg='';
     if(!d) msg='Choose the date.'; else if(!c) msg='Choose a category.'; else if(!(k.amount>0)) msg='Enter the amount.'; else if(!st.paidNow&&!v) msg='Choose the vendor for an expense on credit, so you can pay it later.';
-    else if(e&&st.paidNow&&!e.paidNow&&S.vpays.some(function(p){return p.expenseId===e.id})) msg='This bill already has vendor payments. Delete them first to mark it as paid now.';
+    else if(e&&st.paidNow&&!e.paidNow&&activeVouchers('vpays').some(function(p){return p.expenseId===e.id})) msg='This bill already has vendor payments. Delete them first to mark it as paid now.';
     if(msg){err.textContent=msg;err.hidden=false;return}
     var btn=m.querySelector('[type=submit]'); btn.disabled=true;
     var now=new Date().toISOString(), seq=e?e.seq:seqAfter('expenses');
@@ -6664,19 +6662,19 @@ function editExpense(id){
 function viewExpense(id){
   var render=function(m){
     var e=findIn('expenses',id); if(!e){closeModal();return}
-    var x=expStatus(e), pays=S.vpays.filter(function(p){return p.expenseId===id});
+    var x=expStatus(e), pays=activeVouchers('vpays').filter(function(p){return p.expenseId===id});
     m.innerHTML='<h2>Expense '+esc(e.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Date</dt><dd>'+fmtDate(e.date)+'</dd><dt>Department</dt><dd>'+esc(e.dept)+'</dd><dt>Category</dt><dd><strong>'+esc(e.catName)+'</strong>'+(e.adminOnly?' <span class="pill off">Admin only</span>':'')+'</dd>'+
       (e.vendorName?'<dt>Vendor</dt><dd><button class="link" data-vled="'+esc(e.vendorId)+'">'+esc(e.vendorName)+'</button></dd>':'')+(e.billNo?'<dt>Bill no.</dt><dd>'+esc(e.billNo)+'</dd>':'')+
       (e.billFile&&e.billFile.id?'<dt>Bill copy</dt><dd><a href="'+esc(blobUrl(e.billFile.id,e.billFile.type||'application/pdf'))+'" target="_blank" rel="noopener">'+EYE+' View bill</a></dd>':'')+
       (e.paidNow?'<dt>Paid</dt><dd>'+esc(e.mode)+(e.reference?' · '+esc(e.reference):'')+'</dd>':'')+(e.note?'<dt>Note</dt><dd>'+esc(e.note)+'</dd>':'')+(e.createdBy?'<dt>Entered by</dt><dd>'+esc(e.createdBy)+'</dd>':'')+'</dl>'+
       '<div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(e.total)+'</div><div class="sub">'+money(e.amount)+' + GST '+(+e.gst||0)+'% '+money(e.tax)+'</div>'+(x.bal>0.004?'<div class="due">Due '+money(x.bal)+'</div>':'')+'</div></div>'+
       (pays.length?'<h3 class="sec-h">Payments</h3><div class="tbl"><table><tbody>'+pays.map(function(p){return '<tr><td class="nowrap">'+fmtDate(p.date)+'</td><td>'+esc(p.no)+'</td><td>'+esc(p.mode)+(p.reference?' · '+esc(p.reference):'')+'</td><td class="num">'+money(p.amount)+'</td></tr>'}).join('')+'</tbody></table></div>':'')+
-      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(isMgr()&&!readOnly&&!pays.length?'<button class="btn danger" data-del>Delete</button>':'')+(readOnly?'':'<button class="btn w" data-edit>Edit</button>')+(!readOnly&&x.bal>0.004&&e.vendorId?'<button class="btn primary w" data-pay>Pay vendor</button>':'')+'</div>';
+      '<div class="m-actions"><button class="btn" data-x>Close</button>'+(isMgr()&&!readOnly?'<button class="btn danger" data-del>Delete</button>':'')+(readOnly?'':'<button class="btn w" data-edit>Edit</button>')+(!readOnly&&x.bal>0.004&&e.vendorId?'<button class="btn primary w" data-pay>Pay vendor</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     var ed=m.querySelector('[data-edit]'); if(ed) ed.onclick=function(){editExpense(id)};
     var pb=m.querySelector('[data-pay]'); if(pb) pb.onclick=function(){vendorPayDialog(e.vendorId,e.id,function(){viewExpense(id)})};
     var vl=m.querySelector('[data-vled]'); if(vl) vl.onclick=function(){vendorLedger(e.vendorId)};
-    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){confirmBox('Delete expense?','Delete '+e.no+' ('+e.catName+', '+money(e.total)+')? This can’t be undone.','Delete',function(){remove('expenses',e.id).then(function(){closeModal();toast(e.no+' deleted')}).catch(function(er){toast(errText(er))})})};
+    var dl=m.querySelector('[data-del]'); if(dl) dl.onclick=function(){cancelVoucher('expenses',e.id)};
   };
   var m=openModal('','--m6',true); render(m); modalRefresh=function(){render(m)};
 }
@@ -6686,7 +6684,7 @@ var expF={q:'',dept:'',cat:'',from:'',to:'',status:''};
 function expDeptDefault(){return myDeptName()||DEPT_NAME[dept]||''}
 function expList(){
   var q=norm(expF.q), dp=myDeptName()||expF.dept;
-  return S.expenses.filter(function(e){
+  return activeVouchers('expenses').filter(function(e){
     if(e.adminOnly&&!isAdmin()) return false;
     if(dp&&dp!=='__all'&&e.dept!==dp) return false;
     if(expF.cat&&e.catId!==expF.cat) return false;
@@ -6721,7 +6719,7 @@ SECTIONS.expenses={
     var b=$('#body',work); if(!b) return;
     var fc=$('#ex-fc',work); if(fc) fc.innerHTML=optList([['','All categories']].concat(expCatsFor(expF.cat).map(function(c){return [c.id,c.name]})),expF.cat);
     if(!ready()){b.innerHTML=loadingHTML();return}
-    var all=S.expenses.filter(function(e){return !e.adminOnly||isAdmin()});
+    var all=activeVouchers('expenses').filter(function(e){return !e.adminOnly||isAdmin()});
     if(!all.length){b.innerHTML='<div class="empty"><strong>No expenses yet</strong>'+(S.expCats.length?'Use New expense to record one.':'Add categories in Masters › Expense Categories first.')+'</div>';return}
     var list=expList(); if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No expense matches these filters.</div>';return}
     var T=0,G=0,D=0;
@@ -6773,8 +6771,8 @@ function vendorLedger(vid){
   var render=function(m){
     var v=findIn('vendors',vid)||{}, a=vendorAlloc(vid), rows=[];
     if(+v.openingBal) rows.push({date:'',ref:'',part:'Opening balance',dr:0,cr:+v.openingBal,ord:0});
-    S.expenses.forEach(function(e){if(e.vendorId!==vid)return;rows.push({date:e.date,ref:e.no,part:e.catName+(e.billNo?' · bill '+e.billNo:'')+(e.paidNow?' (paid now)':''),dr:0,cr:+e.total||0,ord:1,seq:e.seq});if(e.paidNow)rows.push({date:e.date,ref:e.no,part:'Paid with bill ('+(e.mode||'')+(e.reference?' · '+e.reference:'')+')',dr:+e.total||0,cr:0,ord:2,seq:e.seq})});
-    S.vpays.forEach(function(p){if(p.vendorId===vid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.expenseNo?' against '+p.expenseNo:''),dr:+p.amount||0,cr:0,ord:3,seq:p.seq})});
+    activeVouchers('expenses').forEach(function(e){if(e.vendorId!==vid)return;rows.push({date:e.date,ref:e.no,part:e.catName+(e.billNo?' · bill '+e.billNo:'')+(e.paidNow?' (paid now)':''),dr:0,cr:+e.total||0,ord:1,seq:e.seq});if(e.paidNow)rows.push({date:e.date,ref:e.no,part:'Paid with bill ('+(e.mode||'')+(e.reference?' · '+e.reference:'')+')',dr:+e.total||0,cr:0,ord:2,seq:e.seq})});
+    activeVouchers('vpays').forEach(function(p){if(p.vendorId===vid)rows.push({date:p.date,ref:p.no,part:'Payment ('+p.mode+(p.reference?' · '+p.reference:'')+')'+(p.expenseNo?' against '+p.expenseNo:''),dr:+p.amount||0,cr:0,ord:3,seq:p.seq})});
     rows.sort(function(x,y){return (x.date||'').localeCompare(y.date||'')||x.ord-y.ord||(x.seq||0)-(y.seq||0)});
     var bal=0; rows.forEach(function(r){bal=r2(bal+r.cr-r.dr);r.bal=bal});
     m.innerHTML='<h2>'+esc(v.name||'Vendor')+' · ledger</h2><div class="mem-sum" style="margin-top:-4px"><span>Bills <strong>'+money(rows.reduce(function(t,r){return t+r.cr},0))+'</strong></span><span>Paid <strong>'+money(rows.reduce(function(t,r){return t+r.dr},0))+'</strong></span><span>Balance payable <strong>'+money(Math.max(0,a.net))+'</strong></span>'+(a.advance>0.004?'<span>Advance with vendor <strong>'+money(a.advance)+'</strong></span>':'')+'</div>'+
@@ -6791,7 +6789,7 @@ document.addEventListener('click',function(e){var b=e.target.closest&&e.target.c
 var vpF={q:'',from:'',to:''};
 function vpList(){
   var q=norm(vpF.q), dp=myDeptName();
-  return S.vpays.filter(function(p){
+  return activeVouchers('vpays').filter(function(p){
     if(p.adminOnly&&!isAdmin()) return false;
     if(dp&&p.dept!==dp) return false;
     if(q&&norm(p.no+' '+p.vendorName+' '+(p.expenseNo||'')+' '+(p.reference||'')+' '+(p.note||'')).indexOf(q)<0) return false;
@@ -6813,14 +6811,14 @@ SECTIONS['vendor-pay']={
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
     var list=vpList(), T=0;
-    if(!S.vpays.length){b.innerHTML='<div class="empty"><strong>No vendor payments yet</strong>Use Pay vendor to record a payment for an expense bought on credit.</div>';return}
+    if(!activeVouchers('vpays').length){b.innerHTML='<div class="empty"><strong>No vendor payments yet</strong>Use Pay vendor to record a payment for an expense bought on credit.</div>';return}
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No payment matches these filters.</div>';return}
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Vendor</th><th>Against</th><th>Mode</th><th>Reference</th><th class="num">Amount</th><th></th></tr></thead><tbody>'+
       list.map(function(p){T+=+p.amount||0;return '<tr><td class="nowrap"><strong>'+esc(p.no)+'</strong></td><td class="nowrap">'+fmtDate(p.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-vled="'+esc(p.vendorId)+'">'+esc(p.vendorName)+'</button></td><td class="nowrap">'+(p.expenseId&&findIn('expenses',p.expenseId)?'<button class="link" data-exv2="'+esc(p.expenseId)+'">'+esc(p.expenseNo)+'</button>':'<span class="pill off">On account</span>')+'</td><td>'+esc(p.mode)+'</td><td>'+esc(p.reference||'')+(p.note?'<div class="sub">'+esc(p.note)+'</div>':'')+'</td><td class="num">'+money(p.amount)+'</td>'+
         '<td>'+(isMgr()&&!readOnly?'<button class="btn sm danger" data-vpdel="'+esc(p.id)+'">Delete</button>':'')+'</td></tr>'}).join('')+
-      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,S.vpays.length,'payments')+'</p>';
+      '</tbody><tfoot><tr><td colspan="6">Total</td><td class="num">'+money(T)+'</td><td></td></tr></tfoot></table></div><p class="hint">'+countOf(list.length,activeVouchers('vpays').length,'payments')+'</p>';
     $$('[data-exv2]',b).forEach(function(x){x.onclick=function(){viewExpense(x.dataset.exv2)}});
-    $$('[data-vpdel]',b).forEach(function(x){x.onclick=function(){var p=findIn('vpays',x.dataset.vpdel);if(!p)return;confirmBox('Delete payment?','Delete '+p.no+' ('+money(p.amount)+' to '+p.vendorName+')?','Delete',function(){remove('vpays',p.id).then(function(){toast(p.no+' deleted')}).catch(function(e){toast(errText(e))})})}});
+    $$('[data-vpdel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('vpays',x.dataset.vpdel)}});
   }
 };
 
@@ -6896,7 +6894,7 @@ SECTIONS['exp-report']={
   }
 };
 function erData(){
-  var dp=myDeptName()||erF.dept, list=S.expenses.filter(function(e){return (!e.adminOnly||isAdmin())&&(!dp||dp==='__all'||e.dept===dp)&&(!erF.from||e.date>=erF.from)&&(!erF.to||e.date<=erF.to)});
+  var dp=myDeptName()||erF.dept, list=activeVouchers('expenses').filter(function(e){return (!e.adminOnly||isAdmin())&&(!dp||dp==='__all'||e.dept===dp)&&(!erF.from||e.date>=erF.from)&&(!erF.to||e.date<=erF.to)});
   var cats={},depts={},months={},r={n:list.length,amount:0,tax:0,total:0,paid:0,due:0};
   list.forEach(function(e){var x=expStatus(e);r.amount+=+e.amount||0;r.tax+=+e.tax||0;r.total+=+e.total||0;r.paid+=x.paid;r.due+=x.bal;
     var c=cats[e.catId]=cats[e.catId]||{name:e.catName,n:0,amount:0,tax:0,total:0};c.n++;c.amount=r2(c.amount+(+e.amount||0));c.tax=r2(c.tax+(+e.tax||0));c.total=r2(c.total+(+e.total||0));
@@ -6907,7 +6905,7 @@ function erData(){
   r.months=Object.keys(months).sort().map(function(k){return {name:parseD(k+'-01').toLocaleDateString('en-IN',{month:'short',year:'numeric'}),total:months[k]}});
   return r;
 }
-function expMonthTotal(dk){var ym=todayStr().slice(0,7),dn=DEPT_NAME[dk];return r2(S.expenses.filter(function(e){return (!e.adminOnly||isAdmin())&&e.dept===dn&&(e.date||'').slice(0,7)===ym}).reduce(function(t,e){return t+(+e.total||0)},0))}
+function expMonthTotal(dk){var ym=todayStr().slice(0,7),dn=DEPT_NAME[dk];return r2(activeVouchers('expenses').filter(function(e){return (!e.adminOnly||isAdmin())&&e.dept===dn&&(e.date||'').slice(0,7)===ym}).reduce(function(t,e){return t+(+e.total||0)},0))}
 function expDue(dk){var dn=DEPT_NAME[dk],out=[];S.vendors.forEach(function(v){vendorAlloc(v.id).bills.forEach(function(b){if(b.bal>0.004&&!b.opening&&b.dept===dn){var e=findIn('expenses',b.id);if(e&&e.adminOnly&&!isAdmin())return;out.push({v:v,b:b})}})});return out.sort(function(a,b){return (a.b.date||'').localeCompare(b.b.date||'')})}
 
 /* ---------- shell wiring ---------- */
@@ -7016,3 +7014,4 @@ initAuth();
 
 </body>
 </html>
+
