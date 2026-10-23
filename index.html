@@ -5357,13 +5357,6 @@ SECTIONS['ph-dashboard']={
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    if(!S.phItems.length&&!activeVouchers('phMoves').length){
-      b.innerHTML='<p class="hint" style="margin:0 0 14px">Set up the pharmacy in three steps. The dashboard fills in as you buy and sell.</p><div class="steps">'+
-        step(1,'--m12','Add item categories','Group your stock, for example Tablets or Syrups.','ph-item-categories','Go to Item Categories')+
-        step(2,'--m11','Add your items','Enter each item with HSN, GST, opening stock and reorder level.','ph-items','Go to Items')+
-        step(3,'--m2','Record a purchase','Bring stock in from a supplier through Item In.','ph-item-in','Open Item In')+'</div>';
-      return;
-    }
     var t=todayStr(), ym=t.slice(0,7), monthName=nowIST().toLocaleDateString('en-IN',{month:'long'});
     var of=function(type,pred){return activeVouchers('phMoves').filter(function(m){return m.type===type&&!m.cancelled&&pred(m)})};
     var sum=function(a,f){return r2(a.reduce(function(x,m){return x+(+m[f||'total']||0)},0))};
