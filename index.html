@@ -1348,7 +1348,8 @@ var loaded={clients:false,services:false,invoices:false,receipts:false,categorie
 var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log',expCats:'exp_categories',vendors:'exp_vendors',expenses:'exp_expenses',vpays:'exp_vendor_payments'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
-function isAdmin(){return !CURRENT_USER||CURRENT_USER.role==='Admin'}
+function isAdmin(){return !!CURRENT_USER&&CURRENT_USER.role==='Admin'}
+function canEdit(){return !readOnly&&isAdmin()}
 
 function ready(){return storeMode==='local'||Object.keys(loaded).every(function(k){return loaded[k]})}
 var refreshQueued=false;
@@ -1427,22 +1428,28 @@ function setReadOnly(){
 function errText(e){
   var code=e&&e.code;
   if(code==='invalid_argument'){ setReadOnly(); return 'You do not have permission to change records here.'; }
+  if(e&&/^Only Admin|^Cancelled records/.test(e.message||''))return e.message;
   if(code==='quota_exceeded') return 'Storage is full. Delete old records to make room.';
   return 'Could not save. Check your connection and try again.';
 }
 function put(kind,obj){
-  var previous=obj&&findIn(kind,obj.id);if(previous&&previous.cancelled)return Promise.reject(new Error("Cancelled records cannot be edited."));
+  var previous=obj&&findIn(kind,obj.id);if(previous&&!canEdit())return Promise.reject(new Error('Only Admin can edit existing records.'));if(previous&&previous.cancelled)return Promise.reject(new Error("Cancelled records cannot be edited."));
   var isNew=!!obj&&!S[kind].some(function(x){return x.id===obj.id});
   return putRaw(kind,obj).then(function(r){if(isNew)waOnSaved(kind,obj);return r});
 }
-function putRaw(kind,obj){
+function putRaw(kind,obj,internal){
+  if(!internal&&obj&&findIn(kind,obj.id)&&!canEdit())return Promise.reject(new Error("Only Admin can edit existing records."));
   var data=Object.assign({},obj); var id=data.id; delete data.id;
-  if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);scheduleRefresh();});
+  if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);if(result&&result.related)result.related.forEach(function(r){var k=Object.keys(COL).find(function(k){return COL[k]===r.collection});if(!k)return;var j=S[k].findIndex(function(x){return x.id===r.record.id});if(j>=0)S[k][j]=r.record;else S[k].push(r.record)});scheduleRefresh();});
   var list=S[kind], i=list.findIndex(function(x){return x.id===id});
   if(i>=0) list[i]=obj; else list.push(obj);
   scheduleRefresh(); return Promise.resolve();
 }
 function remove(kind,id){
+  if(!canEdit())return Promise.reject(new Error("Only Admin can delete records."));
+  return removeRaw(kind,id);
+}
+function removeRaw(kind,id){
   if(DB) return DB.collection(COL[kind]).doc(id).delete().then(function(){S[kind]=S[kind].filter(function(x){return x.id!==id});scheduleRefresh();});
   S[kind]=S[kind].filter(function(x){return x.id!==id}); scheduleRefresh(); return Promise.resolve();
 }
@@ -1486,7 +1493,7 @@ function cancellationBlock(kind,doc){
 }
 function commitCancellation(kind,id,reason){
   var doc=findIn(kind,id), why=cancellationBlock(kind,doc);
-  if(!canCancel())return Promise.reject(new Error('Only Admin or Manager can cancel vouchers.'));
+  if(!canCancel())return Promise.reject(new Error('Only Admin can cancel vouchers.'));
   if(!reason||!reason.trim()||reason.trim().length>300)return Promise.reject(new Error('Enter a reason of up to 300 characters.'));
   if(why)return Promise.reject(new Error(why));
   var targets=cancellationTargets(kind,doc),stamp=new Date().toISOString(),saved=[];
@@ -1496,11 +1503,11 @@ function commitCancellation(kind,id,reason){
   }
   // Write the linked invoice first; restore completed writes if the parent write fails.
   targets.reverse();
-  return targets.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,Object.assign({},t.doc,{cancelled:true,cancelReason:reason.trim(),cancelledAt:stamp,cancelledBy:CURRENT_USER?CURRENT_USER.name:'',updatedAt:stamp})).then(function(){saved.push(t)})})},Promise.resolve()).catch(function(e){return saved.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,t.doc)})},Promise.resolve()).then(function(){throw e})});
+  return targets.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,Object.assign({},t.doc,{cancelled:true,cancelReason:reason.trim(),cancelledAt:stamp,cancelledBy:CURRENT_USER?CURRENT_USER.name:'',updatedAt:stamp}),true).then(function(){saved.push(t)})})},Promise.resolve()).catch(function(e){return saved.reduce(function(p,t){return p.then(function(){return putRaw(t.kind,t.doc,true)})},Promise.resolve()).then(function(){throw e})});
 }
 function cancelVoucher(kind,id){
   var doc=findIn(kind,id);if(!doc)return;
-  if(!canCancel()){toast('Only Admin or Manager can cancel vouchers.');return}
+  if(!canCancel()){toast('Only Admin can cancel vouchers.');return}
   var why=cancellationBlock(kind,doc);if(why){toast(why);return}
   var m=openModal('<h2>Cancel '+esc(doc.no||'voucher')+'?</h2><p class="hint">The voucher and its number stay in cancellation history. Its account, stock and benefit effects are reversed. Receipts remain recorded; released client credit settles other dues or remains as advance. No refund is recorded automatically.</p><form id="voucher-cancel"><div class="field"><label for="cancel-reason">Reason *</label><textarea id="cancel-reason" required maxlength="300" rows="3"></textarea></div><p class="err" hidden></p><div class="m-actions"><button type="button" class="btn" data-keep>Keep voucher</button><button class="btn danger" type="submit">Cancel voucher</button></div></form>','--m6');
   m.querySelector('[data-keep]').onclick=closeModal;
@@ -1515,7 +1522,22 @@ function showCancellationHistory(){
   m.querySelector('#cancel-search').oninput=function(){var q=this.value.toLowerCase();m.querySelectorAll('tbody tr').forEach(function(r){r.hidden=r.textContent.toLowerCase().indexOf(q)<0})};
 }
 document.addEventListener('click',function(e){if(e.target.closest('[data-cancellation-history]'))showCancellationHistory()});
-new MutationObserver(function(){if(!document)return;document.querySelectorAll('button').forEach(function(b){if(b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick))){if(b.textContent.trim()==='Delete')b.textContent='⊘ Cancel';b.hidden=!canCancel()}})}).observe(document.body,{childList:true,subtree:true});
+/* Hide and block record-edit actions for every non-Admin role, including Manager. */
+function isAdminAction(b){
+  if(!b)return false;
+  if(b.matches('[data-edit],[data-aiedit],[data-apedit],[data-conedit],[data-guedit],[data-pedit],[data-qtedit],[data-sesedit],[data-del],[data-condel],[data-qtdel],[data-gudel],[data-spdel],[data-vpdel],[data-sesdel],[data-apdel],#di-open'))return true;
+  return b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick));
+}
+function applyRecordPermissions(){
+  if(!document)return;
+  document.querySelectorAll('button').forEach(function(b){
+    if(b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick))&&b.textContent.trim()==='Delete')b.textContent='⊘ Cancel';
+    if(!canEdit()&&isAdminAction(b)){b.hidden=true;b.disabled=true;}
+  });
+  document.querySelectorAll('.ap-st').forEach(function(s){if(!canEdit())s.disabled=true});
+}
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!canEdit()&&isAdminAction(b)){e.preventDefault();e.stopImmediatePropagation();toast('Only Admin can edit or cancel existing records.')}},true);
+new MutationObserver(applyRecordPermissions).observe(document.body,{childList:true,subtree:true});
 
 /* ---------- derived ---------- */
 /* Payments belong to a client. A receipt may name an invoice (it settles that invoice first);
@@ -1637,7 +1659,7 @@ function pdfView(name,data){
   ov.querySelector('[data-pdl]').onclick=function(){saveFile(name,blob)};
   ov.querySelector('[data-pclose]').focus();
 }
-function canCancel(){return !readOnly&&(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')}
+function canCancel(){return canEdit()}
 /* cancel an invoice / pharmacy sale: keeps its number, removed from sales and dues; payments become advance */
 function cancelBill(kind,id){return cancelVoucher(kind,id);}
 function cancelNote(doc){return doc&&doc.cancelled?'<div class="cx-note"><strong>CANCELLED</strong> '+(doc.cancelledAt?'on '+esc(istStamp(doc.cancelledAt)):'')+(doc.cancelledBy?' by '+esc(doc.cancelledBy):'')+(doc.cancelReason?'<div>Reason: '+esc(doc.cancelReason)+'</div>':'')+'</div>':''}
@@ -1851,6 +1873,7 @@ function clientStats(){
   return st;
 }
 function editClient(id,onSaved){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var c=id?clientById(id):null; c=c||{};
   var selectedCity=c.cityId||'', cityRecord=findIn('cities',selectedCity), selectedState=(cityRecord&&cityRecord.stateId)||c.stateId||'';
   openModal('<h2>'+(id?'Edit client':'Add client')+'</h2><form id="cf" novalidate><div class="f-grid">'+
@@ -1983,6 +2006,7 @@ SECTIONS.services={
 };
 function catOptions(){return S.categories.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name]})}
 function editService(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var s=id?S.services.find(function(x){return x.id===id}):null; s=s||{gst:18,active:true};
   openModal('<h2>'+(id?'Edit service':'Add service')+'</h2><form id="sf" novalidate><div class="f-grid">'+
     '<div class="field span2"><label for="sf-name">Service name <span class="req">*</span></label><input type="text" id="sf-name" value="'+esc(s.name)+'" autocomplete="off"></div>'+
@@ -2110,12 +2134,17 @@ function refreshSplit(id){var h=document.getElementById(id);if(h&&h._splitSummar
 function writeSplitReceipts(d,base){
   var msg=splitError(d,false);if(msg)return Promise.reject(new Error(msg));
   var payments=splitRows(d).filter(function(p){return +p.amount>0}),seq=nextReceiptNo().seq,created=[],chain=Promise.resolve();
+  if(CURRENT_USER&&DB&&payments.length){
+    if(payments.length>1000)return Promise.reject(new Error('A payment can have at most 1000 rows.'));
+    var records=payments.map(function(p,i){return Object.assign({},base,{id:newId('r'),seq:seq+i,no:'RCT-'+pad(seq+i),amount:r2(p.amount),mode:p.mode,reference:String(p.reference||'').trim()})});
+    return authCall('bulk',{collection:COL.receipts,records:records.map(function(r){var data=Object.assign({},r);delete data.id;return {id:r.id,data:data}})}).then(function(){records.forEach(function(r){S.receipts.push(r);waOnSaved('receipts',r)});scheduleRefresh()});
+  }
   payments.forEach(function(p,i){chain=chain.then(function(){
     var r=Object.assign({},base,{id:newId('r'),seq:seq+i,no:'RCT-'+pad(seq+i),amount:r2(p.amount),mode:p.mode,reference:String(p.reference||'').trim()});
     return put('receipts',r).then(function(){created.push(r)});
   })});
   return chain.catch(function(e){
-    return Promise.all(created.map(function(r){return remove('receipts',r.id)})).then(function(){throw e});
+    return Promise.all(created.map(function(r){return removeRaw('receipts',r.id)})).then(function(){throw e});
   });
 }
 
@@ -2277,6 +2306,7 @@ function saveInvoice(){
   }).catch(function(e){btn.disabled=false;show(errText(e))});
 }
 function editInvoice(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var i=invById(id); if(!i) return;
   if(i.cancelled){toast(i.no+' is cancelled and can’t be edited.');return}
   if(i.memSaleId){toast(i.no+' is a package invoice. To change it, delete the package (if unused) and sell it again.');return}
@@ -2632,6 +2662,7 @@ function simpleMaster(cfg){
     }
   };
   function edit(id){
+    if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
     var r=findIn(cfg.kind,id)||{};
     openModal('<h2>'+(id?'Edit ':'Add ')+esc(cfg.singular)+'</h2><form id="mf" novalidate><div class="f-grid">'+
       cfg.fields.map(function(f){
@@ -3254,6 +3285,7 @@ function phListUpdate(kind){
   $$('[data-pdel]',b).forEach(function(x){x.onclick=function(){phDelete(x.dataset.pdel)}});
 }
 function phEdit(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var m=phMove(id); if(!m) return;
   if(m.cancelled){toast(m.no+' is cancelled and can’t be edited.');return}
   phDraft[m.kind]={id:m.id,kind:m.kind,type:m.type,seq:m.seq,no:m.no,createdAt:m.createdAt,date:m.date,supplierId:m.supplierId||'',supplierName:m.supplierName||'',supplierBillNo:m.supplierBillNo||'',billFile:m.billFile||null,clientId:m.clientId||'',clientName:m.clientName||'',customerName:m.customerName||'',saleId:m.saleId||'',roundOn:!!m.roundOn,roundManual:m.roundOn?String(m.roundOff||0):null,
@@ -3548,7 +3580,7 @@ SECTIONS['ae-appointments']={
         '<td><button class="link" style="color:inherit" data-client-view="'+esc(a.clientId)+'"><strong>'+esc(a.clientName)+'</strong></button><div class="sub">'+esc(a.clientPhone||'')+'</div></td>'+
         '<td><span class="pill '+(a.type==='Procedure'?'partial':'off')+'">'+esc(a.type)+'</span>'+(a.type==='Procedure'?'<div class="sub">'+esc(apWhat(a))+'</div>':'')+(a.quoteId?'<div class="sub">'+esc(apSessionLabel(a))+'</div>':'')+'</td>'+
         '<td>'+esc(apStaffNames(a)||'—')+'</td>'+
-        '<td><select class="ap-st" data-id="'+esc(a.id)+'" aria-label="Status of '+esc(a.no)+'" style="min-height:32px;padding:4px 8px;width:auto"'+(readOnly?' disabled':'')+'>'+optList(AP_STATUS,a.status)+'</select></td>'+
+        '<td><select class="ap-st" data-id="'+esc(a.id)+'" aria-label="Status of '+esc(a.no)+'" style="min-height:32px;padding:4px 8px;width:auto"'+(!canEdit()?' disabled':'')+'>'+optList(AP_STATUS,a.status)+'</select></td>'+
         '<td><div class="row-acts w">'+(apMissed(a)&&!readOnly?'<button class="btn sm primary" data-apres="'+esc(a.id)+'">Reschedule</button>':'')+'<button class="btn sm" data-apedit="'+esc(a.id)+'">Edit</button><button class="btn sm danger" data-apdel="'+esc(a.id)+'">Delete</button></div></td></tr>'}).join('')+
       '</tbody></table></div>'+'<p class="hint">'+countOf(list.length,activeVouchers('aeAppts').length,'appointments')+'</p>';
     b.innerHTML=html;
@@ -3564,6 +3596,7 @@ function apBusy(date,staffIds,exceptId){
     .map(function(x){return {from:toMin(apFrom(x)),to:toMin(apTo(x)),appt:x}});
 }
 function editAppt(id,preset){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(readOnly){toast('You need Contributor access to book appointments.');return}
   var base=findIn('aeAppts',id), a=Object.assign({},base||{date:apF.view==='day'?apF.date:todayStr(),type:'Consultation'},preset||{});
   var st={clientId:a.clientId||'',procedureId:a.procedureId||'',quoteKey:a.quoteId?a.quoteId+'|'+a.quoteLineId:'',quoteId:a.quoteId||'',staffIds:(a.staffIds||apStaff(a)).slice(),from:a.from||apFrom(a),to:a.to||apTo(a),pick:null};
@@ -3738,6 +3771,7 @@ function conListUpdate(){
   $$('[data-condel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeCons',x.dataset.condel)}});
 }
 function conEdit(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var c=findIn('aeCons',id); if(!c) return;
   conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
     meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables)};
@@ -3867,7 +3901,7 @@ function conSave(){
     createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#con-form [type=submit]'); btn.disabled=true;
   put('aeCons',obj).then(function(){
-    if(a.status!=='Completed') return put('aeAppts',Object.assign({},a,{status:'Completed',updatedAt:now}));
+    if(a.status!=='Completed'&&!(CURRENT_USER&&DB)) return putRaw('aeAppts',Object.assign({},a,{status:'Completed',updatedAt:now}),true);
   }).then(function(){
     toast(obj.no+(editing?' updated':' saved')+'. '+a.no+' marked Completed.');
     conDraft=null; conMode='list'; go(current); viewCon(obj.id,obj);
@@ -4103,6 +4137,7 @@ function sesOpenForm(preset){
   sesMode='form'; closeModal(); if(current!=='ae-sessions') go('ae-sessions'); else go(current);
 }
 function sesEdit(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(!isAdmin()){toast('Saved sessions can only be changed by an Admin.');return}
   var s=findIn('aeSessions',id); if(!s) return;
   var ph={}; Object.keys(s.photos||{}).forEach(function(k){ph[k]=Object.assign({},s.photos[k])});
@@ -4320,7 +4355,7 @@ function sesSave(){
   var btn=$('#ses-form [type=submit]'); btn.disabled=true;
   var old=sesOldPhotos.slice();
   put('aeSessions',obj).then(function(){
-    if(a&&a.status!=='Completed') return put('aeAppts',Object.assign({},a,{status:'Completed',updatedAt:now}));
+    if(a&&a.status!=='Completed'&&!(CURRENT_USER&&DB)) return putRaw('aeAppts',Object.assign({},a,{status:'Completed',updatedAt:now}),true);
   }).then(function(){
     if(old.length) getAssets().then(function(as){if(as)old.forEach(function(x){as.delete(x).catch(function(){})})});
     toast(obj.no+(editing?' updated':' saved')+(a&&a.status!=='Completed'?'. '+a.no+' marked Completed.':''));
@@ -4475,6 +4510,7 @@ function aiOpenForm(preset){
   aiMode='form'; closeModal(); if(current!=='ae-invoices') go('ae-invoices'); else go(current);
 }
 function aiEdit(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var v=aeInvById(id); if(!v) return;
   if(v.cancelled){toast(v.no+' is cancelled and can’t be edited.');return}
   aiDraft={id:v.id,seq:v.seq,no:v.no,createdAt:v.createdAt,date:v.date,clientId:v.clientId,clientName:v.clientName,
@@ -4858,6 +4894,7 @@ function deptLedger(dk,itemId){
   var m=openModal('','--m7',true); render(m); modalRefresh=function(){render(m)};
 }
 function deptOpeningDialog(dk){
+  if(!canEdit()){toast('Only Admin can edit opening stock.');return}
   var rows={}, date=todayStr();
   S.deptOpen.forEach(function(o){if(o.dept===dk){rows[o.itemId]={full:+o.full||0,loose:+o.loose||0};if(o.date)date=o.date}});
   var items=S.phItems.filter(function(x){return x.status!=='Inactive'||rows[x.id]}).sort(function(a,b){return byText(a.name,b.name)});
@@ -4884,6 +4921,7 @@ function deptOpeningDialog(dk){
   };
 }
 function deptUsageDialog(dk,id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(id&&consLocked(findIn('deptUsage',id))){toast(LOCK_NOTE);return}
   var u=id?findIn('deptUsage',id):null, st={lines:u?copyCons(u.lines):[]};
   var m=openModal('<h2>'+(u?'Edit usage '+esc(u.no):'Record usage')+' · '+(dk==='spa'?'Spa':'Aesthetics')+'</h2><form id="duf" novalidate><div class="f-grid"><div class="field"><label for="du-date">Date</label><input type="date" id="du-date" value="'+esc(u?u.date:todayStr())+'"></div>'+
@@ -5062,6 +5100,7 @@ function qtListUpdate(){
   $$('[data-qtdel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeQuotes',x.dataset.qtdel)}});
 }
 function qtEdit(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var q=findIn('aeQuotes',id); if(!q) return;
   qtDraft={id:q.id,seq:q.seq,no:q.no,createdAt:q.createdAt,date:q.date,clientId:q.clientId,clientName:q.clientName,conId:q.conId||'',conNo:q.conNo||'',
     lines:(q.lines||[]).map(function(l,i){return {lid:qtLineKey(q,l,i),procId:l.procId,name:l.name,sac:l.sac||'',sessions:l.sessions,rate:l.rate,discPct:l.discPct||0,gst:l.gst}}),
@@ -6017,6 +6056,7 @@ function impBuild(kind,row){
 /* save many records: one request per 300 on the server, otherwise one by one */
 function bulkPut(kind,objs){
   if(!objs.length) return Promise.resolve();
+  if(!canEdit()&&objs.some(function(o){return !!findIn(kind,o.id)}))return Promise.reject(new Error('Only Admin can edit existing records, including imports.'));
   if(!window.claude&&storeMode==='live'&&kind!=='users'){
     var chunks=[];for(var i=0;i<objs.length;i+=300)chunks.push(objs.slice(i,i+300));
     return chunks.reduce(function(p,ch){return p.then(function(){
@@ -6033,7 +6073,7 @@ function openImport(kind){
   var m=openModal('<h2>Import '+esc(c.title.toLowerCase())+'</h2>'+
     '<div class="imp-steps"><div><strong>1.</strong> Download the template, fill it in Excel and save it. <button type="button" class="btn sm" data-tpl>Download template</button></div>'+
     '<div><strong>2.</strong> Choose the file (.xlsx or .csv). <label class="btn sm imp-file">Choose file<input type="file" accept=".xlsx,.xls,.csv" hidden></label> <span class="sub" data-fname></span></div>'+
-    '<div class="imp-opts"><label class="check"><input type="radio" name="impm" value="add" checked> Add new only</label><label class="check"><input type="radio" name="impm" value="update"> Add new + update matching (same '+esc(c.keyLabel)+')</label>'+
+    '<div class="imp-opts"><label class="check"><input type="radio" name="impm" value="add" checked> Add new only</label><label class="check"><input type="radio" name="impm" value="update"'+(!canEdit()?' disabled':'')+'> Add new + update matching (same '+esc(c.keyLabel)+')</label>'+
     (hasRef?'<label class="check"><input type="checkbox" data-create checked> Create missing '+esc(c.cols.filter(function(x){return x.t==='ref'}).map(function(x){return x.ref==='cities'?'cities and states':REF_PLURAL[x.ref]}).join(', '))+'</label>':'')+'</div></div>'+
     '<div data-prev></div><p class="err" data-err hidden></p>'+
     '<div class="m-actions"><button type="button" class="btn" data-x>Close</button><button type="button" class="btn" data-errs hidden>Download error rows</button><button type="button" class="btn primary w" data-go disabled>Import</button></div>','--m2',true);
@@ -6055,7 +6095,7 @@ function openImport(kind){
       '</tbody></table></div>'+(st.res.rows.length>300?'<p class="hint">Showing the first 300 of '+st.res.rows.length+' rows.</p>':''):'<p class="hint">The file has no data rows.</p>');
     var todo=n.new+n.update; go.disabled=!todo; go.textContent=todo?'Import '+todo+' row'+(todo===1?'':'s'):'Import'; eb.hidden=!n.error;
   }
-  $$('input[name=impm]',m).forEach(function(x){x.onchange=function(){st.mode=x.value;analyse()}});
+  $$('input[name=impm]',m).forEach(function(x){x.onchange=function(){if(x.value==='update'&&!canEdit()){x.checked=false;m.querySelector('input[name=impm][value=add]').checked=true;st.mode='add';toast('Only Admin can update existing records.')}else st.mode=x.value;analyse()}});
   var cb=m.querySelector('[data-create]'); if(cb) cb.onchange=function(){st.create=cb.checked;analyse()};
   m.querySelector('.imp-file input').onchange=function(e){
     var f=e.target.files&&e.target.files[0]; if(!f) return;
@@ -6616,6 +6656,7 @@ function expStatus(e){
 
 /* ---------- expense form ---------- */
 function editExpense(id){
+  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(readOnly){toast('You need Contributor access to record expenses.');return}
   var e=id?findIn('expenses',id):null; if(id&&!e) return;
   var mine=myDeptName(), st={dept:e?e.dept:(mine||DEPT_NAME[dept]||'Common'),vendorId:e?e.vendorId||'':'',billFile:e&&e.billFile?Object.assign({},e.billFile):null,paidNow:e?!!e.paidNow:true};
@@ -7014,4 +7055,5 @@ initAuth();
 
 </body>
 </html>
+
 
