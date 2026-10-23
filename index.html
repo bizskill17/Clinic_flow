@@ -108,6 +108,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .tile-btn{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background .15s ease,transform .15s ease}.tile-btn:hover{background:color-mix(in srgb,var(--tc) 9%,var(--surface))}.tile-btn:active{transform:translateY(1px)}
 .pw-wrap{position:relative}.pw-wrap input{padding-right:46px!important}.pw-wrap .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px!important;height:34px;min-height:0;padding:0!important;margin:0!important;border:0;border-radius:8px;background:transparent!important;color:#6b7775!important;display:grid;place-items:center;cursor:pointer}.pw-wrap .pw-eye:hover{background:#e3e8e6!important;color:#1f2a2c!important}
 .wa-tag{margin-top:12px;padding:8px 12px;border-radius:10px;background:color-mix(in srgb,#25d366 8%,var(--surface));border:1px solid color-mix(in srgb,#25d366 25%,var(--line));font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.wa-tag .wa-ic{color:#1f9e55;display:inline-grid}.wa-tag .ok{color:#1f9e55;font-weight:600}.wa-tag .bad{color:var(--m6);font-weight:600}.wa-sws{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.wa-sw{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.wa-sw input{margin-top:3px;width:18px;height:18px;accent-color:#1f9e55}.wa-sw span{display:flex;flex-direction:column;gap:2px}.wa-cron{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.wa-cron code,.panel code{background:color-mix(in srgb,var(--ink) 6%,var(--surface));padding:6px 8px;border-radius:6px;font-size:12px;word-break:break-all}
+.pend-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.pend-sum{font-size:13px;color:var(--muted)}.pend-sum strong{color:var(--ink)}.pend-row{cursor:pointer}.pend-row:hover td{background:color-mix(in srgb,var(--ink) 3%,var(--surface))}.pend-row.zero td{color:var(--muted)}.pdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:10px;vertical-align:middle}.pcnt{display:inline-grid;min-width:28px;height:24px;place-items:center;border-radius:12px;padding:0 8px;font-weight:700;font-size:13px;background:color-mix(in srgb,var(--m6) 16%,transparent);color:var(--m6)}.pcnt.info{background:color-mix(in srgb,var(--m4) 16%,transparent);color:var(--m4)}.pend-row.zero .pcnt{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--muted)}.pcar{display:inline-block;color:var(--muted);transition:transform .15s}.pend-row.open .pcar{transform:rotate(90deg)}.pend-detail td{background:color-mix(in srgb,var(--ink) 3%,var(--surface));padding:0!important}.pin{padding:10px 14px 14px 30px}.pit{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}.pwho{flex:1;min-width:0;display:flex;flex-direction:column}.pamt{font-weight:600;color:var(--m6);white-space:nowrap}.age{font-size:12px;font-weight:600;border-radius:999px;padding:2px 8px;white-space:nowrap}.age.r{background:color-mix(in srgb,var(--m6) 16%,transparent);color:var(--m6)}.age.a{background:color-mix(in srgb,var(--m3) 18%,transparent);color:var(--m3)}.age.g{background:color-mix(in srgb,var(--m5) 16%,transparent);color:var(--m5)}
 .nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);border-left:5px solid var(--tc);background:var(--surface);cursor:pointer;text-align:left;color:var(--ink);font:inherit}.pend-card .n{font-size:24px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;order:2}.pend-card .l{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;order:1}.pend-card:hover{background:color-mix(in srgb,var(--tc) 8%,var(--surface))}.pend-card.on .l{color:var(--ink)}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
@@ -6374,64 +6375,85 @@ SECTIONS['ae-dashboard']={
 var pendSel={spa:'',aes:'',pha:''};
 function pendTasks(d){
   var t=todayStr(), out=[], al=allocate();
-  var dues=function(kind,view){return dueBills(al).filter(function(b){return b.kind===kind}).map(function(b){var x=billInfo(b,al);return {main:b.clientName,sub:(b.clientPhone||'')+' · '+b.no+' · '+fmtDate(b.date)+' · '+daysSince(b.date)+' days',amt:x.bal,btn:'View',run:function(){view(b.id)}}})};
+  var dues=function(kind,view){return dueBills(al).filter(function(b){return b.kind===kind}).map(function(b){var x=billInfo(b,al);return {main:b.clientName,sub:(b.clientPhone||'')+' · '+b.no+' · '+fmtDate(b.date),date:b.date,amt:x.bal,btn:'View',run:function(){view(b.id)}}})};
   if(d==='spa'){
     out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('inv',function(id){viewInvoice(id)})});
     var lim=addDays(t,15);
-    out.push({key:'clubexp',label:'Memberships expiring',hint:'Memberships ending in the next 15 days. Call the client to renew.',ro:true,rows:activeVouchers('clubs').filter(function(m){return clubStatus(m)==='Active'&&m.expiry<=lim&&!activeVouchers('clubs').some(function(o){return o.clientId===m.clientId&&o.id!==m.id&&o.expiry>m.expiry})}).sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')}).map(function(m){return {main:m.clientName,sub:(m.clientPhone||'')+' · '+m.planName+' · '+m.no+' · ends '+fmtDate(m.expiry),btn:'Renew',run:function(){sellClub(m.clientId)},view:function(){viewClub(m.id)}}})});
+    out.push({key:'clubexp',label:'Memberships expiring',hint:'Memberships ending in the next 15 days. Call the client to renew.',ro:true,rows:activeVouchers('clubs').filter(function(m){return clubStatus(m)==='Active'&&m.expiry<=lim&&!activeVouchers('clubs').some(function(o){return o.clientId===m.clientId&&o.id!==m.id&&o.expiry>m.expiry})}).sort(function(a,b){return (a.expiry||'').localeCompare(b.expiry||'')}).map(function(m){return {main:m.clientName,sub:(m.clientPhone||'')+' · '+m.planName+' · '+m.no+' · ends '+fmtDate(m.expiry),date:m.expiry,btn:'Renew',run:function(){sellClub(m.clientId)},view:function(){viewClub(m.id)}}})});
   }
   if(d==='aes'){
-    var bm=aiBilledMap();
-    out.push({key:'uncon',label:'Unbilled consultations',hint:'Consultations not on any invoice yet.',rows:activeVouchers('aeCons').filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
-    out.push({key:'unses',label:'Unbilled sessions',hint:'Completed sessions not on any invoice and not billed upfront.',rows:activeVouchers('aeSessions').filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){return {main:s.clientName,sub:(s.no||'')+' · '+(function(){var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId);return ln&&ln.l?ln.l.name:(s.procedureName||'Session')})()+' · '+fmtDate(s.date),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
-    out.push({key:'unpaid',label:'Unpaid invoices',hint:'Invoices with a balance still to collect.',rows:dues('ae',function(id){viewAeInv(id)})});
-    var follow=[], consent=[];
+    var bm=aiBilledMap(), qByCon={};
+    activeVouchers('aeQuotes').forEach(function(q){if(q.conId)qByCon[q.conId]=1});
+    var appts=activeVouchers('aeAppts');
+    /* 1 missed */
+    out.push({key:'missed',label:'Missed Appointments',hint:'No-shows and past appointments never completed or cancelled.',rows:appts.filter(apMissed).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,date:a.date,btn:'Reschedule',run:function(){editAppt(a.id,{_resched:true,date:todayStr()})}}})});
+    /* 2 scheduled */
+    out.push({key:'sched',label:'Scheduled Appointments',hint:'Upcoming appointments from today onwards.',upcoming:true,noBadge:true,rows:appts.filter(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0&&!apMissed(a)}).sort(function(a,b){return ((a.date||'')+apFrom(a)).localeCompare((b.date||'')+apFrom(b))}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+(apStaffNames(a)?' · '+apStaffNames(a):''),date:a.date,btn:'Open',run:function(){editAppt(a.id)}}})});
+    /* 3 consultations pending quotations */
+    out.push({key:'conq',label:'Consultations Pending Quotations',hint:'Consultations where procedures were advised but no quotation has been made.',rows:activeVouchers('aeCons').filter(function(c){return !qByCon[c.id]&&(c.procs||[]).some(function(p){return p&&(p.procId||String(p.name||'').trim())})}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+' · advised '+(c.procs||[]).filter(function(p){return p&&(p.procId||p.name)}).map(function(p){return p.name||(findIn('aeProcs',p.procId)||{}).name||''}).join(', '),date:c.date,btn:'Make quotation',
+      run:function(){var cl=clientById(c.clientId)||{};qtDraft=qtNew();qtDraft.clientId=c.clientId;qtDraft.clientName=c.clientName||cl.name||'';qtDraft.conId=c.id;qtDraft.lines=qtLinesFromCon(c);qtMode='form';go('ae-quotations')},view:function(){viewCon(c.id)}}})});
+    /* 4 consultations pending billing */
+    out.push({key:'uncon',label:'Consultations Pending Billing',hint:'Consultations not on any invoice yet.',rows:activeVouchers('aeCons').filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){var ln=aiConLine(c);return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),date:c.date,amt:+ln.rate||0,btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
+    /* 5 sessions pending billing */
+    out.push({key:'unses',label:'Sessions Pending Billing',hint:'Completed sessions not on any invoice and not billed upfront.',rows:activeVouchers('aeSessions').filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){var ln={};try{ln=aiSesLine(s)||{}}catch(e){}return {main:s.clientName,sub:(s.no||'')+' · '+(ln.name||s.procName||'Session')+' · '+fmtDate(s.date),date:s.date,amt:r2((+ln.rate||0)*(1-(+ln.discPct||0)/100)),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
+    /* 6 quotations without appointment */
+    var follow=[];
     activeVouchers('aeQuotes').forEach(function(q){(q.lines||[]).forEach(function(l,i){
       var st=qtLineStats(q,i); if(st.left<=0) return;
-      var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}), key=qtLineKey(q,l,i);
-      if(consentNeeded(q.id,st.key)) consent.push({main:q.clientName,sub:l.name+' · '+q.no+(up?' · appointment booked':''),btn:'Take consent',run:function(){openConsent(q.id,st.key)}});
-      if(!up){var last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
-        follow.push({main:q.clientName,sub:l.name+' · '+st.done+' of '+(+l.sessions||0)+' done · last '+(last?fmtDate(last):'—'),srt:last||q.date||'',btn:'Book',run:function(){editAppt(null,{type:'Procedure',clientId:q.clientId,clientName:q.clientName,procedureId:l.procId,procedureName:l.name,quoteId:q.id,quoteLineId:key,staffIds:qtStaff(q,key)})}})}
+      if(st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0})) return;
+      var key=qtLineKey(q,l,i), last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
+      follow.push({main:q.clientName,sub:q.no+' · '+l.name+' · '+st.done+' of '+(+l.sessions||0)+' done'+(last?' · last '+fmtDate(last):''),date:last||q.date,btn:'Book',view:function(){viewQt(q.id)},
+        run:function(){editAppt(null,{type:'Procedure',clientId:q.clientId,clientName:q.clientName,procedureId:l.procId,procedureName:l.name,quoteId:q.id,quoteLineId:key,staffIds:qtStaff(q,key)})}});
     })});
-    follow.sort(function(a,b){return a.srt.localeCompare(b.srt)});
-    out.push({key:'consent',label:'Consents due',hint:'Quotation items whose consent form isn’t signed yet.',rows:consent});
-    out.push({key:'missed',label:'Missed appointments',hint:'No-shows and past appointments never completed or cancelled.',rows:activeVouchers('aeAppts').filter(apMissed).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,btn:'Reschedule',run:function(){editAppt(a.id,{_resched:true,date:todayStr()})}}})});
-    out.push({key:'follow',label:'Follow-ups',hint:'Sessions left on a quotation but nothing booked.',rows:follow});
+    out.push({key:'qnoap',label:'Quotations without Appointment',hint:'Quotation items with sessions left but no upcoming appointment.',rows:follow.sort(function(a,b){return (a.date||'').localeCompare(b.date||'')})});
+    /* 7 outstanding customers */
+    var owe={};
+    dueBills(al).filter(function(b){return b.kind==='ae'}).forEach(function(b){var x=billInfo(b,al),o=owe[b.clientId]=owe[b.clientId]||{id:b.clientId,name:b.clientName,phone:b.clientPhone,n:0,bal:0,date:b.date};o.n++;o.bal=r2(o.bal+x.bal);if((b.date||'')<(o.date||''))o.date=b.date});
+    out.push({key:'owe',label:'Outstanding Customers',hint:'Clients with unpaid Aesthetics invoices.',rows:Object.keys(owe).map(function(k){return owe[k]}).sort(function(a,b){return b.bal-a.bal}).map(function(o){return {main:o.name,sub:(o.phone||'')+' · '+o.n+' unpaid invoice'+(o.n===1?'':'s')+' · oldest '+fmtDate(o.date),date:o.date,amt:o.bal,btn:'Ledger',ro:true,run:function(){viewLedger(o.id,'aes')},view:function(){viewClient(o.id)}}})});
   }
   if(d==='pha'){
     out.push({key:'unpaid',label:'Unpaid sales bills',hint:'Client sale bills with a balance still to collect.',rows:dues('sale',function(id){phViewMove(id)})});
     var sb=[];
-    S.phSuppliers.forEach(function(s){phSupAlloc(s.id).bills.forEach(function(b){if(b.bal>0.004)sb.push({main:s.name,sub:b.no+(b.billNo?' · bill '+b.billNo:'')+(b.date?' · '+fmtDate(b.date)+' · '+daysSince(b.date)+' days':''),amt:b.bal,srt:b.date||'',btn:'Pay',run:function(){supPayDialog(s.id,b.opening?'':b.id)}})})});
+    S.phSuppliers.forEach(function(s){phSupAlloc(s.id).bills.forEach(function(b){if(b.bal>0.004)sb.push({main:s.name,sub:b.no+(b.billNo?' · bill '+b.billNo:'')+(b.date?' · '+fmtDate(b.date):''),date:b.date,amt:b.bal,srt:b.date||'',btn:'Pay',run:function(){supPayDialog(s.id,b.opening?'':b.id)}})})});
     sb.sort(function(a,b){return a.srt.localeCompare(b.srt)});
     out.push({key:'supbills',label:'Supplier bills unpaid',hint:'Purchase bills not fully paid to the supplier.',rows:sb});
     out.push({key:'low',label:'Low stock',hint:'Active items at or below their reorder level, or out of stock.',rows:phInvRows(true).filter(function(r){return r.item.status!=='Inactive'&&(r.qty<=0||r.low)}).sort(function(a,b){return a.qty-b.qty}).map(function(r){return {main:r.item.name,sub:'Stock '+r.qty+(r.reorder!=null?' · reorder at '+r.reorder:''),btn:'Ledger',ro:true,run:function(){viewItemLedger(r.item.id)}}})});
   }
-  out.push({key:'vbills',label:'Vendor bills unpaid',hint:'Expenses bought on credit and not yet paid.',rows:expDue(d).map(function(x){return {main:x.v.name,sub:x.b.no+' · '+(x.b.cat||'')+(x.b.billNo?' · bill '+x.b.billNo:'')+' · '+fmtDate(x.b.date)+' · '+daysSince(x.b.date)+' days',amt:x.b.bal,btn:'Pay',run:function(){vendorPayDialog(x.v.id,x.b.id)},view:function(){viewExpense(x.b.id)}}})});
+  if(d!=='aes') out.push({key:'vbills',label:'Vendor bills unpaid',hint:'Expenses bought on credit and not yet paid.',rows:expDue(d).map(function(x){return {main:x.v.name,sub:x.b.no+' · '+(x.b.cat||'')+(x.b.billNo?' · bill '+x.b.billNo:'')+' · '+fmtDate(x.b.date),date:x.b.date,amt:x.b.bal,btn:'Pay',run:function(){vendorPayDialog(x.v.id,x.b.id)},view:function(){viewExpense(x.b.id)}}})});
   return out;
 }
-function pendTotal(d){try{return pendTasks(d).reduce(function(n,x){return n+x.rows.length},0)}catch(e){return 0}}
+function pendTotal(d){try{return pendTasks(d).reduce(function(n,x){return n+(x.noBadge?0:x.rows.length)},0)}catch(e){return 0}}
 function pendBadge(){
   if(!dept||!ready()) return;
   var n=pendTotal(dept);
   $$('#nav-'+dept+' [data-pend-badge]').forEach(function(x){x.textContent=n>99?'99+':String(n);x.hidden=!n});
+}
+var pendOpen={spa:{},aes:{},pha:{}};
+function pendAge(x){
+  var ds=x.rows.map(function(r){return r.date}).filter(Boolean).sort(); if(!ds.length) return '—';
+  if(x.upcoming){var n=Math.round((parseD(ds[0])-parseD(todayStr()))/86400000);return '<span class="age g">'+(n<=0?'Today':n===1?'Tomorrow':'in '+n+' days')+'</span>'}
+  if(x.key==='clubexp'){var e=Math.round((parseD(ds[0])-parseD(todayStr()))/86400000);return '<span class="age '+(e<=3?'r':'a')+'">'+(e<=0?'Today':'in '+e+' days')+'</span>'}
+  var d=daysSince(ds[0]);return '<span class="age '+(d>30?'r':d>=7?'a':'g')+'">'+(d===0?'Today':d+' day'+(d===1?'':'s'))+'</span>';
 }
 function pendSection(d){return {
   mount:function(){work.innerHTML=head('Pending Tasks')+'<div id="body"></div>'},
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    var tasks=pendTasks(d), sel=tasks.find(function(x){return x.key===pendSel[d]});
-    if(!sel) sel=tasks.find(function(x){return x.rows.length})||tasks[0];
-    pendSel[d]=sel.key;
-    var html='<div class="pend-grid">'+tasks.map(function(x,ix){return '<button style="--tc:var('+['--m6','--m5','--m4','--m3','--m2','--m11','--m13'][ix%7]+')" class="pend-card'+(x===sel?' on':'')+(x.rows.length?'':' zero')+'" data-pend="'+x.key+'"><span class="n">'+x.rows.length+'</span><span class="l">'+esc(x.label)+'</span></button>'}).join('')+'</div>';
-    html+='<div class="panel"><h3>'+esc(sel.label)+'</h3><p class="hint" style="margin:-4px 0 10px">'+esc(sel.hint)+'</p>';
-    var hasAmt=sel.rows.some(function(r){return r.amt!=null}), tot=r2(sel.rows.reduce(function(s,r){return s+(+r.amt||0)},0));
-    html+=sel.rows.length?'<div class="tbl"><table><tbody>'+sel.rows.map(function(r,i){return '<tr><td><strong>'+(r.view?'<button class="link" style="color:inherit" data-pview="'+i+'">'+esc(r.main)+'</button>':esc(r.main))+'</strong><div class="sub">'+esc(r.sub)+'</div></td>'+(hasAmt?'<td class="num due">'+(r.amt!=null?money(r.amt):'')+'</td>':'')+'<td class="num">'+(readOnly&&!r.ro?'':'<button class="btn sm w" data-prun="'+i+'">'+esc(r.btn)+'</button>')+'</td></tr>'}).join('')+
-      (hasAmt?'<tr><td><strong>Total</strong></td><td class="num"><strong>'+money(tot)+'</strong></td><td></td></tr>':'')+'</tbody></table></div>':'<p class="hint">Nothing pending here.</p>';
-    b.innerHTML=html+'</div>';
-    $$('[data-pend]',b).forEach(function(x){x.onclick=function(){pendSel[d]=x.dataset.pend;SECTIONS[current].update()}});
-    $$('[data-prun]',b).forEach(function(x){x.onclick=function(){sel.rows[+x.dataset.prun].run()}});
-    $$('[data-pview]',b).forEach(function(x){x.onclick=function(){sel.rows[+x.dataset.pview].view()}});
+    var tasks=pendTasks(d), op=pendOpen[d], openN=0, amtT=0;
+    tasks.forEach(function(x){x.amt=r2(x.rows.reduce(function(t,r){return t+(+r.amt||0)},0));x.hasAmt=x.rows.some(function(r){return r.amt!=null});if(!x.noBadge)openN+=x.rows.length;amtT+=x.amt});
+    var colH=d==='aes'?'Oldest / next':'Oldest';
+    var html='<div class="pend-top"><span class="sub">Click a row to see the list and act.</span><span class="pend-sum">Open tasks <strong>'+openN+'</strong>'+(amtT>0.004?' · Amount pending <strong>'+money0(amtT)+'</strong>':'')+'</span></div>'+
+      '<div class="tbl pend-tbl"><table><thead><tr><th>Task</th><th class="num">Count</th><th class="num">Amount</th><th>'+colH+'</th><th></th></tr></thead><tbody>'+
+      tasks.map(function(x,ix){var on=!!op[x.key], c=['--m6','--m5','--m4','--m3','--m2','--m11','--m13','--m7'][ix%8];
+        var row='<tr class="pend-row'+(x.rows.length?'':' zero')+(on?' open':'')+'" data-pk="'+esc(x.key)+'" tabindex="0" role="button" aria-expanded="'+on+'"><td><span class="pdot" style="background:var('+c+')"></span><strong>'+esc(x.label)+'</strong></td><td class="num"><span class="pcnt'+(x.upcoming?' info':'')+'">'+x.rows.length+'</span></td><td class="num">'+(x.hasAmt&&x.rows.length?money(x.amt):'—')+'</td><td>'+(x.rows.length?pendAge(x):'—')+'</td><td class="num"><span class="pcar">▸</span></td></tr>';
+        if(on) row+='<tr class="pend-detail"><td colspan="5"><div class="pin"><p class="sub" style="margin:0 0 6px">'+esc(x.hint)+'</p>'+(x.rows.length?x.rows.map(function(r,i){return '<div class="pit"><div class="pwho"><strong>'+(r.view?'<button class="link" style="color:inherit" data-pview="'+esc(x.key)+'|'+i+'">'+esc(r.main)+'</button>':esc(r.main))+'</strong><span class="sub">'+esc(r.sub)+'</span></div>'+(r.amt!=null?'<span class="pamt">'+money(r.amt)+'</span>':'')+(readOnly&&!r.ro?'':'<button class="btn sm primary w" data-prun="'+esc(x.key)+'|'+i+'">'+esc(r.btn)+'</button>')+'</div>'}).join(''):'<p class="hint" style="margin:6px 0 0">Nothing pending here.</p>')+'</div></td></tr>';
+        return row}).join('')+'</tbody></table></div>';
+    b.innerHTML=html;
+    var find=function(v){var p=v.split('|'),t=tasks.find(function(x){return x.key===p[0]});return t&&t.rows[+p[1]]};
+    $$('[data-pk]',b).forEach(function(r){var tog=function(){op[r.dataset.pk]=!op[r.dataset.pk];SECTIONS[current].update()};r.onclick=tog;r.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();tog()}}});
+    $$('[data-prun]',b).forEach(function(x){x.onclick=function(e){e.stopPropagation();var r=find(x.dataset.prun);if(r)r.run()}});
+    $$('[data-pview]',b).forEach(function(x){x.onclick=function(e){e.stopPropagation();var r=find(x.dataset.pview);if(r&&r.view)r.view()}});
   }
 }}
 SECTIONS['spa-pending']=pendSection('spa');
