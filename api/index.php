@@ -48,8 +48,8 @@ if($action==='file_delete'){if($method!=='POST')respond(405,['error'=>'Method no
 /* ---- WhatsApp (Meta Cloud API): settings are kept server-side; the access token never goes back to the browser ---- */
 function waGroups():array{return['invoice','quotation','receipt','prescription','education','birthday'];}
 function waDefaults():array{return['invoice'=>'veda_invoice','quotation'=>'veda_quotation','receipt'=>'veda_receipt','prescription'=>'veda_prescription','education'=>'veda_education','birthday'=>'veda_birthday'];}
-function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
-function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on']];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang']];}return $o;}
+function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>'','verifyToken'=>'','appSecret'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
+function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on']];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'verifyToken'=>$c['verifyToken'],'appSecretSet'=>$c['appSecret']!==''];}return $o;}
 function waPhone(string $s):string{$d=preg_replace('/\D/','',$s);if(strlen($d)===11&&$d[0]==='0')$d=substr($d,1);if(strlen($d)===10)$d='91'.$d;return $d;}
 function waHttp(string $url,string $token,$body,bool $multipart=false):array{
   if(!function_exists('curl_init'))return[0,['error'=>['message'=>'The server is missing the PHP curl extension.']]];
@@ -63,7 +63,7 @@ function waHttp(string $url,string $token,$body,bool $multipart=false):array{
 }
 function waErr(array $r):string{$e=$r['error']??[];$m=(string)($e['error_user_msg']??$e['message']??'Unknown error from Meta.');if(!empty($e['error_data']['details']))$m.=' — '.$e['error_data']['details'];return mb_substr($m,0,300);}
 function waLog(PDO $p,array $rec):array{$id='wl'.bin2hex(random_bytes(8));$rec['at']=gmdate('c');save($p,'wa_log',$id,$rec);$rec['id']=$id;return $rec;}
-function waLogged(PDO $p,string $kind,string $key):bool{$q=$p->prepare("SELECT data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute(['%'.str_replace(['\\','%','_'],['\\\\','\\%','\\_'],substr(json_encode($key,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),1,-1)).'%']);foreach($q as $r){$d=json_decode($r['data'],true);if(($d['kind']??'')===$kind&&($d['dedupe']??'')===$key&&($d['status']??'')==='sent')return true;}return false;}
+function waLogged(PDO $p,string $kind,string $key):bool{$q=$p->prepare("SELECT data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute(['%'.str_replace(['\\','%','_'],['\\\\','\\%','\\_'],substr(json_encode($key,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),1,-1)).'%']);foreach($q as $r){$d=json_decode($r['data'],true);if(($d['kind']??'')===$kind&&($d['dedupe']??'')===$key&&in_array(($d['status']??''),['sent','delivered','read'],true))return true;}return false;}
 function waDoc(PDO $p,string $c,string $id):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute([$c,$id]);$r=$q->fetch();return $r?(json_decode($r['data'],true)?:[]):[];}
 /* send one template message; $file = [path, filename] for a PDF header, or null */
 function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?array $file):array{
@@ -86,12 +86,36 @@ function waSamplePdf(string $text):string{
   $x=strlen($pdf);$pdf.="xref\n0 ".(count($objs)+1)."\n0000000000 65535 f \n";foreach($off as $o)$pdf.=sprintf("%010d 00000 n \n",$o);
   return $pdf."trailer\n<< /Size ".(count($objs)+1)." /Root 1 0 R >>\nstartxref\n".$x."\n%%EOF\n";
 }
+/* Meta webhook: delivery/read/failed statuses and STOP replies. Public URL, checked with the verify token (and app secret if saved). */
+if(($_GET['action']??'')==='wa_webhook'){
+  $c=waCfg($pdo);
+  if($method==='GET'){if(($_GET['hub_mode']??'')==='subscribe'&&$c['verifyToken']!==''&&hash_equals($c['verifyToken'],(string)($_GET['hub_verify_token']??''))){header('Content-Type: text/plain');echo (string)($_GET['hub_challenge']??'');exit;}http_response_code(403);echo 'Forbidden';exit;}
+  $raw=(string)file_get_contents('php://input');
+  if($c['appSecret']!==''){$sig=(string)($_SERVER['HTTP_X_HUB_SIGNATURE_256']??'');if(!hash_equals('sha256='.hash_hmac('sha256',$raw,$c['appSecret']),$sig)){http_response_code(403);exit;}}
+  $j=json_decode($raw,true)?:[];
+  foreach(($j['entry']??[]) as $en)foreach(($en['changes']??[]) as $ch){$v=$ch['value']??[];
+    foreach(($v['statuses']??[]) as $st){$wid=(string)($st['id']??'');if($wid==='')continue;
+      $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute(['%'.$wid.'%']);
+      foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(($d['waId']??'')!==$wid)continue;
+        $new=(string)($st['status']??'');$rank=['sent'=>1,'delivered'=>2,'read'=>3,'failed'=>4];
+        if(($rank[$new]??0)>=($rank[$d['status']??'sent']??0)||$new==='failed'){$d['status']=$new;$d[$new.'At']=gmdate('c');
+          if($new==='failed'){$e=$st['errors'][0]??[];$d['error']=mb_substr(trim('(#'.($e['code']??'').') '.($e['title']??'').' '.($e['error_data']['details']??$e['message']??'')),0,300);}
+          save($pdo,'wa_log',$r['id'],$d);}}}
+    foreach(($v['messages']??[]) as $m){$txt=strtolower(trim((string)($m['text']['body']??$m['button']['text']??'')));
+      if(in_array($txt,['stop','unsubscribe','stop messages'],true)){$from=substr(preg_replace('/\D/','',(string)($m['from']??'')),-10);
+        $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='spa_clients'");$q->execute();
+        foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if($from!==''&&substr(preg_replace('/\D/','',(string)($d['phone']??'')),-10)===$from){$d['waOff']=true;save($pdo,'spa_clients',$r['id'],$d);}}}}
+  }
+  respond(200,['ok'=>true]);
+}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
 if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
   if(!empty($in['clearToken']))$c['token']='';
+  if($c['verifyToken']==='')$c['verifyToken']=bin2hex(random_bytes(12));
+  if(isset($in['appSecret'])&&trim((string)$in['appSecret'])!=='')$c['appSecret']=preg_replace('/[^a-f0-9]/i','',(string)$in['appSecret']);
   if(isset($in['lang']))$c['lang']=preg_replace('/[^A-Za-z_]/','',(string)$in['lang'])?:'en';
   foreach(waGroups() as $g){if(isset($in['on'][$g]))$c['on'][$g]=(bool)$in['on'][$g];if(isset($in['tpl'][$g])){$t=preg_replace('/[^a-z0-9_]/','',strtolower((string)$in['tpl'][$g]));$c['tpl'][$g]=$t?:waDefaults()[$g];}}
   save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true)+['lastRun'=>waLastRun($pdo)]);}
