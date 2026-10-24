@@ -77,6 +77,15 @@ function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?arr
   if($code>=200&&$code<300&&!empty($r['messages'][0]['id']))return['ok'=>true,'waId'=>$r['messages'][0]['id']];
   return['ok'=>false,'error'=>waErr($r)];
 }
+/* a one-page sample PDF for template tests */
+function waSamplePdf(string $text):string{
+  $t=preg_replace('/[^\x20-\x7E]/','',$text);$t=str_replace(['\\','(',')'],['\\\\','\\(','\\)'],$t);
+  $stream="BT /F1 18 Tf 72 760 Td ($t) Tj 0 -28 Td /F1 12 Tf (This is a test document from the clinic system.) Tj ET";
+  $objs=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>","<< /Length ".strlen($stream)." >>\nstream\n".$stream."\nendstream","<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+  $pdf="%PDF-1.4\n";$off=[];foreach($objs as $i=>$o){$off[]=strlen($pdf);$pdf.=($i+1)." 0 obj\n".$o."\nendobj\n";}
+  $x=strlen($pdf);$pdf.="xref\n0 ".(count($objs)+1)."\n0000000000 65535 f \n";foreach($off as $o)$pdf.=sprintf("%010d 00000 n \n",$o);
+  return $pdf."trailer\n<< /Size ".(count($objs)+1)." /Root 1 0 R >>\nstartxref\n".$x."\n%%EOF\n";
+}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
 if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
@@ -87,7 +96,12 @@ if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not al
   foreach(waGroups() as $g){if(isset($in['on'][$g]))$c['on'][$g]=(bool)$in['on'][$g];if(isset($in['tpl'][$g])){$t=preg_replace('/[^a-z0-9_]/','',strtolower((string)$in['tpl'][$g]));$c['tpl'][$g]=$t?:waDefaults()[$g];}}
   save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_test'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can send a test.']);$c=waCfg($pdo);if($c['phoneId']===''||$c['token']==='')respond(400,['error'=>'Save the Phone number ID and Access token first.']);$to=waPhone((string)($in['to']??''));if(strlen($to)<11)respond(400,['error'=>'Enter a valid mobile number.']);
-  $which=(string)($in['tpl']??'hello_world');if($which==='birthday'){$biz=waDoc($pdo,'spa_business','profile');$r=waSendTpl($pdo,$c,'birthday',$to,['Test',(string)($biz['name']??'us')],null);}else{$tc=$c;$tc['tpl']['test']='hello_world';$tc['lang']='en_US';$r=waSendTpl($pdo,$tc,'test',$to,[],null);}
+  $which=(string)($in['tpl']??'hello_world');
+  if(in_array($which,waGroups(),true)){$biz=waDoc($pdo,'spa_business','profile');$bn=(string)($biz['name']??'us');$amt="\u{20B9}1,000.00";$today=(new DateTime('now',new DateTimeZone('Asia/Kolkata')))->format('d M Y');
+    $P=['invoice'=>['Test',$bn,'INV-TEST',$amt],'quotation'=>['Test',$bn,'QTN-TEST',$amt],'receipt'=>['Test',$amt,'RCT-TEST',$bn],'prescription'=>['Test',$bn,$today],'education'=>['Test','Sample procedure',$bn],'birthday'=>['Test',$bn]];
+    $file=null;$tmp=null;if($which!=='birthday'){$tmp=tempnam(sys_get_temp_dir(),'wat');file_put_contents($tmp,waSamplePdf('Test '.ucfirst($which).' - '.$bn));$file=[$tmp,'TEST-'.strtoupper($which).'.pdf'];}
+    $r=waSendTpl($pdo,$c,$which,$to,$P[$which],$file);if($tmp)@unlink($tmp);}
+  else{$tc=$c;$tc['tpl']['test']='hello_world';$tc['lang']='en_US';$r=waSendTpl($pdo,$tc,'test',$to,[],null);}
   waLog($pdo,['kind'=>'test','group'=>'test','to'=>$to,'clientName'=>'Test message','status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>$u['name']??'']);
   if(!$r['ok'])respond(400,['error'=>$r['error']]);respond(200,['ok'=>true]);}
 if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);$c=waCfg($pdo);$group=(string)($in['group']??'');if(!in_array($group,waGroups(),true))respond(400,['error'=>'Unknown message type.']);
