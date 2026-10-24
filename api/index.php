@@ -67,7 +67,7 @@ function waLogged(PDO $p,string $kind,string $key):bool{$q=$p->prepare("SELECT d
 function waDoc(PDO $p,string $c,string $id):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute([$c,$id]);$r=$q->fetch();return $r?(json_decode($r['data'],true)?:[]):[];}
 /* send one template message; $file = [path, filename] for a PDF header, or null */
 function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?array $file):array{
-  $base=rtrim((string)($GLOBALS['cfg']['waBase']??'https://graph.facebook.com/v21.0'),'/').'/'.rawurlencode($cfg['phoneId']);$comps=[];
+  $base=rtrim((string)($GLOBALS['cfg']['waBase']??'https://graph.facebook.com/v25.0'),'/').'/'.rawurlencode($cfg['phoneId']);$comps=[];
   if($file){[$code,$r]=waHttp($base.'/media',$cfg['token'],['messaging_product'=>'whatsapp','type'=>'application/pdf','file'=>new CURLFile($file[0],'application/pdf',$file[1])],true);
     if($code<200||$code>=300||empty($r['id']))return['ok'=>false,'error'=>'PDF upload failed: '.waErr($r)];
     $comps[]=['type'=>'header','parameters'=>[['type'=>'document','document'=>['id'=>$r['id'],'filename'=>$file[1]]]]];}

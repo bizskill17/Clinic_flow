@@ -6459,6 +6459,8 @@ SECTIONS['ph-pending']=pendSection('pha');
    ========================================================= */
 var WA={configured:false,on:{}}, WA_GROUP={inv:'invoice',aeinv:'invoice',phsale:'invoice',quote:'quotation',receipt:'receipt',conrx:'prescription',sesrx:'prescription',edu:'education',birthday:'birthday'};
 var WA_LABEL={invoice:'Invoice',quotation:'Quotation',receipt:'Receipt',prescription:'Prescription',education:'Educational content',birthday:'Birthday wishes',test:'Test message'};
+/* show Meta's / the server's real reason instead of the generic save message */
+function waErrText(e){var m=e&&e.message||'';return m&&m!=='Failed to fetch'&&m!=='Request failed.'?m:(m==='Request failed.'?'The server returned an error. Please send a screenshot.':'No connection to the server.')}
 function waLoadStatus(){return authCall('wa_status').then(function(x){WA=x||WA}).catch(function(){})}
 setInterval(function(){if(CURRENT_USER)waLoadStatus()},30*60*1000);
 function waOn(group){return !!(WA.configured&&WA.on&&WA.on[group])}
@@ -6514,7 +6516,7 @@ function waRun(){
       if(x.skipped){if(j.manual)toast('Not sent: '+x.skipped)}
       else if(x.ok) toast('WhatsApp: '+what+' sent to '+(b.clientName||'client'));
       else toast('WhatsApp '+what.toLowerCase()+' not sent: '+(x.error||'error'));
-    }).catch(function(e){toast('WhatsApp not sent: '+errText(e))}).then(next);
+    }).catch(function(e){toast('WhatsApp not sent: '+waErrText(e))}).then(next);
 }
 /* hook: a new document was saved */
 function waOnSaved(kind,obj){
@@ -6551,7 +6553,7 @@ SECTIONS['wa-settings']={
     work.innerHTML=head('WhatsApp')+'<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(waTab==='setup'?' primary':'')+'" data-watab="setup">Setup</button><button class="btn'+(waTab==='log'?' primary':'')+'" data-watab="log">Message log</button></div></div><div id="body"></div>';
     $$('[data-watab]',work).forEach(function(b){b.onclick=function(){waTab=b.dataset.watab;go(current)}});
     if(waTab==='log'){apiCall('GET',{collection:'wa_log'}).then(function(r){S.waLog=r.records||[];SECTIONS['wa-settings'].update()}).catch(function(){})}
-    if(waTab==='setup'){waCfgCache=null;authCall('wa_get').then(function(c){waCfgCache=c;SECTIONS['wa-settings'].update()}).catch(function(e){var b=$('#body',work);if(b)b.innerHTML='<div class="empty"><strong>Can’t open WhatsApp settings</strong>'+esc(errText(e))+'</div>'})}
+    if(waTab==='setup'){waCfgCache=null;authCall('wa_get').then(function(c){waCfgCache=c;SECTIONS['wa-settings'].update()}).catch(function(e){var b=$('#body',work);if(b)b.innerHTML='<div class="empty"><strong>Can’t open WhatsApp settings</strong>'+esc(waErrText(e))+'</div>'})}
   },
   update:function(){
     var b=$('#body',work); if(!b) return;
@@ -6586,11 +6588,11 @@ SECTIONS['wa-settings']={
       if(!body.phoneId) return show('Enter the Phone number ID.');
       if(!tk&&!c.tokenMasked) return show('Paste the access token.');
       show(''); btn.disabled=true;
-      authCall('wa_save',body).then(function(x){waCfgCache=x;WA={configured:x.configured,on:x.on};b.dataset.drawn='';SECTIONS['wa-settings'].update();toast('WhatsApp settings saved')}).catch(function(e){btn.disabled=false;show(errText(e))});
+      authCall('wa_save',body).then(function(x){waCfgCache=x;WA={configured:x.configured,on:x.on};b.dataset.drawn='';SECTIONS['wa-settings'].update();toast('WhatsApp settings saved')}).catch(function(e){btn.disabled=false;show(waErrText(e))});
     };
     bindContactPhone($('#wa-to',b));
     $('#wa-test',b).onclick=function(){var btn=this,to=$('#wa-to',b).value.trim();if(!validContactPhone(to))return show('Enter a 10-digit mobile number for the test.');show('');btn.disabled=true;btn.textContent='Sending…';
-      authCall('wa_test',{to:to}).then(function(){toast('Test message sent. Check WhatsApp on '+to)}).catch(function(e){show('Test failed: '+errText(e))}).then(function(){btn.disabled=false;btn.textContent='Send test message'})};
+      authCall('wa_test',{to:to}).then(function(){toast('Test message sent. Check WhatsApp on '+to)}).catch(function(e){show('Test failed: '+waErrText(e))}).then(function(){btn.disabled=false;btn.textContent='Send test message'})};
   }
 };
 var waLogF={q:'',status:''};
