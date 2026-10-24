@@ -87,7 +87,7 @@ if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not al
   foreach(waGroups() as $g){if(isset($in['on'][$g]))$c['on'][$g]=(bool)$in['on'][$g];if(isset($in['tpl'][$g])){$t=preg_replace('/[^a-z0-9_]/','',strtolower((string)$in['tpl'][$g]));$c['tpl'][$g]=$t?:waDefaults()[$g];}}
   save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true)+['lastRun'=>waLastRun($pdo)]);}
 if($action==='wa_test'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can send a test.']);$c=waCfg($pdo);if($c['phoneId']===''||$c['token']==='')respond(400,['error'=>'Save the Phone number ID and Access token first.']);$to=waPhone((string)($in['to']??''));if(strlen($to)<11)respond(400,['error'=>'Enter a valid mobile number.']);
-  $tc=$c;$tc['tpl']['test']='hello_world';$tc['lang']='en_US';$r=waSendTpl($pdo,$tc,'test',$to,[],null);
+  $which=(string)($in['tpl']??'hello_world');if($which==='birthday'){$biz=waDoc($pdo,'spa_business','profile');$r=waSendTpl($pdo,$c,'birthday',$to,['Test',(string)($biz['name']??'us')],null);}else{$tc=$c;$tc['tpl']['test']='hello_world';$tc['lang']='en_US';$r=waSendTpl($pdo,$tc,'test',$to,[],null);}
   waLog($pdo,['kind'=>'test','group'=>'test','to'=>$to,'clientName'=>'Test message','status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>$u['name']??'']);
   if(!$r['ok'])respond(400,['error'=>$r['error']]);respond(200,['ok'=>true]);}
 if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);$c=waCfg($pdo);$group=(string)($in['group']??'');if(!in_array($group,waGroups(),true))respond(400,['error'=>'Unknown message type.']);
