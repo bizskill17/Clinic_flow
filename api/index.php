@@ -48,8 +48,10 @@ if($action==='file_delete'){if($method!=='POST')respond(405,['error'=>'Method no
 /* ---- WhatsApp (Meta Cloud API): settings are kept server-side; the access token never goes back to the browser ---- */
 function waGroups():array{return['invoice','quotation','receipt','prescription','education','birthday'];}
 function waDefaults():array{return['invoice'=>'veda_invoice','quotation'=>'veda_quotation','receipt'=>'veda_receipt','prescription'=>'veda_prescription','education'=>'veda_education','birthday'=>'veda_birthday'];}
-function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>'','verifyToken'=>'','appSecret'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
-function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on']];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'verifyToken'=>$c['verifyToken'],'appSecretSet'=>$c['appSecret']!==''];}return $o;}
+function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>'','verifyToken'=>'','appSecret'=>'','testMode'=>false,'testNumber'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
+function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on'],'testMode'=>!empty($c['testMode']),'testNumber'=>!empty($c['testMode'])?(string)$c['testNumber']:''];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'verifyToken'=>$c['verifyToken'],'appSecretSet'=>$c['appSecret']!=='','testNumber'=>(string)$c['testNumber']];}return $o;}
+/* test mode: every client message goes to the saved test number instead */
+function waTest(array $c):string{return !empty($c['testMode'])?waPhone((string)$c['testNumber']):'';}
 function waPhone(string $s):string{$d=preg_replace('/\D/','',$s);if(strlen($d)===11&&$d[0]==='0')$d=substr($d,1);if(strlen($d)===10)$d='91'.$d;return $d;}
 function waHttp(string $url,string $token,$body,bool $multipart=false):array{
   if(!function_exists('curl_init'))return[0,['error'=>['message'=>'The server is missing the PHP curl extension.']]];
@@ -116,6 +118,8 @@ if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not al
   if(!empty($in['clearToken']))$c['token']='';
   if($c['verifyToken']==='')$c['verifyToken']=bin2hex(random_bytes(12));
   if(isset($in['appSecret'])&&trim((string)$in['appSecret'])!=='')$c['appSecret']=preg_replace('/[^a-f0-9]/i','',(string)$in['appSecret']);
+  if(isset($in['testNumber']))$c['testNumber']=preg_replace('/\D/','',(string)$in['testNumber']);
+  if(isset($in['testMode'])){$c['testMode']=(bool)$in['testMode'];if($c['testMode']&&strlen(waPhone($c['testNumber']))<11)respond(400,['error'=>'Enter a valid test mobile number to turn on test mode.']);}
   if(isset($in['lang']))$c['lang']=preg_replace('/[^A-Za-z_]/','',(string)$in['lang'])?:'en';
   foreach(waGroups() as $g){if(isset($in['on'][$g]))$c['on'][$g]=(bool)$in['on'][$g];if(isset($in['tpl'][$g])){$t=preg_replace('/[^a-z0-9_]/','',strtolower((string)$in['tpl'][$g]));$c['tpl'][$g]=$t?:waDefaults()[$g];}}
   save($pdo,'wa_config','main',$c);respond(200,waPublic($c,true)+['lastRun'=>waLastRun($pdo)]);}
@@ -134,7 +138,8 @@ if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not al
   if(!$manual&&empty($c['on'][$group]))respond(200,['skipped'=>'Automatic sending is off for this message.']);
   $cl=$base['clientId']!==''?waDoc($pdo,'spa_clients',$base['clientId']):[];
   if(!empty($cl['waOff']))respond(200,['skipped'=>'The client has WhatsApp messages turned off.']);
-  $to=waPhone((string)($in['to']??($cl['phone']??'')));
+  $to=waPhone((string)($in['to']??($cl['phone']??'')));$tn=waTest($c);
+  if($tn!==''){$base['test']=true;$base['origTo']=$to;$to=$tn;if($base['dedupe']!=='')$base['dedupe']='test:'.$base['dedupe'];}
   if(strlen($to)<11){$l=waLog($pdo,$base+['to'=>$to,'status'=>'failed','error'=>'No valid mobile number for the client.']);respond(200,['ok'=>false,'error'=>$l['error'],'log'=>$l]);}
   if(!$manual&&$base['dedupe']!==''&&waLogged($pdo,$base['kind'],$base['dedupe']))respond(200,['skipped'=>'Already sent before.']);
   $file=null;$tmp=null;
@@ -143,7 +148,7 @@ if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not al
   $params=array_values(array_map('strval',is_array($in['params']??null)?$in['params']:[]));
   $r=waSendTpl($pdo,$c,$group,$to,$params,$file);if($tmp)@unlink($tmp);
   $l=waLog($pdo,$base+['to'=>$to,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'']);
-  respond(200,['ok'=>$r['ok'],'error'=>$r['error']??'','log'=>$l]);}
+  respond(200,['ok'=>$r['ok'],'error'=>$r['error']??'','log'=>$l,'test'=>$tn!=='']);}
 /* daily job (Hostinger cron): birthday wishes. Called with the secret cron key. */
 /* birthday wishes for today (IST); safe to call many times: each client gets one wish per year */
 function waBirthdays(PDO $pdo,array $c):array{
@@ -151,9 +156,9 @@ function waBirthdays(PDO $pdo,array $c):array{
   $biz=waDoc($pdo,'spa_business','profile');$bname=(string)($biz['name']??'');$sent=0;$failed=0;
   $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='spa_clients'");$q->execute();$rows=$q->fetchAll();
   foreach($rows as $row){$cl=json_decode($row['data'],true)?:[];$dob=(string)($cl['dob']??'');if(strlen($dob)<10||substr($dob,5,5)!==$md||!empty($cl['waOff']))continue;
-    $to=waPhone((string)($cl['phone']??''));if(strlen($to)<11)continue;$dk=$row['id'].'|'.$yr;if(waLogged($pdo,'birthday',$dk))continue;
+    $to=waPhone((string)($cl['phone']??''));$tn=waTest($c);$orig=$to;if($tn!==''){$to=$tn;}if(strlen($to)<11)continue;$dk=($tn!==''?'test:':'').$row['id'].'|'.$yr;if(waLogged($pdo,'birthday',$dk))continue;
     $first=trim(explode(' ',trim((string)($cl['name']??'')))[0]??'');$r=waSendTpl($pdo,$c,'birthday',$to,[$first?:'there',$bname?:'us'],null);
-    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>'Automatic (daily)']);
+    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>'Automatic (daily)']+($tn!==''?['test'=>true,'origTo'=>$orig]:[]));
     $r['ok']?$sent++:$failed++;}
   return['sent'=>$sent,'failed'=>$failed];
 }
@@ -161,7 +166,7 @@ function waBirthdays(PDO $pdo,array $c):array{
 function waDaily(PDO $pdo):void{
   $c=waCfg($pdo);if($c['phoneId']===''||$c['token']===''||empty($c['on']['birthday']))return;
   $now=new DateTime('now',new DateTimeZone('Asia/Kolkata'));if((int)$now->format('G')<9)return;
-  $id='bday-'.$now->format('Y-m-d');
+  $id='bday-'.$now->format('Y-m-d').(waTest($c)!==''?'-test':'');
   try{$q=$pdo->prepare('INSERT INTO docs(collection,id,data,updated_at)VALUES(?,?,?,CURRENT_TIMESTAMP)');$q->execute(['wa_runs',$id,json_encode(['state'=>'running','at'=>gmdate('c')])]);}catch(Throwable $e){return;}
   @set_time_limit(300);ignore_user_abort(true);$r=waBirthdays($pdo,$c);
   save($pdo,'wa_runs',$id,['state'=>'done','at'=>gmdate('c'),'sent'=>$r['sent'],'failed'=>$r['failed']]);
