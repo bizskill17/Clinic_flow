@@ -154,7 +154,7 @@ if($action==='wa_media'){$u=me($pdo);if(!manager($u)){http_response_code(403);ex
 if($action==='wa_subscribe'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can do this.']);$c=waCfg($pdo);if($c['wabaId']===''||$c['token']==='')respond(400,['error'=>'Save the WhatsApp Business Account ID and the token first.']);
   [$code,$r]=waHttp(waBase($c).'/'.rawurlencode($c['wabaId']).'/subscribed_apps',$c['token'],[]);if($code>=200&&$code<300&&!empty($r['success']))respond(200,['ok'=>true]);respond(400,['error'=>waErr($r)]);}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
-if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>waDoc($pdo,'wa_runs','hook-last')['at']??'','hook'=>waDoc($pdo,'wa_runs','hook-last'),'verify'=>waDoc($pdo,'wa_runs','hook-verify')]);}
+if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>(string)(waDoc($pdo,'wa_runs','hook-last')['at']??''),'hook'=>waDoc($pdo,'wa_runs','hook-last')?:null,'verify'=>waDoc($pdo,'wa_runs','hook-verify')?:null]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
