@@ -91,11 +91,12 @@ function waSamplePdf(string $text):string{
 /* Meta webhook: delivery/read/failed statuses and STOP replies. Public URL, checked with the verify token (and app secret if saved). */
 if(($_GET['action']??'')==='wa_webhook'){
   $c=waCfg($pdo);
-  if($method==='GET'){if(($_GET['hub_mode']??'')==='subscribe'&&$c['verifyToken']!==''&&hash_equals($c['verifyToken'],(string)($_GET['hub_verify_token']??''))){header('Content-Type: text/plain');echo (string)($_GET['hub_challenge']??'');exit;}http_response_code(403);echo 'Forbidden';exit;}
+  if($method==='GET'){$okv=($_GET['hub_mode']??'')==='subscribe'&&$c['verifyToken']!==''&&hash_equals($c['verifyToken'],(string)($_GET['hub_verify_token']??''));save($pdo,'wa_runs','hook-verify',['at'=>gmdate('c'),'ok'=>$okv]);if($okv){header('Content-Type: text/plain');echo (string)($_GET['hub_challenge']??'');exit;}http_response_code(403);echo 'Forbidden';exit;}
   $raw=(string)file_get_contents('php://input');
-  if($c['appSecret']!==''){$sig=(string)($_SERVER['HTTP_X_HUB_SIGNATURE_256']??'');if(!hash_equals('sha256='.hash_hmac('sha256',$raw,$c['appSecret']),$sig)){http_response_code(403);exit;}}
+  if($c['appSecret']!==''){$sig=(string)($_SERVER['HTTP_X_HUB_SIGNATURE_256']??'');if(!hash_equals('sha256='.hash_hmac('sha256',$raw,$c['appSecret']),$sig)){save($pdo,'wa_runs','hook-last',['at'=>gmdate('c'),'state'=>'rejected','note'=>'App secret does not match']);http_response_code(403);exit;}}
   $j=json_decode($raw,true)?:[];
-  save($pdo,'wa_runs','hook-last',['at'=>gmdate('c'),'state'=>'hook']);
+  $ns=0;$nm=0;foreach(($j['entry']??[]) as $en)foreach(($en['changes']??[]) as $ch){$ns+=count($ch['value']['statuses']??[]);$nm+=count($ch['value']['messages']??[]);}
+  save($pdo,'wa_runs','hook-last',['at'=>gmdate('c'),'state'=>'ok','statuses'=>$ns,'messages'=>$nm,'field'=>(string)($j['entry'][0]['changes'][0]['field']??''),'waba'=>(string)($j['entry'][0]['id']??'')]);
   foreach(($j['entry']??[]) as $en)foreach(($en['changes']??[]) as $ch){$v=$ch['value']??[];
     foreach(($v['statuses']??[]) as $st){$wid=(string)($st['id']??'');if($wid==='')continue;
       $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute(['%'.$wid.'%']);
@@ -153,12 +154,13 @@ if($action==='wa_media'){$u=me($pdo);if(!manager($u)){http_response_code(403);ex
 if($action==='wa_subscribe'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can do this.']);$c=waCfg($pdo);if($c['wabaId']===''||$c['token']==='')respond(400,['error'=>'Save the WhatsApp Business Account ID and the token first.']);
   [$code,$r]=waHttp(waBase($c).'/'.rawurlencode($c['wabaId']).'/subscribed_apps',$c['token'],[]);if($code>=200&&$code<300&&!empty($r['success']))respond(200,['ok'=>true]);respond(400,['error'=>waErr($r)]);}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
-if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>waDoc($pdo,'wa_runs','hook-last')['at']??'']);}
+if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>waDoc($pdo,'wa_runs','hook-last')['at']??'','hook'=>waDoc($pdo,'wa_runs','hook-last'),'verify'=>waDoc($pdo,'wa_runs','hook-verify')]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
   if(!empty($in['clearToken']))$c['token']='';
   if($c['verifyToken']==='')$c['verifyToken']=bin2hex(random_bytes(12));
+  if(!empty($in['clearSecret']))$c['appSecret']='';
   if(isset($in['appSecret'])&&trim((string)$in['appSecret'])!=='')$c['appSecret']=preg_replace('/[^a-f0-9]/i','',(string)$in['appSecret']);
   if(isset($in['testNumber']))$c['testNumber']=preg_replace('/\D/','',(string)$in['testNumber']);
   if(isset($in['testMode'])){$c['testMode']=(bool)$in['testMode'];if($c['testMode']&&strlen(waPhone($c['testNumber']))<11)respond(400,['error'=>'Enter a valid test mobile number to turn on test mode.']);}
