@@ -7,11 +7,11 @@ function body():array{$x=json_decode((string)file_get_contents('php://input'),tr
 function clean(array $u):array{unset($u['passwordHash']);return $u;}
 $cf=__DIR__.'/config.php';if(!is_file($cf))respond(503,['error'=>'Database configuration is missing.']);
 try{$cfg=require $cf;$pdo=new PDO('mysql:host='.$cfg['host'].';dbname='.$cfg['name'].';charset=utf8mb4',$cfg['user'],$cfg['pass'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_PERSISTENT=>true]);$pdo->exec('CREATE TABLE IF NOT EXISTS docs (collection VARCHAR(64) NOT NULL,id VARCHAR(100) NOT NULL,data LONGTEXT NOT NULL,updated_at DATETIME(3) NOT NULL,PRIMARY KEY(collection,id),KEY updated_at(updated_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');}catch(Throwable $e){error_log($e->getMessage());respond(500,['error'=>'Database connection failed.']);}
-$cols=['spa_clients','spa_services','spa_invoices','spa_receipts','spa_categories','spa_cities','spa_states','spa_users','spa_business','ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage','spa_mem_plans','spa_memberships','spa_redemptions','ph_supplier_payments','spa_mship_plans','spa_mships','wa_log','exp_categories','exp_vendors','exp_expenses','exp_vendor_payments'];$method=$_SERVER['REQUEST_METHOD']??'GET';$in=$method==='GET'?[]:body();$action=$method==='GET'?($_GET['action']??'collection'):($in['action']??'collection');
+$cols=['spa_clients','spa_services','spa_invoices','spa_receipts','spa_categories','spa_cities','spa_states','spa_users','spa_business','ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage','spa_mem_plans','spa_memberships','spa_redemptions','ph_supplier_payments','spa_mship_plans','spa_mships','wa_log','wa_inbox','exp_categories','exp_vendors','exp_expenses','exp_vendor_payments'];$method=$_SERVER['REQUEST_METHOD']??'GET';$in=$method==='GET'?[]:body();$action=$method==='GET'?($_GET['action']??'collection'):($in['action']??'collection');
 function findUser(PDO $p,string $key):?array{$q=$p->prepare('SELECT id,data FROM docs WHERE collection=?');$q->execute(['spa_users']);foreach($q as $r){$u=json_decode($r['data'],true);if(is_array($u)&&((string)$r['id']===$key||strcasecmp((string)($u['userId']??''),$key)===0)){$u['id']=$r['id'];return $u;}}return null;}
 function me(PDO $p):array{$id=$_SESSION['user_id']??'';$last=(int)($_SESSION['last_seen']??0);if(!$id||time()-$last>28800){session_unset();session_destroy();respond(401,['error'=>'Session expired.']);}$u=findUser($p,(string)$id);if(!$u||($u['status']??'Active')!=='Active'){session_unset();session_destroy();respond(403,['error'=>'Account is inactive.']);}$_SESSION['last_seen']=time();return $u;}
 function admin(array $u):bool{return($u['role']??'')==='Admin';}function manager(array $u):bool{return in_array(($u['role']??''),['Admin','Manager'],true);}function roleDept(array $u):string{return['Spa'=>'spa','Aesthetics'=>'aes','Pharmacy'=>'pha'][$u['role']??'']??'';}
-function allowed(array $u,string $c,string $method):bool{if(manager($u))return true;if($c==='wa_log')return $method==='GET';if(in_array($c,['exp_categories','exp_vendors','exp_expenses','exp_vendor_payments'],true))return $method!=='DELETE';$d=roleDept($u);if(!$d)return false;if(in_array($c,['spa_clients','spa_cities','spa_states','spa_business'],true))return $method==='GET'||$c!=='spa_business';if($c==='spa_users')return $method==='GET';if($c==='ph_items'&&$d==='spa')return $method==='GET';if($d==='spa')return in_array($c,['spa_services','spa_invoices','spa_receipts','spa_categories','dept_openings','dept_usage','spa_mem_plans','spa_memberships','spa_redemptions','spa_mship_plans','spa_mships'],true);if($d==='aes')return in_array($c,['ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage','ph_items'],true);if($d==='pha')return in_array($c,['ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','spa_receipts','ph_supplier_payments'],true);return false;}
+function allowed(array $u,string $c,string $method):bool{if(manager($u))return true;if($c==='wa_log')return $method==='GET';if($c==='wa_inbox')return false;if(in_array($c,['exp_categories','exp_vendors','exp_expenses','exp_vendor_payments'],true))return $method!=='DELETE';$d=roleDept($u);if(!$d)return false;if(in_array($c,['spa_clients','spa_cities','spa_states','spa_business'],true))return $method==='GET'||$c!=='spa_business';if($c==='spa_users')return $method==='GET';if($c==='ph_items'&&$d==='spa')return $method==='GET';if($d==='spa')return in_array($c,['spa_services','spa_invoices','spa_receipts','spa_categories','dept_openings','dept_usage','spa_mem_plans','spa_memberships','spa_redemptions','spa_mship_plans','spa_mships'],true);if($d==='aes')return in_array($c,['ae_proc_categories','ae_procedures','ae_appointments','ae_consultations','ae_quotations','ae_sessions','ae_invoices','ae_consents','dept_openings','dept_usage','ph_items'],true);if($d==='pha')return in_array($c,['ph_items','ph_item_categories','ph_suppliers','ph_moves','ph_receipts','spa_receipts','ph_supplier_payments'],true);return false;}
 /* Actor-aware writes share the same locked check for forms and bulk imports. */
 function save(PDO $p,string $c,string $id,array $d,bool $cancelling=false,?array $actor=null):array{
  $own=!$p->inTransaction();if($own)$p->beginTransaction();$related=[];
@@ -95,6 +95,7 @@ if(($_GET['action']??'')==='wa_webhook'){
   $raw=(string)file_get_contents('php://input');
   if($c['appSecret']!==''){$sig=(string)($_SERVER['HTTP_X_HUB_SIGNATURE_256']??'');if(!hash_equals('sha256='.hash_hmac('sha256',$raw,$c['appSecret']),$sig)){http_response_code(403);exit;}}
   $j=json_decode($raw,true)?:[];
+  save($pdo,'wa_runs','hook-last',['at'=>gmdate('c'),'state'=>'hook']);
   foreach(($j['entry']??[]) as $en)foreach(($en['changes']??[]) as $ch){$v=$ch['value']??[];
     foreach(($v['statuses']??[]) as $st){$wid=(string)($st['id']??'');if($wid==='')continue;
       $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute(['%'.$wid.'%']);
@@ -103,6 +104,8 @@ if(($_GET['action']??'')==='wa_webhook'){
         if(($rank[$new]??0)>=($rank[$d['status']??'sent']??0)||$new==='failed'){$d['status']=$new;$d[$new.'At']=gmdate('c');
           if($new==='failed'){$e=$st['errors'][0]??[];$d['error']=mb_substr(trim('(#'.($e['code']??'').') '.($e['title']??'').' '.($e['error_data']['details']??$e['message']??'')),0,300);}
           save($pdo,'wa_log',$r['id'],$d);}}}
+    $names=[];foreach(($v['contacts']??[]) as $ct)$names[(string)($ct['wa_id']??'')]=(string)($ct['profile']['name']??'');
+    foreach(($v['messages']??[]) as $m){waInboxStore($pdo,$m,$names);}
     foreach(($v['messages']??[]) as $m){$txt=strtolower(trim((string)($m['text']['body']??$m['button']['text']??'')));
       if(in_array($txt,['stop','unsubscribe','stop messages'],true)){$from=substr(preg_replace('/\D/','',(string)($m['from']??'')),-10);
         $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='spa_clients'");$q->execute();
@@ -110,8 +113,47 @@ if(($_GET['action']??'')==='wa_webhook'){
   }
   respond(200,['ok'=>true]);
 }
+/* ---- WhatsApp inbox: incoming client messages and staff replies (Admin and Manager) ---- */
+function waLast10(string $p):string{return substr(preg_replace('/\D/','',$p),-10);}
+function waClientByPhone(PDO $pdo,string $p):array{$l=waLast10($p);if($l==='')return[];$q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='spa_clients' AND data LIKE ?");$q->execute(['%'.$l.'%']);foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(waLast10((string)($d['phone']??''))===$l)return['id'=>$r['id'],'name'=>(string)($d['name']??'')];}return[];}
+function waInboxStore(PDO $pdo,array $m,array $names):void{
+  $id=(string)($m['id']??'');if($id==='')return;$from=(string)($m['from']??'');$t=(string)($m['type']??'text');
+  $text=(string)($m['text']['body']??$m['button']['text']??$m['interactive']['button_reply']['title']??$m['interactive']['list_reply']['title']??$m['reaction']['emoji']??'');
+  $media=$m[$t]??[];$cap=is_array($media)?(string)($media['caption']??''):'';
+  if($t==='location'){$text='📍 '.trim(($m['location']['name']??'').' '.($m['location']['address']??'')).' ('.($m['location']['latitude']??'').', '.($m['location']['longitude']??'').')';}
+  $cl=waClientByPhone($pdo,$from);
+  save($pdo,'wa_inbox','in_'.preg_replace('/[^A-Za-z0-9_.=-]/','',$id),['dir'=>'in','waId'=>$id,'from'=>$from,'last10'=>waLast10($from),'profileName'=>$names[$from]??'','clientId'=>$cl['id']??'','clientName'=>$cl['name']??'',
+    'type'=>$t,'text'=>$text?:$cap,'caption'=>$cap,'mediaId'=>is_array($media)?(string)($media['id']??''):'','mime'=>is_array($media)?(string)($media['mime_type']??''):'','filename'=>is_array($media)?(string)($media['filename']??''):'',
+    'at'=>gmdate('c',(int)($m['timestamp']??time())),'read'=>false]);
+}
+function waGet(string $url,string $token):array{if(!function_exists('curl_init'))return[0,'',''];$h=curl_init($url);curl_setopt_array($h,[CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token],CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>60,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_USERAGENT=>'clinic-system']);$raw=curl_exec($h);$code=(int)curl_getinfo($h,CURLINFO_HTTP_CODE);$type=(string)curl_getinfo($h,CURLINFO_CONTENT_TYPE);curl_close($h);return[$code,(string)$raw,$type];}
+function waBase(array $c):string{return rtrim((string)($GLOBALS['cfg']['waBase']??'https://graph.facebook.com/v25.0'),'/');}
+if($action==='wa_reply'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!manager($u))respond(403,['error'=>'Only Admin or Manager can reply.']);$c=waCfg($pdo);
+  if($c['phoneId']===''||$c['token']==='')respond(400,['error'=>'WhatsApp is not set up yet.']);
+  $l10=waLast10((string)($in['to']??''));$text=trim((string)($in['text']??''));if($l10===''||$text==='')respond(400,['error'=>'Type a message.']);
+  $q=$pdo->prepare("SELECT data FROM docs WHERE collection='wa_inbox' AND data LIKE ?");$q->execute(['%"last10":"'.$l10.'"%']);$last=0;$to='';
+  foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(($d['dir']??'')==='in'){$ts=strtotime((string)($d['at']??''))?:0;if($ts>$last){$last=$ts;$to=(string)$d['from'];}}}
+  if(!$last||time()-$last>86400)respond(400,['error'=>'The 24-hour reply window has closed. WhatsApp only allows an approved template now.']);
+  [$code,$r]=waHttp(waBase($c).'/'.rawurlencode($c['phoneId']).'/messages',$c['token'],['messaging_product'=>'whatsapp','recipient_type'=>'individual','to'=>$to,'type'=>'text','text'=>['preview_url'=>false,'body'=>mb_substr($text,0,4000)]]);
+  $ok=$code>=200&&$code<300&&!empty($r['messages'][0]['id']);$wid=$ok?(string)$r['messages'][0]['id']:'';
+  $cl=waClientByPhone($pdo,$to);$id='out_'.($wid!==''?preg_replace('/[^A-Za-z0-9_.=-]/','',$wid):bin2hex(random_bytes(8)));
+  $rec=['dir'=>'out','waId'=>$wid,'from'=>$to,'last10'=>$l10,'clientId'=>$cl['id']??'','clientName'=>$cl['name']??'','type'=>'text','text'=>$text,'at'=>gmdate('c'),'read'=>true,'by'=>$u['name']??'','status'=>$ok?'sent':'failed','error'=>$ok?'':waErr($r)];
+  save($pdo,'wa_inbox',$id,$rec);$rec['id']=$id;
+  if(!$ok)respond(400,['error'=>$rec['error'],'rec'=>$rec]);respond(200,['ok'=>true,'rec'=>$rec]);}
+if($action==='wa_read'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!manager($u))respond(403,['error'=>'Not permitted.']);$c=waCfg($pdo);$l10=waLast10((string)($in['to']??''));if($l10==='')respond(400,['error'=>'Missing number.']);
+  $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_inbox' AND data LIKE ?");$q->execute(['%"last10":"'.$l10.'"%']);$latest='';$lt='';
+  foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(($d['dir']??'')==='in'&&empty($d['read'])){$d['read']=true;save($pdo,'wa_inbox',$r['id'],$d);if(($d['at']??'')>$lt){$lt=$d['at'];$latest=(string)$d['waId'];}}}
+  if($latest!==''&&$c['token']!==''&&$c['phoneId']!=='')waHttp(waBase($c).'/'.rawurlencode($c['phoneId']).'/messages',$c['token'],['messaging_product'=>'whatsapp','status'=>'read','message_id'=>$latest]);
+  respond(200,['ok'=>true]);}
+if($action==='wa_media'){$u=me($pdo);if(!manager($u)){http_response_code(403);exit;}$c=waCfg($pdo);$id=(string)($_GET['id']??'');$d=waDoc($pdo,'wa_inbox',$id);if(empty($d['mediaId'])){http_response_code(404);echo 'Not found';exit;}
+  $dir=fileDir($cfg);$key=hash('sha256',$d['mediaId']);$exts=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','application/pdf'=>'pdf','audio/ogg'=>'ogg','audio/mpeg'=>'mp3','video/mp4'=>'mp4'];$mime=strtok((string)($d['mime']??''),';');$ext=$exts[$mime]??'bin';$path=$dir.'/wa_'.$key.'.'.$ext;
+  if(!is_file($path)){[$code,$raw]=waGet(waBase($c).'/'.rawurlencode($d['mediaId']),$c['token']);$meta=json_decode($raw,true)?:[];if(empty($meta['url'])){http_response_code(404);echo 'This file is no longer available from WhatsApp.';exit;}[$c2,$bin]=waGet((string)$meta['url'],$c['token']);if($c2<200||$c2>=300||$bin===''){http_response_code(502);echo 'Could not download the file.';exit;}file_put_contents($path,$bin);}
+  header_remove('Content-Type');header('Content-Type: '.($mime?:'application/octet-stream'));header('Content-Length: '.filesize($path));header('Content-Disposition: inline; filename="'.preg_replace('/[^A-Za-z0-9._ -]/','',(string)($d['filename']??'')?:('whatsapp.'.$ext)).'"');header('X-Content-Type-Options: nosniff');readfile($path);exit;}
+/* link the app to the WhatsApp account so Meta sends delivery reports and incoming messages */
+if($action==='wa_subscribe'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can do this.']);$c=waCfg($pdo);if($c['wabaId']===''||$c['token']==='')respond(400,['error'=>'Save the WhatsApp Business Account ID and the token first.']);
+  [$code,$r]=waHttp(waBase($c).'/'.rawurlencode($c['wabaId']).'/subscribed_apps',$c['token'],[]);if($code>=200&&$code<300&&!empty($r['success']))respond(200,['ok'=>true]);respond(400,['error'=>waErr($r)]);}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
-if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo)]);}
+if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>waDoc($pdo,'wa_runs','hook-last')['at']??'']);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
@@ -171,7 +213,7 @@ function waDaily(PDO $pdo):void{
   @set_time_limit(300);ignore_user_abort(true);$r=waBirthdays($pdo,$c);
   save($pdo,'wa_runs',$id,['state'=>'done','at'=>gmdate('c'),'sent'=>$r['sent'],'failed'=>$r['failed']]);
 }
-function waLastRun(PDO $pdo):?array{$q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_runs' ORDER BY id DESC LIMIT 1");$q->execute();$r=$q->fetch();if(!$r)return null;$d=json_decode($r['data'],true)?:[];$d['day']=substr($r['id'],5);return $d;}
+function waLastRun(PDO $pdo):?array{$q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_runs' AND id LIKE 'bday-%' ORDER BY id DESC LIMIT 1");$q->execute();$r=$q->fetch();if(!$r)return null;$d=json_decode($r['data'],true)?:[];$d['day']=substr($r['id'],5);return $d;}
 /* ---- expenses: department staff see their own department; Admin-only categories (e.g. Salaries) are for Admin only ---- */
 function expVisible(array $u,array $d):bool{if(admin($u))return true;if(!empty($d['adminOnly']))return false;if(manager($u))return true;$n=['spa'=>'Spa','aes'=>'Aesthetics','pha'=>'Pharmacy'][roleDept($u)]??'';return $n!==''&&($d['dept']??'')===$n;}
 /* Cancellation is atomic, with a snapshot check against concurrent payments/stock use. */
