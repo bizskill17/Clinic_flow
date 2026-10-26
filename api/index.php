@@ -106,7 +106,7 @@ function payPage(PDO $pdo):void{
     echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p>'.($qi!==''?'<img class="qimg" src="'.$h($qi).'" alt="UPI QR code">':'<div class="qr" id="qr" data-l="'.$h($link).'"></div>');
     if($link!=='')echo '<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
      ;
-    if($qi!=='')echo '<a class="pay" href="pay.php?qr=1" download="Veda-QR.png">Save QR Image</a><p class="muted" style="margin:8px 0 0">Paying from this phone? Save the QR, then open GPay, PhonePe or Paytm › Scan › choose the image from your gallery.</p>';
+    if($qi!=='')echo '<a class="pay" href="pay.php?qr=1" download="Veda-QR.png">Save QR Image</a>';
     echo '<p class="note">After paying, please send the <b>payment screenshot</b> to us on WhatsApp. Our team will confirm it.</p>';
     if($qi===''&&$link!=='')echo '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>try{var e=document.getElementById("qr"),q=qrcode(0,"M");q.addData(e.getAttribute("data-l"));q.make();e.innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(x){}</script>';
   }
