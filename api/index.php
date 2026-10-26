@@ -87,24 +87,25 @@ function payPage(PDO $pdo):void{
   foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if($r['id']==='profile')$bn=(string)($d['name']??'');if($r['id']==='logo')$logo=(string)($d['data']??'');}
   if(strpos($logo,'data:image/')!==0)$logo='';$bn=$bn?:'Veda Associates';
   $c=waCfg($pdo);$upi=trim((string)$c['upiId']);$pn=trim((string)$c['upiName'])?:$bn;
+  $qi=(string)(waDoc($pdo,'pay_qr','main')['img']??'');if(!preg_match('#^data:image/(png|jpeg|webp);base64,#',$qi))$qi='';
   $link=$upi!==''?'upi://pay?'.http_build_query(['pa'=>$upi,'pn'=>$pn,'cu'=>'INR'],'','&',PHP_QUERY_RFC3986):'';
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Pay · '.$h($bn).'</title>'
    .'<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1d2a24;background:linear-gradient(160deg,#eef4f0 0%,#dfeae3 55%,#e9efe6 100%)}'
    .'.card{width:100%;max-width:400px;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(30,60,45,.12);padding:28px 24px;text-align:center}'
    .'.brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:6px}.brand img{width:64px;height:64px;object-fit:contain;border-radius:14px}.brand b{font-size:19px}'
-   .'.muted{color:#5d6b64;font-size:14px}.qr{margin:16px auto 4px;width:220px;height:220px}.qr svg{width:220px;height:220px}'
+   .'.muted{color:#5d6b64;font-size:14px}.qimg{display:block;width:100%;max-width:300px;margin:14px auto 4px;border-radius:12px}.qr{margin:16px auto 4px;width:220px;height:220px}.qr svg{width:220px;height:220px}'
    .'.upi{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0 18px}.upi code{background:#eef3ef;padding:4px 10px;border-radius:6px;font-size:15px}'
    .'button.cp{font:inherit;font-size:13px;border:1px solid #cfd9d3;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer}'
    .'.pay{display:block;background:#1f6f4a;color:#fff;text-decoration:none;font-weight:600;font-size:17px;padding:14px;border-radius:12px}'
    .'.note{font-size:14px;background:#eef3ef;border-radius:12px;padding:12px;margin-top:18px}</style></head><body><main class="card">'
    .'<div class="brand">'.($logo!==''?'<img src="'.$h($logo).'" alt="">':'').'<b>'.$h($bn).'</b></div>';
-  if($link===''){echo '<p class="muted">Online payment is not available right now. Please contact us on WhatsApp.</p>';}
+  if($link===''&&$qi===''){echo '<p class="muted">Online payment is not available right now. Please contact us on WhatsApp.</p>';}
   else{
-    echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p><div class="qr" id="qr" data-l="'.$h($link).'"></div>'
-     .'<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
-     .'<a class="pay" href="'.$h($link).'">Pay with UPI app</a>'
-     .'<p class="note">After paying, please send the <b>payment screenshot</b> to us on WhatsApp. Our team will confirm it.</p>'
-     .'<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>try{var e=document.getElementById("qr"),q=qrcode(0,"M");q.addData(e.getAttribute("data-l"));q.make();e.innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(x){}</script>';
+    echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p>'.($qi!==''?'<img class="qimg" src="'.$h($qi).'" alt="UPI QR code">':'<div class="qr" id="qr" data-l="'.$h($link).'"></div>');
+    if($link!=='')echo '<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
+     .'<a class="pay" href="'.$h($link).'">Pay with UPI app</a>';
+    echo '<p class="note">After paying, please send the <b>payment screenshot</b> to us on WhatsApp. Our team will confirm it.</p>';
+    if($qi===''&&$link!=='')echo '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>try{var e=document.getElementById("qr"),q=qrcode(0,"M");q.addData(e.getAttribute("data-l"));q.make();e.innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(x){}</script>';
   }
   echo '</main></body></html>';}
 /* a one-page sample PDF for template tests */
@@ -183,8 +184,11 @@ if($action==='wa_subscribe'){if($method!=='POST')respond(405,['error'=>'Method n
   [$code,$r]=waHttp(waBase($c).'/'.rawurlencode($c['wabaId']).'/subscribed_apps',$c['token'],[]);if(!($code>=200&&$code<300&&!empty($r['success'])))respond(400,['error'=>waErr($r)]);
   [$c2,$raw2]=waGet(waBase($c).'/'.rawurlencode($c['wabaId']).'/subscribed_apps',$c['token']);$l=json_decode($raw2,true)?:[];$apps=[];foreach(($l['data']??[]) as $x){$d=$x['whatsapp_business_api_data']??$x;$apps[]=['id'=>(string)($d['id']??''),'name'=>(string)($d['name']??'')];}
   respond(200,['ok'=>true,'apps'=>$apps]);}
+if($action==='pay_qr'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change this.']);$img=(string)($in['img']??'');
+  if($img!==''&&(!preg_match('#^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$#',$img)||strlen($img)>2000000))respond(400,['error'=>'Choose a PNG or JPG image under 1.5 MB.']);
+  save($pdo,'pay_qr','main',['img'=>$img,'at'=>gmdate('c'),'by'=>$u['name']??'']);respond(200,['ok'=>true,'qrImg'=>$img]);}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
-if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>(string)(waDoc($pdo,'wa_runs','hook-last')['at']??''),'hook'=>waDoc($pdo,'wa_runs','hook-last')?:null,'verify'=>waDoc($pdo,'wa_runs','hook-verify')?:null]);}
+if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>(string)(waDoc($pdo,'wa_runs','hook-last')['at']??''),'hook'=>waDoc($pdo,'wa_runs','hook-last')?:null,'verify'=>waDoc($pdo,'wa_runs','hook-verify')?:null,'qrImg'=>(string)(waDoc($pdo,'pay_qr','main')['img']??'')]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
   if(isset($in['token'])&&trim((string)$in['token'])!=='')$c['token']=trim((string)$in['token']);
