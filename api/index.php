@@ -31,6 +31,8 @@ function save(PDO $p,string $c,string $id,array $d,bool $cancelling=false,?array
   if($own)$p->commit();return $related;
  }catch(Throwable $e){if($own&&$p->inTransaction())$p->rollBack();throw $e;}
 }
+if($action==='pay_page'&&isset($_GET['qr'])){$qi=(string)(waDoc($pdo,'pay_qr','main')['img']??'');if(!preg_match('#^data:image/(png|jpeg|webp);base64,(.+)$#',$qi,$m)){http_response_code(404);header('Content-Type: text/plain');echo 'No QR image.';exit;}
+  $ext=$m[1]==='jpeg'?'jpg':$m[1];header('Content-Type: image/'.$m[1]);header('Content-Disposition: attachment; filename="Veda-QR.'.$ext.'"');header('X-Robots-Tag: noindex');echo base64_decode($m[2]);exit;}
 if($action==='pay_page'){header('Content-Type: text/html; charset=utf-8');header('X-Robots-Tag: noindex');payPage($pdo);exit;}
 if($action==='brand'){$q=$pdo->prepare('SELECT id,data FROM docs WHERE collection=? AND id IN (?,?)');$q->execute(['spa_business','profile','logo']);$n='';$l='';foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if($r['id']==='profile')$n=(string)($d['name']??'');if($r['id']==='logo')$l=(string)($d['data']??'');}respond(200,['name'=>$n,'logo'=>$l]);}
 if($action==='login'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=findUser($pdo,trim((string)($in['userId']??'')));if(!$u||($u['status']??'Active')!=='Active'||empty($u['passwordHash'])||!password_verify((string)($in['password']??''),(string)$u['passwordHash']))respond(401,['error'=>'Invalid User ID or password.']);session_regenerate_id(true);$_SESSION['user_id']=$u['id'];$_SESSION['last_seen']=time();respond(200,['user'=>clean($u)]);}
@@ -103,7 +105,8 @@ function payPage(PDO $pdo):void{
   else{
     echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p>'.($qi!==''?'<img class="qimg" src="'.$h($qi).'" alt="UPI QR code">':'<div class="qr" id="qr" data-l="'.$h($link).'"></div>');
     if($link!=='')echo '<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
-     .'<a class="pay" href="'.$h($link).'">Pay with UPI app</a>';
+     ;
+    if($qi!=='')echo '<a class="pay" href="pay.php?qr=1" download="Veda-QR.png">Save QR Image</a><p class="muted" style="margin:8px 0 0">Paying from this phone? Save the QR, then open GPay, PhonePe or Paytm › Scan › choose the image from your gallery.</p>';
     echo '<p class="note">After paying, please send the <b>payment screenshot</b> to us on WhatsApp. Our team will confirm it.</p>';
     if($qi===''&&$link!=='')echo '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>try{var e=document.getElementById("qr"),q=qrcode(0,"M");q.addData(e.getAttribute("data-l"));q.make();e.innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(x){}</script>';
   }
