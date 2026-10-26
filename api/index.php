@@ -94,7 +94,7 @@ function payPage(PDO $pdo):void{
   echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Pay · '.$h($bn).'</title>'
    .'<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1d2a24;background:linear-gradient(160deg,#eef4f0 0%,#dfeae3 55%,#e9efe6 100%)}'
    .'.card{width:100%;max-width:400px;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(30,60,45,.12);padding:28px 24px;text-align:center}'
-   .'.brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:6px}.brand img{width:64px;height:64px;object-fit:contain;border-radius:14px}.brand b{font-size:19px}'
+   .'.brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:6px}.brand img{width:auto;height:auto;max-width:200px;max-height:90px;object-fit:contain}.brand b{font-size:19px}'
    .'.muted{color:#5d6b64;font-size:14px}.qimg{display:block;width:100%;max-width:300px;margin:14px auto 4px;border-radius:12px}.qr{margin:16px auto 4px;width:220px;height:220px}.qr svg{width:220px;height:220px}'
    .'.upi{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0 18px}.upi code{background:#eef3ef;padding:4px 10px;border-radius:6px;font-size:15px}'
    .'button.cp{font:inherit;font-size:13px;border:1px solid #cfd9d3;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer}'
