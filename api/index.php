@@ -31,6 +31,7 @@ function save(PDO $p,string $c,string $id,array $d,bool $cancelling=false,?array
   if($own)$p->commit();return $related;
  }catch(Throwable $e){if($own&&$p->inTransaction())$p->rollBack();throw $e;}
 }
+if($action==='pay_page'){header('Content-Type: text/html; charset=utf-8');header('X-Robots-Tag: noindex');payPage($pdo);exit;}
 if($action==='brand'){$q=$pdo->prepare('SELECT id,data FROM docs WHERE collection=? AND id IN (?,?)');$q->execute(['spa_business','profile','logo']);$n='';$l='';foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if($r['id']==='profile')$n=(string)($d['name']??'');if($r['id']==='logo')$l=(string)($d['data']??'');}respond(200,['name'=>$n,'logo'=>$l]);}
 if($action==='login'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=findUser($pdo,trim((string)($in['userId']??'')));if(!$u||($u['status']??'Active')!=='Active'||empty($u['passwordHash'])||!password_verify((string)($in['password']??''),(string)$u['passwordHash']))respond(401,['error'=>'Invalid User ID or password.']);session_regenerate_id(true);$_SESSION['user_id']=$u['id'];$_SESSION['last_seen']=time();respond(200,['user'=>clean($u)]);}
 if($action==='logout'){session_unset();session_destroy();respond(200,['ok'=>true]);}
@@ -48,8 +49,8 @@ if($action==='file_delete'){if($method!=='POST')respond(405,['error'=>'Method no
 /* ---- WhatsApp (Meta Cloud API): settings are kept server-side; the access token never goes back to the browser ---- */
 function waGroups():array{return['invoice','quotation','receipt','prescription','education','birthday'];}
 function waDefaults():array{return['invoice'=>'veda_invoice','quotation'=>'veda_quotation','receipt'=>'veda_receipt','prescription'=>'veda_prescription','education'=>'veda_education','birthday'=>'veda_birthday'];}
-function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>'','verifyToken'=>'','appSecret'=>'','testMode'=>false,'testNumber'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
-function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on'],'testMode'=>!empty($c['testMode']),'testNumber'=>!empty($c['testMode'])?(string)$c['testNumber']:''];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'verifyToken'=>$c['verifyToken'],'appSecretSet'=>$c['appSecret']!=='','testNumber'=>(string)$c['testNumber']];}return $o;}
+function waCfg(PDO $p):array{$q=$p->prepare('SELECT data FROM docs WHERE collection=? AND id=?');$q->execute(['wa_config','main']);$r=$q->fetch();$d=$r?(json_decode($r['data'],true)?:[]):[];$d+=['phoneId'=>'','wabaId'=>'','token'=>'','on'=>[],'tpl'=>[],'lang'=>'en','cronKey'=>'','verifyToken'=>'','appSecret'=>'','testMode'=>false,'testNumber'=>'','upiId'=>'','upiName'=>''];foreach(waGroups() as $g){if(!isset($d['on'][$g]))$d['on'][$g]=false;if(empty($d['tpl'][$g]))$d['tpl'][$g]=waDefaults()[$g];}return $d;}
+function waPublic(array $c,bool $full):array{$o=['configured'=>$c['phoneId']!==''&&$c['token']!=='','on'=>$c['on'],'testMode'=>!empty($c['testMode']),'testNumber'=>!empty($c['testMode'])?(string)$c['testNumber']:''];if($full){$o+=['phoneId'=>$c['phoneId'],'wabaId'=>$c['wabaId'],'tokenMasked'=>$c['token']!==''?str_repeat('•',8).substr($c['token'],-4):'','tpl'=>$c['tpl'],'lang'=>$c['lang'],'verifyToken'=>$c['verifyToken'],'appSecretSet'=>$c['appSecret']!=='','testNumber'=>(string)$c['testNumber'],'upiId'=>(string)$c['upiId'],'upiName'=>(string)$c['upiName']];}return $o;}
 /* test mode: every client message goes to the saved test number instead */
 function waTest(array $c):string{return !empty($c['testMode'])?waPhone((string)$c['testNumber']):'';}
 function waPhone(string $s):string{$d=preg_replace('/\D/','',$s);if(strlen($d)===11&&$d[0]==='0')$d=substr($d,1);if(strlen($d)===10)$d='91'.$d;return $d;}
@@ -79,6 +80,33 @@ function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?arr
   if($code>=200&&$code<300&&!empty($r['messages'][0]['id']))return['ok'=>true,'waId'=>$r['messages'][0]['id']];
   return['ok'=>false,'error'=>waErr($r)];
 }
+/* public "Pay now" page: your UPI QR code and UPI ID */
+function payPage(PDO $pdo):void{
+  $h=function($x){return htmlspecialchars((string)$x,ENT_QUOTES,'UTF-8');};
+  $q=$pdo->prepare('SELECT id,data FROM docs WHERE collection=? AND id IN (?,?)');$q->execute(['spa_business','profile','logo']);$bn='';$logo='';
+  foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if($r['id']==='profile')$bn=(string)($d['name']??'');if($r['id']==='logo')$logo=(string)($d['data']??'');}
+  if(strpos($logo,'data:image/')!==0)$logo='';$bn=$bn?:'Veda Associates';
+  $c=waCfg($pdo);$upi=trim((string)$c['upiId']);$pn=trim((string)$c['upiName'])?:$bn;
+  $link=$upi!==''?'upi://pay?'.http_build_query(['pa'=>$upi,'pn'=>$pn,'cu'=>'INR'],'','&',PHP_QUERY_RFC3986):'';
+  echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Pay · '.$h($bn).'</title>'
+   .'<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1d2a24;background:linear-gradient(160deg,#eef4f0 0%,#dfeae3 55%,#e9efe6 100%)}'
+   .'.card{width:100%;max-width:400px;background:#fff;border-radius:20px;box-shadow:0 10px 40px rgba(30,60,45,.12);padding:28px 24px;text-align:center}'
+   .'.brand{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:6px}.brand img{width:64px;height:64px;object-fit:contain;border-radius:14px}.brand b{font-size:19px}'
+   .'.muted{color:#5d6b64;font-size:14px}.qr{margin:16px auto 4px;width:220px;height:220px}.qr svg{width:220px;height:220px}'
+   .'.upi{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0 18px}.upi code{background:#eef3ef;padding:4px 10px;border-radius:6px;font-size:15px}'
+   .'button.cp{font:inherit;font-size:13px;border:1px solid #cfd9d3;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer}'
+   .'.pay{display:block;background:#1f6f4a;color:#fff;text-decoration:none;font-weight:600;font-size:17px;padding:14px;border-radius:12px}'
+   .'.note{font-size:14px;background:#eef3ef;border-radius:12px;padding:12px;margin-top:18px}</style></head><body><main class="card">'
+   .'<div class="brand">'.($logo!==''?'<img src="'.$h($logo).'" alt="">':'').'<b>'.$h($bn).'</b></div>';
+  if($link===''){echo '<p class="muted">Online payment is not available right now. Please contact us on WhatsApp.</p>';}
+  else{
+    echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p><div class="qr" id="qr" data-l="'.$h($link).'"></div>'
+     .'<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
+     .'<a class="pay" href="'.$h($link).'">Pay with UPI app</a>'
+     .'<p class="note">After paying, please send the <b>payment screenshot</b> to us on WhatsApp. Our team will confirm it.</p>'
+     .'<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script><script>try{var e=document.getElementById("qr"),q=qrcode(0,"M");q.addData(e.getAttribute("data-l"));q.make();e.innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true})}catch(x){}</script>';
+  }
+  echo '</main></body></html>';}
 /* a one-page sample PDF for template tests */
 function waSamplePdf(string $text):string{
   $t=preg_replace('/[^\x20-\x7E]/','',$text);$t=str_replace(['\\','(',')'],['\\\\','\\(','\\)'],$t);
@@ -164,6 +192,8 @@ if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not al
   if($c['verifyToken']==='')$c['verifyToken']=bin2hex(random_bytes(12));
   if(!empty($in['clearSecret']))$c['appSecret']='';
   if(isset($in['appSecret'])&&trim((string)$in['appSecret'])!=='')$c['appSecret']=preg_replace('/[^a-f0-9]/i','',(string)$in['appSecret']);
+  if(isset($in['upiId']))$c['upiId']=mb_substr(preg_replace('/[^A-Za-z0-9.\-_@]/','',(string)$in['upiId']),0,80);
+  if(isset($in['upiName']))$c['upiName']=mb_substr(trim(preg_replace('/\s+/',' ',(string)$in['upiName'])),0,60);
   if(isset($in['testNumber']))$c['testNumber']=preg_replace('/\D/','',(string)$in['testNumber']);
   if(isset($in['testMode'])){$c['testMode']=(bool)$in['testMode'];if($c['testMode']&&strlen(waPhone($c['testNumber']))<11)respond(400,['error'=>'Enter a valid test mobile number to turn on test mode.']);}
   if(isset($in['lang']))$c['lang']=preg_replace('/[^A-Za-z_]/','',(string)$in['lang'])?:'en';
