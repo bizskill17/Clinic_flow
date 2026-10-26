@@ -103,7 +103,7 @@ function payPage(PDO $pdo):void{
    .'<div class="brand">'.($logo!==''?'<img src="'.$h($logo).'" alt="">':'').'<b>'.$h($bn).'</b></div>';
   if($link===''&&$qi===''){echo '<p class="muted">Online payment is not available right now. Please contact us on WhatsApp.</p>';}
   else{
-    echo '<p class="muted" style="margin:0">Scan with any UPI app to pay</p>'.($qi!==''?'<img class="qimg" src="'.$h($qi).'" alt="UPI QR code">':'<div class="qr" id="qr" data-l="'.$h($link).'"></div>');
+    echo ($qi!==''?'<img class="qimg" src="'.$h($qi).'" alt="UPI QR code">':'<div class="qr" id="qr" data-l="'.$h($link).'"></div>');
     if($link!=='')echo '<div class="upi"><span class="muted">UPI ID</span><code id="upi">'.$h($upi).'</code><button class="cp" type="button" onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(document.getElementById(\'upi\').textContent).then(function(){b.textContent=\'Copied\'})">Copy</button></div>'
      ;
     if($qi!=='')echo '<a class="pay" href="pay.php?qr=1" download="Veda-QR.png">Save QR Image</a>';
