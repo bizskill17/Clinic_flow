@@ -6537,12 +6537,14 @@ var waQ=[],waT=null,waBusy=false;
 function waQueue(kind,id,manual){
   if(!manual&&!waOn(WA_GROUP[kind])) return;
   if(waQ.some(function(j){return j.kind===kind&&j.id===id})) return;
-  waQ.push({kind:kind,id:id,manual:!!manual}); clearTimeout(waT); waT=setTimeout(waRun,manual?50:1500);
+  waQ.push({kind:kind,id:id,manual:!!manual}); clearTimeout(waT); waT=setTimeout(waRun,manual?50:4000);
 }
 function waRun(){
   if(waBusy||!waQ.length) return; waBusy=true;
   var j=waQ.shift(), b=null; try{b=waBuild(j.kind,j.id)}catch(e){b=null}
   var next=function(){waBusy=false;if(waQ.length)waT=setTimeout(waRun,200)};
+  /* automatic invoices go only when money is still due; fully paid at saving = only the receipt goes */
+  if(!j.manual&&WA_GROUP[j.kind]==='invoice'){try{var bl=allBills().find(function(x){return x.id===j.id});if(bl&&billInfo(bl).bal<=0.004)return next()}catch(e){}}
   if(!b){if(j.manual)toast('Nothing to send for this document.');return next()}
   if((j.kind!=='edu')&&(!b.pdf||!b.pdf.data)){if(j.manual)toast('The PDF could not be created.');return next()}
   var body={action:'wa_send',group:b.group,kind:b.kind,docId:b.docId,docNo:b.docNo,clientId:b.clientId,clientName:b.clientName,to:b.to,params:b.params,dedupe:b.dedupe||'',manual:j.manual};
