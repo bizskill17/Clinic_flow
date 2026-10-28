@@ -2157,8 +2157,10 @@ function newDraft(){return {id:null,date:todayStr(),clientId:'',items:[blankItem
 function lineCalc(it,mp){var gross=r2((+it.qty||0)*(+it.rate||0)),pct=Math.min(Math.max(+it.discPct||0,0),100),disc=r2(gross*pct/100),after=r2(gross-disc),md=mp?r2(after*mp/100):0,amt=r2(after-md),tax=r2(amt*(+it.gst||0)/100);return {gross:gross,disc:disc,memDisc:md,amount:amt,tax:tax,total:r2(amt+tax)}}
 /* back calculation: type the final amount (incl. GST); below full price -> discount %, above -> rate is raised */
 function pctFmt(v){return +(+v||0).toFixed(2)}
-function amtBack(l,target,calc){
+function amtBack(l,target,calc,rateOnly){
   target=r2(target);var p0=l.discPct,r0=+l.rate||0,tot=function(){return r2(calc(l).total)};
+  if(rateOnly){if(!((+l.qty||0)>0))return {err:'Enter the quantity first.'};var a=0,z=100;l.rate=z/100;while(tot()<target){z*=2;l.rate=z/100}
+    while(z-a>1){var mm=Math.floor((a+z)/2);l.rate=mm/100;if(tot()>=target)z=mm;else a=mm}l.rate=z/100;var tz=tot();l.rate=a/100;if(Math.abs(tot()-target)>Math.abs(tz-target)||a===0&&target>0)l.rate=z/100;return {ok:true}}
   l.discPct=0;var full=tot();if(!(full>0)){l.discPct=p0;return {err:'Enter the quantity and rate first.'}}
   var findPct=function(){var lo=0,hi=1e8;l.discPct=100;if(tot()>target){return}while(hi-lo>1){var m=Math.floor((lo+hi)/2);l.discPct=m/1e6;if(tot()>target)lo=m;else hi=m}l.discPct=hi/1e6;if(tot()!==target){l.discPct=lo/1e6;if(Math.abs(tot()-target)>Math.abs(calc(Object.assign({},l,{discPct:hi/1e6})).total-target))l.discPct=hi/1e6}};
   if(Math.abs(target-full)<0.005)return {ok:true};
@@ -2173,11 +2175,11 @@ function amtWire(row,cls,l,calc,o){
   var e=row.querySelector(cls);if(!e||e.tagName!=='INPUT')return;
   e.onchange=function(){var v=parseFloat(e.value),note=e.parentNode.querySelector('.bc-note');
     if(!(v>=0)){e.value=r2(calc(l).total).toFixed(2);return}
-    var res=amtBack(l,v,calc);if(res.err){toast(res.err);e.value=r2(calc(l).total).toFixed(2);return}
+    var res=amtBack(l,v,calc,o.rateOnly);if(res.err){toast(res.err);e.value=r2(calc(l).total).toFixed(2);return}
     var ri=row.querySelector(o.rate),pi=row.querySelector(o.pct);if(ri)ri.value=l.rate;if(pi)pi.value=pctFmt(l.discPct);
     if(res.raised&&o.onRate)o.onRate();
     o.upd();e.value=r2(calc(l).total).toFixed(2);
-    if(note)note.textContent=res.raised?'Rate changed from '+money(res.raised.from)+' to '+money(res.raised.to):'';
+    var got=r2(calc(l).total);if(note)note.textContent=(res.raised?'Rate changed from '+money(res.raised.from)+' to '+money(res.raised.to)+'. ':'')+(Math.abs(got-r2(v))>0.004?'Closest possible to '+money(v)+' is '+money(got)+'.':'');
   };
   e.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();e.blur()}};
 }
@@ -3109,7 +3111,7 @@ function phRenderLines(d){
         '<div class="field"><label for="pl-mrp-'+i+'">MRP (₹)</label><input id="pl-mrp-'+i+'" class="pl-mrp num" type="number" min="0" step="0.01" value="'+esc(l.mrp)+'"></div>'+
         '<div class="field"><label for="pl-gst-'+i+'">GST</label><select id="pl-gst-'+i+'" class="pl-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),l.gst)+'</select></div>'+
         '<div class="field"><label>Taxable</label><div class="ro-box pl-tx">'+money(c.taxable)+'</div></div>'+
-        '<div class="field"><label>Amount</label><div class="ro-box strong pl-amt">'+money(c.total)+'</div></div>';
+        '<div class="field"><label for="pl-amt-'+i+'">Amount</label>'+amtInput('pl-amt',c.total).replace('<input ','<input id="pl-amt-'+i+'" ').replace('to work out the discount','to work out the purchase rate')+'</div>';
     } else if(t==='Sale'||t==='Return'){
       nums='<div class="field"><label for="pl-qty-'+i+'">Qty</label><input id="pl-qty-'+i+'" class="pl-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'"></div>'+
         '<div class="field"><label for="pl-rate-'+i+'">Rate before GST</label><input id="pl-rate-'+i+'" class="pl-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
@@ -3151,7 +3153,7 @@ function phRenderLines(d){
     if(g('.pl-rate')) g('.pl-rate').oninput=function(e){l.rate=+e.target.value||0;upd()};
     if(g('.pl-mrp')) g('.pl-mrp').oninput=function(e){l.mrp=+e.target.value||0};
     if(g('.pl-pct')) g('.pl-pct').oninput=function(e){l.discPct=+e.target.value||0;upd()};
-    amtWire(row,'.pl-amt',l,function(x){return phCalc(t,x)},{rate:'.pl-rate',pct:'.pl-pct',upd:function(){upd()}});
+    amtWire(row,'.pl-amt',l,function(x){return phCalc(t,x)},{rate:'.pl-rate',pct:'.pl-pct',rateOnly:t==='Purchase',upd:function(){upd()}});
     if(g('.pl-gst')) g('.pl-gst').onchange=function(e){l.gst=+e.target.value||0;upd()};
     g('.pl-del').onclick=function(){d.lines.splice(i,1);if(!d.lines.length)d.lines.push(phBlankLine());phRenderLines(d)};
   });
