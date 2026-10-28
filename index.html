@@ -112,6 +112,7 @@ header{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;a
 .wa-banner{background:color-mix(in srgb,var(--m3) 16%,var(--surface));border:1px solid color-mix(in srgb,var(--m3) 40%,var(--line));color:var(--ink);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}.wa-testmode.on{border-color:color-mix(in srgb,var(--m3) 55%,var(--line));background:color-mix(in srgb,var(--m3) 7%,var(--surface))}
 .wa-inbox{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:14px;min-height:480px}.wa-list{display:flex;flex-direction:column;gap:4px;max-height:640px;overflow:auto;min-width:0}.wa-conv{display:flex;gap:10px;align-items:center;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;min-width:0}.wa-conv.on{border-color:#1f9e55;background:color-mix(in srgb,#25d366 8%,var(--surface))}.wa-av{flex:none;width:36px;height:36px;border-radius:50%;background:color-mix(in srgb,#25d366 20%,var(--surface));color:#1f7a45;display:grid;place-items:center;font-weight:700;font-size:13px}.wa-cmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.wa-crow{display:flex;justify-content:space-between;gap:8px;align-items:center;min-width:0}.wa-crow strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wa-prev{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wa-unread{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#1f9e55;color:#fff;font-size:11px;font-weight:700}.wa-thread{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;min-width:0;background:var(--surface)}.wa-thread>.empty{margin:auto}.wa-thead{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}.wa-thead .wa-back{display:none}.wa-msgs{flex:1;overflow:auto;max-height:520px;min-height:300px;padding:14px;display:flex;flex-direction:column;gap:8px;background:color-mix(in srgb,#25d366 4%,var(--bg))}.wa-b{max-width:78%;padding:8px 12px;border-radius:12px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}.wa-b.in{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-top-left-radius:4px}.wa-b.out{align-self:flex-end;background:color-mix(in srgb,#25d366 18%,var(--surface));border-top-right-radius:4px}.wa-b.sys{background:color-mix(in srgb,var(--ink) 6%,var(--surface));font-size:13px}.wa-txt{white-space:pre-wrap}.wa-meta{font-size:11px;color:var(--muted);margin-top:3px;text-align:right}.wa-img{display:block;max-width:240px;max-height:240px;border-radius:8px;margin-bottom:4px}.wa-compose{border-top:1px solid var(--line);padding:10px 14px}.wa-crow2{display:flex;gap:8px;align-items:flex-end}.wa-crow2 textarea{flex:1;min-height:44px}@media (max-width:760px){.wa-inbox{grid-template-columns:1fr}.wa-inbox.has-sel .wa-list{display:none}.wa-inbox:not(.has-sel) .wa-thread{display:none}.wa-thead .wa-back{display:inline-flex}}
 .wa-diag{display:grid;gap:4px;font-size:13.5px;margin-bottom:10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--ink) 4%,var(--surface))}
+.amt-in{font-weight:600}.bc-note{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3}.bc-note:empty{display:none}
 .nbadge{margin-left:auto;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--m6);color:#fff;font-size:12px;font-weight:700;display:inline-grid;place-items:center}.mi[aria-current="page"] .nbadge{background:#fff;color:var(--m6)}
 .pend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}.pend-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);border-left:5px solid var(--tc);background:var(--surface);cursor:pointer;text-align:left;color:var(--ink);font:inherit}.pend-card .n{font-size:24px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;order:2}.pend-card .l{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em;order:1}.pend-card:hover{background:color-mix(in srgb,var(--tc) 8%,var(--surface))}.pend-card.on .l{color:var(--ink)}
 .mi[aria-current="page"]{background:var(--c);color:var(--on-color)}
@@ -2154,6 +2155,32 @@ function writeSplitReceipts(d,base){
 
 function newDraft(){return {id:null,date:todayStr(),clientId:'',items:[blankItem()],roundOn:true,payAmount:'',payMode:'Cash',payRef:'',useMem:true,memId:''}}
 function lineCalc(it,mp){var gross=r2((+it.qty||0)*(+it.rate||0)),pct=Math.min(Math.max(+it.discPct||0,0),100),disc=r2(gross*pct/100),after=r2(gross-disc),md=mp?r2(after*mp/100):0,amt=r2(after-md),tax=r2(amt*(+it.gst||0)/100);return {gross:gross,disc:disc,memDisc:md,amount:amt,tax:tax,total:r2(amt+tax)}}
+/* back calculation: type the final amount (incl. GST); below full price -> discount %, above -> rate is raised */
+function pctFmt(v){return +(+v||0).toFixed(2)}
+function amtBack(l,target,calc){
+  target=r2(target);var p0=l.discPct,r0=+l.rate||0,tot=function(){return r2(calc(l).total)};
+  l.discPct=0;var full=tot();if(!(full>0)){l.discPct=p0;return {err:'Enter the quantity and rate first.'}}
+  var findPct=function(){var lo=0,hi=1e8;l.discPct=100;if(tot()>target){return}while(hi-lo>1){var m=Math.floor((lo+hi)/2);l.discPct=m/1e6;if(tot()>target)lo=m;else hi=m}l.discPct=hi/1e6;if(tot()!==target){l.discPct=lo/1e6;if(Math.abs(tot()-target)>Math.abs(calc(Object.assign({},l,{discPct:hi/1e6})).total-target))l.discPct=hi/1e6}};
+  if(Math.abs(target-full)<0.005)return {ok:true};
+  if(target<full){findPct();return {ok:true}}
+  var lo=Math.round(r0*100),hi=Math.ceil(r0*100*target/full)+200;l.rate=hi/100;while(tot()<target){hi*=2;l.rate=hi/100}
+  while(hi-lo>1){var m=Math.floor((lo+hi)/2);l.rate=m/100;if(tot()>=target)hi=m;else lo=m}l.rate=hi/100;if(tot()>target)findPct();
+  return {ok:true,raised:{from:r0,to:l.rate}};
+}
+function amtInput(cls,v){return '<input class="'+cls+' num amt-in" type="number" min="0" step="0.01" value="'+r2(v).toFixed(2)+'" title="Type the final amount (incl. GST) to work out the discount"><span class="bc-note"></span>'}
+function amtShow(row,cls,v){var e=row.querySelector(cls);if(!e)return;if(e.tagName==='INPUT'){if(document.activeElement!==e)e.value=r2(v).toFixed(2);var n=e.parentNode.querySelector('.bc-note');if(n)n.textContent=''}else e.textContent=money(v)}
+function amtWire(row,cls,l,calc,o){
+  var e=row.querySelector(cls);if(!e||e.tagName!=='INPUT')return;
+  e.onchange=function(){var v=parseFloat(e.value),note=e.parentNode.querySelector('.bc-note');
+    if(!(v>=0)){e.value=r2(calc(l).total).toFixed(2);return}
+    var res=amtBack(l,v,calc);if(res.err){toast(res.err);e.value=r2(calc(l).total).toFixed(2);return}
+    var ri=row.querySelector(o.rate),pi=row.querySelector(o.pct);if(ri)ri.value=l.rate;if(pi)pi.value=pctFmt(l.discPct);
+    if(res.raised&&o.onRate)o.onRate();
+    o.upd();e.value=r2(calc(l).total).toFixed(2);
+    if(note)note.textContent=res.raised?'Rate changed from '+money(res.raised.from)+' to '+money(res.raised.to):'';
+  };
+  e.onkeydown=function(ev){if(ev.key==='Enter'){ev.preventDefault();e.blur()}};
+}
 function discPctOf(it){if(it.discPct!=null&&it.discMode!=='amt')return +it.discPct||0;var g=r2((+it.qty||0)*(+it.rate||0));return g>0?r2((+it.disc||0)/g*100):0}
 function sumItems(items,mp){
   var t={subtotal:0,discount:0,memBenefit:0,taxable:0,tax:0};
@@ -2227,15 +2254,16 @@ function renderItems(){
       '<div class="line-nums">'+
       '<div class="field"><label for="it-qty-'+i+'">Qty</label><input id="it-qty-'+i+'" class="it-qty num" type="number" min="1" step="1" value="'+esc(it.qty)+'"></div>'+
       '<div class="field"><label for="it-rate-'+i+'">Rate (₹)</label><input id="it-rate-'+i+'" class="it-rate num" type="number" min="0" step="0.01" value="'+esc(it.rate)+'"><span class="it-std">'+(+it.stdRate>+it.rate?'★ Member price · <s>'+money(it.stdRate)+'</s>':'')+'</span></div>'+
-      '<div class="field"><label for="it-pct-'+i+'">Discount %</label><input id="it-pct-'+i+'" class="it-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(it.discPct)+'"></div>'+
+      '<div class="field"><label for="it-pct-'+i+'">Discount %</label><input id="it-pct-'+i+'" class="it-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(it.discPct))+'"></div>'+
       '<div class="field"><label>Discount (₹)</label><div class="ro-box it-disc">'+money(lc.disc)+'</div></div>'+
       '<div class="field"><label for="it-gst-'+i+'">GST</label><select id="it-gst-'+i+'" class="it-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),it.gst)+'</select></div>'+
-      '<div class="field"><label>Amount</label><div class="ro-box strong it-amt">'+money(lc.total)+'</div></div>'+
+      '<div class="field"><label for="it-amt-'+i+'">Amount</label>'+amtInput('it-amt',lc.total).replace('<input ','<input id="it-amt-'+i+'" ')+'</div>'+
       '</div><div class="cons-line"><div class="cons-lbl">Consumables <span class="sub">(internal)</span></div><div class="h-cons"></div></div></div>';
   }).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, it=draft.items[i];
-    var upd=function(){var lc=lineCalc(it);row.querySelector('.it-disc').textContent=money(lc.disc);row.querySelector('.it-amt').textContent=money(lc.total);renderTotals()};
+    var upd=function(){var lc=lineCalc(it);row.querySelector('.it-disc').textContent=money(lc.disc);amtShow(row,'.it-amt',lc.total);renderTotals()};
+    amtWire(row,'.it-amt',it,function(x){return lineCalc(x)},{rate:'.it-rate',pct:'.it-pct',upd:function(){upd()},onRate:function(){it.stdRate=0;it.clubId='';it._auto=null;var sd=row.querySelector('.it-std');if(sd)sd.innerHTML=''}});
     combos.push(combo(row.querySelector('.h-svc'),{id:'it-svc-'+i,placeholder:'Type to search services',value:it.serviceId,emptyText:'Add services in Masters › Services',
       options:function(){return S.services.filter(function(s){return s.active!==false||s.id===it.serviceId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(s){return [s.id,s.name,money0(s.price)]})},
       missing:function(){return it.name},
@@ -2402,7 +2430,7 @@ function viewInvoice(id,fallback){
     var linked=r2(recs.reduce(function(s2,r){return s2+(+r.amount||0)},0)), memPart=r2(Math.min(+i.memPaid||0,x.paid)), fromAdv=r2(Math.max(0,x.paid-Math.min(linked,x.paid)-memPart));
     m.innerHTML='<h2>Invoice '+esc(i.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(i.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(i.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(i.date)+'</dd></dl><div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(i.total)+'</div>'+(x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">GST</th><th class="num">Amount</th></tr></thead><tbody>'+
-      (i.items||[]).map(function(it){var sl=it.note||staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+(+it.stdRate>+it.rate?'<div class="sub">★ Member price · standard '+money(it.stdRate)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(r2((+it.disc||0)+(+it.memDisc||0)))+(discPctOf(it)?' <span class="sub">('+esc(discPctOf(it))+'%)</span>':'')+'</td><td class="num">'+esc(it.gst)+'%</td><td class="num">'+money(it.total)+'</td></tr>'}).join('')+
+      (i.items||[]).map(function(it){var sl=it.note||staffLine(it);return '<tr><td>'+esc(it.name)+(sl?'<div class="sub">'+esc(sl)+'</div>':'')+(+it.stdRate>+it.rate?'<div class="sub">★ Member price · standard '+money(it.stdRate)+'</div>':'')+'</td><td class="num">'+esc(it.qty)+'</td><td class="num">'+money(it.rate)+'</td><td class="num">'+money(r2((+it.disc||0)+(+it.memDisc||0)))+(discPctOf(it)?' <span class="sub">('+esc(pctFmt(discPctOf(it)))+'%)</span>':'')+'</td><td class="num">'+esc(it.gst)+'%</td><td class="num">'+money(it.total)+'</td></tr>'}).join('')+
       '</tbody></table></div><div class="form-bottom" style="margin-top:12px"><div>'+
       '<div class="field" style="margin-top:8px"><label>Payments</label>'+(recs.length?recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join(''):'')+(i.redemptionId&&findIn('redemptions',i.redemptionId)?'<div class="sub">Rest of the bill used package slip <button class="link" data-red="'+esc(i.redemptionId)+'">'+esc(i.redemptionNo)+'</button></div>':'')+(memPart>0.004?'<div class="sub">Paid from package <button class="link" data-mem="'+esc(i.memId)+'">'+esc(i.memNo)+'</button> · <strong style="color:var(--ink)">'+money(memPart)+'</strong></div>':'')+(fromAdv>0.004?'<div class="sub">Adjusted from advance / on-account payments · <strong style="color:var(--ink)">'+money(fromAdv)+'</strong></div>':'')+(!recs.length&&fromAdv<=0.004&&memPart<=0.004?'<div class="sub">No payments yet.</div>':'')+'</div></div>'+
       '<div class="totals"><div class="r"><span>Subtotal</span><span>'+money(i.subtotal)+'</span></div><div class="r"><span>Discount</span><span>− '+money(i.discount)+'</span></div>'+(i.memBenefit?'<div class="r"><span>Package benefit</span><span>− '+money(i.memBenefit)+'</span></div>':'')+'<div class="r"><span>Taxable</span><span>'+money(i.taxable)+'</span></div><div class="r"><span>CGST</span><span>'+money(g[0])+'</span></div><div class="r"><span>SGST</span><span>'+money(g[1])+'</span></div>'+
@@ -3086,12 +3114,12 @@ function phRenderLines(d){
       nums='<div class="field"><label for="pl-qty-'+i+'">Qty</label><input id="pl-qty-'+i+'" class="pl-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'"></div>'+
         '<div class="field"><label for="pl-rate-'+i+'">Rate before GST</label><input id="pl-rate-'+i+'" class="pl-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
         '<div class="field"><label>Amount</label><div class="ro-box pl-gross">'+money(c.gross)+'</div></div>'+
-        '<div class="field"><label for="pl-pct-'+i+'">Discount %</label><input id="pl-pct-'+i+'" class="pl-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(l.discPct)+'"></div>'+
+        '<div class="field"><label for="pl-pct-'+i+'">Discount %</label><input id="pl-pct-'+i+'" class="pl-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(l.discPct))+'"></div>'+
         '<div class="field"><label>Discount</label><div class="ro-box pl-disc">'+money(c.disc)+'</div></div>'+
         '<div class="field"><label>Amount before GST</label><div class="ro-box pl-tx">'+money(c.taxable)+'</div></div>'+
         '<div class="field"><label for="pl-gst-'+i+'">GST rate</label><select id="pl-gst-'+i+'" class="pl-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),l.gst)+'</select></div>'+
         '<div class="field"><label>GST</label><div class="ro-box pl-gstamt">'+money(c.tax)+'</div></div>'+
-        '<div class="field"><label>Amount after GST</label><div class="ro-box strong pl-amt">'+money(c.total)+'</div></div>';
+        '<div class="field"><label for="pl-amt-'+i+'">Amount after GST</label>'+amtInput('pl-amt',c.total).replace('<input ','<input id="pl-amt-'+i+'" ')+'</div>';
     } else {
       nums='<div class="field"><label for="pl-qty-'+i+'">Qty</label><input id="pl-qty-'+i+'" class="pl-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'"></div>'+
         '<div class="field"><label>Cost rate (₹)</label><div class="ro-box">'+money(l.rate)+'</div></div>'+
@@ -3106,7 +3134,7 @@ function phRenderLines(d){
   }).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, l=d.lines[i];
-    var upd=function(){var c=phCalc(t,l),set=function(cl,v){var e=row.querySelector(cl);if(e)e.textContent=money(v)};set('.pl-amt',c.total);set('.pl-tx',c.taxable);set('.pl-disc',c.disc);set('.pl-gross',c.gross);set('.pl-gstamt',c.tax);phRenderTotals(d)};
+    var upd=function(){var c=phCalc(t,l),set=function(cl,v){var e=row.querySelector(cl);if(e)e.textContent=money(v)};amtShow(row,'.pl-amt',c.total);set('.pl-tx',c.taxable);set('.pl-disc',c.disc);set('.pl-gross',c.gross);set('.pl-gstamt',c.tax);phRenderTotals(d)};
     var cb=combo(row.querySelector('.h-item'),{id:'pl-item-'+i,placeholder:'Type to search items',value:l.itemId,emptyText:'Add items in Masters › Items',
       options:function(){var bm=phBatches(d.id);return S.phItems.filter(function(x){return x.status!=='Inactive'||x.id===l.itemId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,phStockRec(bm,x.id).qty+' in stock']})},
       missing:function(){return l.name},
@@ -3123,6 +3151,7 @@ function phRenderLines(d){
     if(g('.pl-rate')) g('.pl-rate').oninput=function(e){l.rate=+e.target.value||0;upd()};
     if(g('.pl-mrp')) g('.pl-mrp').oninput=function(e){l.mrp=+e.target.value||0};
     if(g('.pl-pct')) g('.pl-pct').oninput=function(e){l.discPct=+e.target.value||0;upd()};
+    amtWire(row,'.pl-amt',l,function(x){return phCalc(t,x)},{rate:'.pl-rate',pct:'.pl-pct',upd:function(){upd()}});
     if(g('.pl-gst')) g('.pl-gst').onchange=function(e){l.gst=+e.target.value||0;upd()};
     g('.pl-del').onclick=function(){d.lines.splice(i,1);if(!d.lines.length)d.lines.push(phBlankLine());phRenderLines(d)};
   });
@@ -3218,7 +3247,7 @@ function phItemCell(r,k){
   if(phTypeCols(r.m.type).indexOf(k)<0) return '';
   var v=r.l[k];
   if(k==='qty') return String(+v||0);
-  if(k==='discPct') return (+v||0)+'%';
+  if(k==='discPct') return pctFmt(v)+'%';
   if(k==='gst') return (+v||0)+'%';
   if(k==='taxable'||k==='tax'||k==='disc'||k==='rate'||k==='mrp'||k==='total') return v===''||v==null?'':money(v);
   return esc(v);
@@ -3309,7 +3338,7 @@ function phViewMove(id,fallback){
     m0.innerHTML='<h2>'+esc(t)+' '+esc(m.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Date</dt><dd>'+fmtDate(m.date)+'</dd>'+(phPartyName(m)?'<dt>'+(t==='Purchase'?'Supplier':'Client')+'</dt><dd><strong>'+esc(phPartyName(m))+'</strong></dd>':'')+(m.billFile&&m.billFile.id?'<dt>Bill copy</dt><dd><a href="'+esc(blobUrl(m.billFile.id,m.billFile.type))+'" target="_blank" rel="noopener">'+EYE+' View supplier bill</a></dd>':'')+(t==='Purchase'?(function(){var bb=phBillBal(m);return bb?'<dt>Paid</dt><dd>'+money(bb.paid)+(bb.bal>0.004?' · <span class="due">due '+money(bb.bal)+'</span>':' · <span class="pill paid">Paid</span>')+'</dd>':''})():'')+(m.supplierBillNo?'<dt>Supplier bill</dt><dd>'+esc(m.supplierBillNo)+'</dd>':'')+(m.saleNo?'<dt>Against sale</dt><dd>'+esc(m.saleNo)+'</dd>':'')+'</dl>'+
       '<div style="text-align:right">'+(sale?statusPill(x.status):'<span class="pill '+PH_TYPE_PILL[t]+'">'+esc(t)+'</span>')+'<div class="big" style="margin-top:6px">'+money(m.total)+'</div>'+(sale&&x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr>'+cols.map(function(c,ix){return '<th'+(ix>=1?' class="num"':'')+'>'+c+'</th>'}).join('')+'</tr></thead><tbody>'+
-      (m.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.qty+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+(t==='Purchase'?money(l.mrp):(sale||t==='Return'?money(l.disc)+(l.discPct?' <span class="sub">('+esc(l.discPct)+'%)</span>':'')+'</td><td class="num">'+money(l.taxable):(l.mrp?money(l.mrp):'—')))+'</td><td class="num">'+(t==='Expiry'||t==='Damage'?'':esc(l.gst)+'%'+(sale||t==='Return'?' <span class="sub">'+money(l.tax)+'</span>':''))+'</td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
+      (m.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.qty+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+(t==='Purchase'?money(l.mrp):(sale||t==='Return'?money(l.disc)+(l.discPct?' <span class="sub">('+esc(pctFmt(l.discPct))+'%)</span>':'')+'</td><td class="num">'+money(l.taxable):(l.mrp?money(l.mrp):'—')))+'</td><td class="num">'+(t==='Expiry'||t==='Damage'?'':esc(l.gst)+'%'+(sale||t==='Return'?' <span class="sub">'+money(l.tax)+'</span>':''))+'</td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
       '</tbody></table></div>'+
       '<div class="form-bottom" style="margin-top:12px"><div>'+(sale?'<div class="field"><label>Payments</label>'+recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join('')+(fromAdv>0.004?'<div class="sub">Adjusted from advance / returns · <strong style="color:var(--ink)">'+money(fromAdv)+'</strong></div>':'')+(!recs.length&&fromAdv<=0.004?'<div class="sub">No payments yet.</div>':'')+'</div>':'')+'</div>'+
       '<div class="totals">'+(t==='Purchase'?'<div class="r"><span>Taxable</span><span>'+money(m.taxable)+'</span></div><div class="r"><span>GST</span><span>'+money(m.tax)+'</span></div>':'')+
@@ -4594,16 +4623,17 @@ function aiRenderLines(){
       '<div class="field"><label for="al-qty-'+i+'">'+(l.src==='qt'?'Sessions':'Qty')+'</label>'+(fixed?'<div class="ro-box">1</div>':'<input id="al-qty-'+i+'" class="al-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'">')+'</div>'+
       '<div class="field"><label for="al-rate-'+i+'">Rate</label><input id="al-rate-'+i+'" class="al-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
       '<div class="field"><label>Amount</label><div class="ro-box al-amt">'+money(c.amount)+'</div></div>'+
-      '<div class="field"><label for="al-pct-'+i+'">Discount %</label><input id="al-pct-'+i+'" class="al-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(l.discPct)+'"></div>'+
+      '<div class="field"><label for="al-pct-'+i+'">Discount %</label><input id="al-pct-'+i+'" class="al-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(l.discPct))+'"></div>'+
       '<div class="field"><label>Discount</label><div class="ro-box al-disc">'+money(c.disc)+'</div></div>'+
       '<div class="field"><label>Amount after discount</label><div class="ro-box al-net">'+money(c.net)+'</div></div>'+
       '<div class="field"><label for="al-gst-'+i+'">GST rate</label><select id="al-gst-'+i+'" class="al-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),l.gst)+'</select></div>'+
       '<div class="field"><label>GST</label><div class="ro-box al-tax">'+money(c.tax)+'</div></div>'+
-      '<div class="field"><label>Amount after GST</label><div class="ro-box strong al-tot">'+money(c.total)+'</div></div>'+
+      '<div class="field"><label for="al-tot-'+i+'">Amount after GST</label>'+amtInput('al-tot',c.total).replace('<input ','<input id="al-tot-'+i+'" ')+'</div>'+
       '</div></div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, l=d.lines[i];
-    var upd=function(){var c=aiCalc(l),set=function(k,v){row.querySelector(k).textContent=money(v)};set('.al-amt',c.amount);set('.al-disc',c.disc);set('.al-net',c.net);set('.al-tax',c.tax);set('.al-tot',c.total);aiRenderTotals()};
+    var upd=function(){var c=aiCalc(l),set=function(k,v){row.querySelector(k).textContent=money(v)};set('.al-amt',c.amount);set('.al-disc',c.disc);set('.al-net',c.net);set('.al-tax',c.tax);amtShow(row,'.al-tot',c.total);aiRenderTotals()};
+    amtWire(row,'.al-tot',l,aiCalc,{rate:'.al-rate',pct:'.al-pct',upd:function(){upd()}});
     if(l.src==='manual'){
       var cb=combo(row.querySelector('.h-proc'),{id:'al-proc-'+i,placeholder:'Type to search procedures',value:l.procId,emptyText:'Add procedures in Masters › Procedures',
         options:function(){return S.aeProcs.filter(function(x){return x.status!=='Inactive'||x.id===l.procId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,money0(x.price)]})},
@@ -4688,7 +4718,7 @@ function viewAeInv(id,fallback){
     var al=allocate(), R=aiReceipts(v,al), x=R.x, g=gstSplit(r2((+v.tax||0)+(+v.otherTax||0)));
     m.innerHTML='<h2>Invoice '+esc(v.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(v.clientName)+'</strong> '+esc(v.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(v.date)+'</dd></dl><div style="text-align:right">'+statusPill(x.status)+'<div class="big" style="margin-top:6px">'+money(v.total)+'</div>'+(x.bal>0.004?'<div class="due">Balance '+money(x.bal)+'</div>':'')+'</div></div>'+
       '<div class="tbl"><table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Discount</th><th class="num">After discount</th><th class="num">GST</th><th class="num">Total</th></tr></thead><tbody>'+
-      (v.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+(l.ref?'<div class="sub">'+esc(l.ref)+'</div>':'')+'</td><td class="num">'+l.qty+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(l.discPct)+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
+      (v.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+(l.ref?'<div class="sub">'+esc(l.ref)+'</div>':'')+'</td><td class="num">'+l.qty+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(pctFmt(l.discPct))+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
       '</tbody></table></div><div class="form-bottom" style="margin-top:12px"><div><div class="field" style="margin-top:8px"><label>Payments</label>'+
       (R.recs.length?R.recs.map(function(r){return '<div class="sub">'+fmtDate(r.date)+' · '+esc(r.no)+' · '+esc(r.mode)+(r.reference?' ('+esc(r.reference)+')':'')+' · <strong style="color:var(--ink)">'+money(r.amount)+'</strong></div>'}).join(''):'')+
       (R.fromAdv>0.004?'<div class="sub">Adjusted from advance / on-account payments · <strong style="color:var(--ink)">'+money(R.fromAdv)+'</strong></div>':'')+(!R.recs.length&&R.fromAdv<=0.004?'<div class="sub">None yet.</div>':'')+'</div></div>'+
@@ -5181,16 +5211,17 @@ function qtRenderLines(){
       '<div class="field"><label for="ql-ses-'+i+'">Sessions</label><input id="ql-ses-'+i+'" class="ql-ses num" type="number" min="1" step="1" value="'+esc(l.sessions)+'"></div>'+
       '<div class="field"><label for="ql-rate-'+i+'">Rate per session</label><input id="ql-rate-'+i+'" class="ql-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
       '<div class="field"><label>Amount</label><div class="ro-box ql-amt">'+money(c.amount)+'</div></div>'+
-      '<div class="field"><label for="ql-pct-'+i+'">Discount %</label><input id="ql-pct-'+i+'" class="ql-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(l.discPct)+'"></div>'+
+      '<div class="field"><label for="ql-pct-'+i+'">Discount %</label><input id="ql-pct-'+i+'" class="ql-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(l.discPct))+'"></div>'+
       '<div class="field"><label>Discount</label><div class="ro-box ql-disc">'+money(c.disc)+'</div></div>'+
       '<div class="field"><label>Amount after discount</label><div class="ro-box ql-net">'+money(c.net)+'</div></div>'+
       '<div class="field"><label for="ql-gst-'+i+'">GST rate</label><select id="ql-gst-'+i+'" class="ql-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),l.gst)+'</select></div>'+
       '<div class="field"><label>GST</label><div class="ro-box ql-tax">'+money(c.tax)+'</div></div>'+
-      '<div class="field"><label>Amount after GST</label><div class="ro-box strong ql-tot">'+money(c.total)+'</div></div>'+
+      '<div class="field"><label for="ql-tot-'+i+'">Amount after GST</label>'+amtInput('ql-tot',c.total).replace('<input ','<input id="ql-tot-'+i+'" ')+'</div>'+
       '</div></div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, l=d.lines[i];
-    var upd=function(){var c=qtLine(l),set=function(k,v){row.querySelector(k).textContent=money(v)};set('.ql-amt',c.amount);set('.ql-disc',c.disc);set('.ql-net',c.net);set('.ql-tax',c.tax);set('.ql-tot',c.total);qtRenderTotals()};
+    var upd=function(){var c=qtLine(l),set=function(k,v){row.querySelector(k).textContent=money(v)};set('.ql-amt',c.amount);set('.ql-disc',c.disc);set('.ql-net',c.net);set('.ql-tax',c.tax);amtShow(row,'.ql-tot',c.total);qtRenderTotals()};
+    amtWire(row,'.ql-tot',l,qtLine,{rate:'.ql-rate',pct:'.ql-pct',upd:function(){upd()}});
     var cb=combo(row.querySelector('.h-proc'),{id:'ql-proc-'+i,placeholder:'Type to search procedures',value:l.procId,emptyText:'Add procedures in Masters › Procedures',
       options:function(){return S.aeProcs.filter(function(x){return x.status!=='Inactive'||x.id===l.procId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,money0(x.price)]})},
       missing:function(){return l.name},onChange:function(v){var pr=findIn('aeProcs',v);l.procId=v;if(pr){l.name=pr.name;l.sac=pr.sac||'';l.rate=+pr.price||0;l.gst=+pr.gst||0}qtRenderLines();var n=$('#ql-ses-'+i);if(n)n.focus()}});
@@ -5256,7 +5287,7 @@ function viewQt(id,fallback){
     var q=findIn('aeQuotes',id)||fallback; if(!q){closeModal();return}
     m.innerHTML='<h2>Quotation '+esc(q.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(q.clientName)+'</strong> '+esc(q.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(q.date)+'</dd><dt>Consultation</dt><dd>'+esc(q.conNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(q.doctor||'—')+'</dd></dl><div style="text-align:right"><div class="big">'+money(q.total)+'</div></div></div>'+
       '<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Discount</th><th class="num">After discount</th><th class="num">GST</th><th class="num">Total</th></tr></thead><tbody>'+
-      (q.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+money(l.amount)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(l.discPct)+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
+      (q.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+money(l.amount)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(pctFmt(l.discPct))+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
       '</tbody></table></div>'+
       '<h3 class="sec-h">Sessions</h3><div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th><th class="num">Completed</th><th class="num">Booked</th><th class="num">Left</th><th>Progress</th><th></th></tr></thead><tbody>'+
       (q.lines||[]).map(function(l,i){var st=qtLineStats(q,i);return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+st.done+'</td><td class="num">'+st.booked+'</td><td class="num'+(st.left?'':' adv')+'"><strong>'+st.left+'</strong></td><td>'+progBar(st.done,+l.sessions||0)+'</td>'+
