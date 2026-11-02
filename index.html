@@ -1445,6 +1445,7 @@ function put(kind,obj){
 }
 function putRaw(kind,obj,internal){
   if(!internal&&obj&&findIn(kind,obj.id)&&!canEdit())return Promise.reject(new Error("Only Admin can edit existing records."));
+  if(!internal&&obj&&!findIn(kind,obj.id)&&!isAdmin()&&typeof obj.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(obj.date)&&obj.date<todayStr())return Promise.reject(new Error('Only Admin can enter a back date. Please use today’s date.'));
   var data=Object.assign({},obj); var id=data.id; delete data.id;
   if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);if(result&&result.related)result.related.forEach(function(r){var k=Object.keys(COL).find(function(k){return COL[k]===r.collection});if(!k)return;var j=S[k].findIndex(function(x){return x.id===r.record.id});if(j>=0)S[k][j]=r.record;else S[k].push(r.record)});scheduleRefresh();});
   var list=S[kind], i=list.findIndex(function(x){return x.id===id});
