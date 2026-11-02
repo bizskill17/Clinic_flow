@@ -2589,7 +2589,7 @@ function recordPayment(billId,clientId){
 /* =========================================================
    OUTSTANDING
    ========================================================= */
-var outView='bill';
+var outView='bill', outOld=false;
 function dueBills(al){return allBills().filter(function(b){return billInfo(b,al).bal>0.004}).sort(function(a,b){return (b.opening?1:0)-(a.opening?1:0)||(a.date||'').localeCompare(b.date||'')})}
 function dueInvoices(pm){return dueBills()}
 SECTIONS.outstanding={
@@ -2614,13 +2614,16 @@ SECTIONS.outstanding={
     var sups=withSup?S.phSuppliers.map(function(s){return {s:s,p:phSupplierPayable(s.id)}}).filter(function(x){return Math.abs(x.p.net)>0.004}).sort(function(a,b){return b.p.net-a.p.net}):[];
     var payTotal=r2(sups.reduce(function(t,x){return t+Math.max(0,x.p.net)},0));
     if(outView==='supplier'&&!withSup) outView='bill';
-    var html='<div class="tiles">'+tile('--m6','Due from clients',money0(total),clients.length+' client'+(clients.length===1?'':'s')+' owing')+tile('--m3','Due over 30 days',money0(over30),'Needs follow-up')+tile('--m5','Client advances',money0(advTotal),advs.length+' client'+(advs.length===1?'':'s')+' in credit')+
-      (withSup?tile('--m13','Payable to suppliers',money0(payTotal),sups.length+' supplier'+(sups.length===1?'':'s')):tile('--m4','Unpaid bills',String(list.length),'All departments'))+'</div>'+
+    var ov=function(v,old){return function(){outView=v;outOld=!!old;SECTIONS.outstanding.update();bindCommon()}};
+    var html='<div class="tiles">'+tile('--m6','Due from clients',money0(total),clients.length+' client'+(clients.length===1?'':'s')+' owing',ov('client'))+tile('--m3','Due over 30 days',money0(over30),'Needs follow-up',ov('bill',true))+tile('--m5','Client advances',money0(advTotal),advs.length+' client'+(advs.length===1?'':'s')+' in credit',ov('advance'))+
+      (withSup?tile('--m13','Payable to suppliers',money0(payTotal),sups.length+' supplier'+(sups.length===1?'':'s'),ov('supplier')):tile('--m4','Unpaid bills',String(list.length),'All departments',ov('bill')))+'</div>'+
       '<div class="toolbar"><div class="actions" role="group" aria-label="Show"><button class="btn'+(outView==='bill'?' primary':'')+'" data-view="bill">Dues by bill</button><button class="btn'+(outView==='client'?' primary':'')+'" data-view="client">Dues by client</button><button class="btn'+(outView==='advance'?' primary':'')+'" data-view="advance">Advances</button>'+(withSup?'<button class="btn'+(outView==='supplier'?' primary':'')+'" data-view="supplier">Supplier payables</button>':'')+'</div></div>';
+    if(outView!=='bill') outOld=false;
     if(outView==='bill'){
+      var allN=list.length; if(outOld){list=list.filter(function(x){return daysSince(x.date)>30});total=r2(list.reduce(function(t,x){return t+billInfo(x,al).bal},0));html+='<p class="hint">Showing only bills <strong>more than 30 days old</strong> ('+list.length+' of '+allN+'). <button type="button" class="link" data-outall>Show all bills</button></p>'}
       html+=list.length?'<div class="tbl"><table><thead><tr><th>Bill</th><th>Module</th><th>Date</th><th>Overdue</th><th>Client</th><th>Phone</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
         list.map(function(x){var i=billInfo(x,al);return '<tr><td class="nowrap">'+(x.opening?'<span class="pill off">Opening balance</span>':'<button class="link" data-'+(x.kind==='inv'?'inv':(x.kind==='ae'?'aeinv':'pm'))+'="'+esc(x.id)+'">'+esc(x.no)+'</button>')+'</td><td>'+esc(x.module)+'</td><td class="nowrap">'+fmtDate(x.date)+'</td><td>'+agePill(daysSince(x.date))+'</td><td>'+esc(x.clientName)+'</td><td class="nowrap">'+esc(x.clientPhone||'')+'</td><td class="num">'+money(x.total)+'</td><td class="num">'+money(i.paid)+'</td><td class="num due">'+money(i.bal)+'</td><td><div class="row-acts"><button class="btn sm w" data-recv="'+esc(x.opening?'':x.id)+'" data-recv-client="'+esc(x.clientId)+'">Record payment</button></div></td></tr>'}).join('')+
-        '</tbody><tfoot><tr><td colspan="8">Total</td><td class="num">'+money(total)+'</td><td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,list.length,'bills')+'</p>':'<div class="empty"><strong>No dues</strong>Every bill is fully paid.</div>';
+        '</tbody><tfoot><tr><td colspan="8">Total</td><td class="num">'+money(total)+'</td><td></td></tr></tfoot></table></div>'+'<p class="hint">'+countOf(list.length,list.length,'bills')+'</p>':(outOld?'<div class="empty"><strong>Nothing overdue</strong>No unpaid bill is more than 30 days old.</div>':'<div class="empty"><strong>No dues</strong>Every bill is fully paid.</div>');
     } else if(outView==='client'){
       html+=clients.length?'<div class="tbl"><table><thead><tr><th>Client</th><th>Phone</th><th class="num">Bills</th><th>Oldest due</th><th class="num">Balance</th><th></th></tr></thead><tbody>'+
         clients.map(function(c){return '<tr><td><button class="link" data-client-view="'+esc(c.id)+'">'+esc(c.name)+'</button></td><td class="nowrap">'+esc(c.phone||'')+'</td><td class="num">'+c.n+'</td><td>'+fmtDate(c.oldest)+' '+agePill(daysSince(c.oldest))+'</td><td class="num due">'+money(c.bal)+'</td><td><div class="row-acts"><button class="btn sm" data-ledger="'+esc(c.id)+'">Ledger</button><button class="btn sm w" data-recv="" data-recv-client="'+esc(c.id)+'">Record payment</button></div></td></tr>'}).join('')+
@@ -2635,7 +2638,8 @@ SECTIONS.outstanding={
         '</tbody></table></div><p class="hint">Payments made to suppliers aren’t recorded yet, so this shows opening balance plus purchases.</p>':'<div class="empty"><strong>Nothing payable</strong>No supplier opening balances or purchases yet.</div>';
     }
     b.innerHTML=html;
-    $$('[data-view]',b).forEach(function(x){x.onclick=function(){outView=x.dataset.view;SECTIONS.outstanding.update();bindCommon()}});
+    $$('[data-view]',b).forEach(function(x){x.onclick=function(){outView=x.dataset.view;outOld=false;SECTIONS.outstanding.update();bindCommon()}});
+    var oa=$('[data-outall]',b); if(oa) oa.onclick=function(){outOld=false;SECTIONS.outstanding.update();bindCommon()};
     $$('[data-recv-client]',b).forEach(function(x){x.onclick=function(){recordPayment(x.dataset.recv||null,x.dataset.recvClient)}});
   }
 };
