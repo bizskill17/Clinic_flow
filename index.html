@@ -1607,7 +1607,7 @@ function invInfo(inv,pm){if(inv&&inv.cancelled)return {paid:0,bal:0,status:'canc
 function statusPill(s){return '<span class="pill '+s+'">'+({paid:'Paid',partial:'Part paid',unpaid:'Unpaid',cancelled:'Cancelled'}[s])+'</span>'}
 /* next number = the lowest number not in use, so numbers freed by a delete are reused (1, 2, 3 … again) */
 function nextSeq(list){var used={};list.forEach(function(x){used[+x.seq||0]=1});var n=1;while(used[n])n++;return n}
-function clientById(id){return S.clients.find(function(c){return c.id===id})}
+var CLI_IX=null;function clientById(id){if(!id)return undefined;var L=S.clients,i=CLI_IX&&CLI_IX[id];if(i!=null&&L[i]&&L[i].id===id)return L[i];if(CLI_IX&&CLI_IX._n===L.length&&CLI_IX._l===L&&!(id in CLI_IX))return undefined;CLI_IX={_n:L.length,_l:L};for(var k=0;k<L.length;k++)CLI_IX[L[k].id]=k;i=CLI_IX[id];return i!=null?L[i]:undefined}
 function findIn(kind,id){return id?S[kind].find(function(x){return x.id===id}):null}
 function catName(s){var c=findIn('categories',s.categoryId);return c?c.name:(s.category||'')}
 function stateName(id){var s=findIn('states',id);return s?s.name:''}
@@ -1849,33 +1849,39 @@ function barChart(days,vals,today){
 /* =========================================================
    CLIENTS
    ========================================================= */
-var clientQ='';
+var clientQ='', clientShow=100, clientT=null;
 SECTIONS.clients={
   mount:function(){
     work.innerHTML=head('Clients',impBtn('clients')+'<button class="btn" id="c-export">Export CSV</button><button class="btn primary w" id="c-add">Add client</button>')+
       '<div class="toolbar"><div class="field grow"><label for="c-q">Search</label><input type="search" id="c-q" placeholder="Name, phone or email" value="'+esc(clientQ)+'"></div></div><div id="body"></div>';
-    $('#c-q').addEventListener('input',function(e){clientQ=e.target.value;SECTIONS.clients.update();bindCommon()});
+    $('#c-q').addEventListener('input',function(e){clientQ=e.target.value;clientShow=100;clearTimeout(clientT);clientT=setTimeout(function(){SECTIONS.clients.update();bindCommon()},250)});
     $('#c-add').addEventListener('click',function(){editClient(null)});
     $('#c-export').addEventListener('click',exportClients);bindImport();
   },
   update:function(){
     var b=$('#body',work); if(!b) return;
     if(!ready()){b.innerHTML=loadingHTML();return}
-    var st=clientStats(), q=norm(clientQ);
+    var st=dept==='spa'?clientStats():{}, q=norm(clientQ);
     var list=S.clients.filter(function(c){return !q||norm(c.name+' '+c.phone+' '+c.email).indexOf(q)>=0}).sort(function(a,b){return byText(a.name,b.name)});
     if(!S.clients.length){b.innerHTML='<div class="empty"><strong>No clients yet</strong>Add a client to start billing them.</div>';return}
     if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No client matches “'+esc(clientQ)+'”.</div>';return}
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Name</th><th>Phone</th><th>City</th>'+(dept==='spa'?'<th>Last visit</th><th class="num">Visits</th><th class="num">Billed</th><th class="num">Received</th><th class="num">Balance</th>':'<th>Email</th>')+'<th></th></tr></thead><tbody>'+
-      list.map(function(c){var s=st[c.id];return '<tr><td><button class="link" data-client-view="'+esc(c.id)+'">'+esc(c.name)+'</button>'+(c.email?'<div class="sub">'+esc(c.email)+'</div>':'')+'</td><td class="nowrap">'+esc(c.phone)+'</td><td>'+(function(){var l=cityLabel(c.cityId);return l.city?esc(l.city)+(l.state?'<div class="sub">'+esc(l.state)+'</div>':''):'<span class="sub">—</span>'})()+'</td>'+(dept==='spa'?'<td class="nowrap">'+(s.last?fmtDate(s.last):'<span class="sub">None</span>')+'</td><td class="num">'+s.n+'</td><td class="num">'+money(s.billed)+'</td><td class="num">'+money(s.received)+'</td><td class="num">'+balanceCell(s.acct)+'</td>':'<td>'+(c.email?esc(c.email):'<span class="sub">—</span>')+'</td>')+'<td><div class="row-acts w"><button class="btn sm" data-edit="'+esc(c.id)+'">Edit</button><button class="btn sm danger" data-del="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
-      '</tbody></table></div>';
+      list.slice(0,clientShow).map(function(c){var s=st[c.id];return '<tr><td><button class="link" data-client-view="'+esc(c.id)+'">'+esc(c.name)+'</button>'+(c.email?'<div class="sub">'+esc(c.email)+'</div>':'')+'</td><td class="nowrap">'+esc(c.phone)+'</td><td>'+(function(){var l=cityLabel(c.cityId);return l.city?esc(l.city)+(l.state?'<div class="sub">'+esc(l.state)+'</div>':''):'<span class="sub">—</span>'})()+'</td>'+(dept==='spa'?'<td class="nowrap">'+(s.last?fmtDate(s.last):'<span class="sub">None</span>')+'</td><td class="num">'+s.n+'</td><td class="num">'+money(s.billed)+'</td><td class="num">'+money(s.received)+'</td><td class="num">'+balanceCell(s.acct)+'</td>':'<td>'+(c.email?esc(c.email):'<span class="sub">—</span>')+'</td>')+'<td><div class="row-acts w"><button class="btn sm" data-edit="'+esc(c.id)+'">Edit</button><button class="btn sm danger" data-del="'+esc(c.id)+'">Delete</button></div></td></tr>'}).join('')+
+      '</tbody></table></div>'+(list.length>clientShow?'<div class="form-actions" style="justify-content:center"><button type="button" class="btn" id="c-more">Show more ('+Math.min(500,list.length-clientShow)+' of '+(list.length-clientShow).toLocaleString('en-IN')+' remaining)</button></div>':'');
+    var cm=$('#c-more',b);if(cm)cm.onclick=function(){clientShow+=500;SECTIONS.clients.update();bindCommon()};
     b.insertAdjacentHTML('afterbegin','<div class="count-line"><span>Total clients <strong>'+S.clients.length.toLocaleString('en-IN')+'</strong></span>'+(q?'<span>Matching “'+esc(clientQ)+'” <strong>'+list.length.toLocaleString('en-IN')+'</strong></span>':'')+'</div>');
     $$('[data-edit]',b).forEach(function(x){x.onclick=function(){editClient(x.dataset.edit)}});
     $$('[data-del]',b).forEach(function(x){x.onclick=function(){deleteClient(x.dataset.del)}});
   }
 };
 function clientStats(){
-  var al=allocate(),st={};
-  S.clients.forEach(function(c){var a=clientAccount(c.id,al);st[c.id]={n:0,last:'',billed:a.billed,received:a.received,due:a.due,advance:a.advance,acct:a}});
+  /* one pass over all bills and payments (was once per client: very slow with thousands of clients) */
+  var al=allocate(),st={},acc={};
+  var A=function(id){return acc[id]||(acc[id]={billed:0,received:0,due:0})};
+  allBills().forEach(function(b){if(!b.clientId)return;var a=A(b.clientId);if(!b.opening)a.billed+=b.total;a.due+=Math.max(0,r2(b.total-(al.paid[b.id]||0)))});
+  allReceipts().forEach(function(r){if(r.clientId)A(r.clientId).received+=+r.amount||0});
+  activeVouchers('phMoves').forEach(function(m){if(m.type==='Return'&&m.clientId)A(m.clientId).received+=+m.total||0});
+  S.clients.forEach(function(c){var x=acc[c.id]||{billed:0,received:0,due:0},a={billed:r2(x.billed),received:r2(x.received),due:r2(x.due),advance:r2(al.advance[c.id]||0)};st[c.id]={n:0,last:'',billed:a.billed,received:a.received,due:a.due,advance:a.advance,acct:a}});
   activeVouchers('invoices').forEach(function(i){var s=st[i.clientId];if(!s)return;s.n++;if((i.date||'')>s.last)s.last=i.date});
   return st;
 }
