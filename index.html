@@ -5847,13 +5847,14 @@ var clubF={q:'',status:'Active'};
 function clubSavings(m){return activeVouchers('invoices').filter(function(i){return !i.cancelled&&(i.items||[]).some(function(it){return it.clubId===m.id})}).map(function(i){var s=0;(i.items||[]).forEach(function(it){if(it.clubId===m.id)s+=clubSavingOf(it)});return {i:i,saving:r2(s)}})}
 SECTIONS.clubs={
   mount:function(){
-    work.innerHTML=head('Memberships Sold',readOnly?'':'<button class="btn primary w" id="cb-new">'+PLUS+' Sell membership</button>')+
+    work.innerHTML=head('Memberships Sold',readOnly?'':(isAdmin()?'<button class="btn" id="cb-bf">Bring forward old member</button>':'')+'<button class="btn primary w" id="cb-new">'+PLUS+' Sell membership</button>')+
       '<div class="toolbar"><div class="field grow"><label for="cb-q">Search</label><input type="search" id="cb-q" placeholder="Client, phone, plan or number" value="'+esc(clubF.q)+'"></div>'+
       '<div class="field"><label for="cb-st">Status</label><select id="cb-st">'+optList([['','All'],'Active','Upcoming','Expired'],clubF.status)+'</select></div></div><div id="body"></div>';
     var up=function(){SECTIONS.clubs.update();bindCommon()};
     $('#cb-q').oninput=function(e){clubF.q=e.target.value;up()};
     $('#cb-st').onchange=function(e){clubF.status=e.target.value;up()};
     var nb=$('#cb-new'); if(nb) nb.onclick=function(){sellClub(null)};
+    var bf=$('#cb-bf'); if(bf) bf.onclick=function(){bringForwardClub(null)};
   },
   update:function(){
     var b=$('#body',work); if(!b) return;
@@ -5868,7 +5869,7 @@ SECTIONS.clubs={
     b.innerHTML='<div class="tbl"><table><thead><tr><th>Membership</th><th>Client</th><th>Plan</th><th>Invoice</th><th class="num">Fee</th><th>Valid till</th><th class="num">Saved so far</th><th>Status</th></tr></thead><tbody>'+
       list.map(function(r){var m=r.m,sv=r2(clubSavings(m).reduce(function(s,x){return s+x.saving},0));return '<tr><td class="nowrap"><button class="link" data-club="'+esc(m.id)+'">'+esc(m.no)+'</button><div class="sub">'+fmtDate(m.date)+'</div></td>'+
         '<td><button class="link" style="color:inherit" data-client-view="'+esc(m.clientId)+'"><strong>'+esc(m.clientName)+'</strong></button><div class="sub">'+esc(m.clientPhone||'')+'</div></td>'+
-        '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+money(m.fee)+'</td>'+
+        '<td>'+esc(m.planName)+'</td><td class="nowrap">'+(m.broughtForward?'<span class="pill partial" title="Paid in the old system">Brought forward</span>':m.invoiceId&&invById(m.invoiceId)?'<button class="link" data-inv="'+esc(m.invoiceId)+'">'+esc(m.invoiceNo)+'</button>':esc(m.invoiceNo||'—'))+'</td><td class="num">'+(m.broughtForward?'<span class="sub">—</span>':money(m.fee))+'</td>'+
         '<td class="nowrap">'+fmtDate(m.expiry)+'</td><td class="num">'+money(sv)+'</td><td><span class="pill '+(r.st==='Active'?'paid':r.st==='Upcoming'?'partial':'unpaid')+'">'+esc(r.st)+'</span></td></tr>'}).join('')+
       '</tbody></table></div><p class="hint">'+countOf(list.length,activeVouchers('clubs').length,'memberships')+'</p>';
   }
@@ -5919,13 +5920,46 @@ function sellClub(cid){
       .catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
   };
 }
+/* existing members from the old system: no invoice or payment, just the plan and end date */
+function bringForwardClub(cid){
+  if(!isAdmin()){toast('Only Admin can bring forward old members.');return}
+  var plans=S.clubPlans.slice().sort(function(a,b){return ((a.status||'Active')==='Active'?0:1)-((b.status||'Active')==='Active'?0:1)||byText(a.name,b.name)});
+  if(!plans.length){toast('Add a plan in Masters › Membership Plans first.');return}
+  var st={clientId:cid||'',planId:plans[0].id};
+  var m=openModal('<h2>Bring forward old member</h2><p class="hint" style="margin:-6px 0 12px">For clients who bought a membership in the old system and already paid there. No invoice or payment is created; they get member prices until the end date.</p><form id="bff" novalidate><div class="f-grid">'+
+    '<div class="field span2"><label for="bf-client">Client <span class="req">*</span></label><div id="bf-client-host"></div></div>'+
+    '<div class="field span2"><label for="bf-plan">Plan <span class="req">*</span></label><select id="bf-plan">'+optList(plans.map(function(p){return [p.id,p.name+((p.status||'Active')==='Active'?'':' (inactive)')]}),st.planId)+'</select></div>'+
+    '<div class="field"><label for="bf-start">Started on (optional)</label><input type="date" id="bf-start"></div>'+
+    '<div class="field"><label for="bf-exp">Membership ends on <span class="req">*</span></label><input type="date" id="bf-exp" min="'+todayStr()+'"></div>'+
+    '<div class="field span2"><label for="bf-note">Note (optional)</label><input type="text" id="bf-note" maxlength="120" placeholder="e.g. Old system member, paid ₹25,000 on 12 Sep 2025" autocomplete="off"></div></div>'+
+    '<p class="err" id="bf-err" hidden></p>'+
+    '<div class="m-actions"><button type="button" class="btn" data-x>Cancel</button><button type="submit" class="btn primary">Add member</button></div></form>','--m3',true,function(m2){
+      combo(m2.querySelector('#bf-client-host'),{id:'bf-client',label:'Client',placeholder:'Type to search name or phone',value:st.clientId,emptyText:'No clients yet.',
+        options:function(){return S.clients.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(c){return [c.id,c.name,c.phone]})},onChange:function(v){st.clientId=v}});
+    });
+  m.querySelector('[data-x]').onclick=closeModal;
+  m.querySelector('#bf-plan').onchange=function(e){st.planId=e.target.value};
+  m.querySelector('#bff').onsubmit=function(e){
+    e.preventDefault();
+    var err=m.querySelector('#bf-err'),c=clientById(st.clientId),p=findIn('clubPlans',st.planId),start=m.querySelector('#bf-start').value,exp=m.querySelector('#bf-exp').value,msg='';
+    if(!c) msg='Choose the client.'; else if(!p) msg='Choose a plan.'; else if(!exp) msg='Enter when the membership ends.'; else if(exp<todayStr()) msg='The end date has already passed, so this membership has expired.'; else if(start&&start>exp) msg='Start date must be before the end date.';
+    else if(clientClubs(c.id,todayStr()).some(function(x){return x.planId===p.id})) msg=c.name+' already has an active '+p.name+' membership.';
+    if(msg){err.textContent=msg;err.hidden=false;return}
+    var btn=m.querySelector('[type=submit]');btn.disabled=true;
+    var now=new Date().toISOString(),seq=nextSeq(S.clubs);
+    var mem={id:newId('cm'),seq:seq,no:'MSP-'+pad(seq),date:todayStr(),start:start||'',expiry:exp,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
+      planId:p.id,planName:p.name,fee:0,gst:0,invoiceId:'',invoiceNo:'',broughtForward:true,note:m.querySelector('#bf-note').value.trim(),createdAt:now,updatedAt:now};
+    put('clubs',mem).then(function(){closeModal();toast(c.name+' added as a member till '+fmtDate(exp));viewClub(mem.id)})
+      .catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
+  };
+}
 function viewClub(id){
   var render=function(m){
     var mm=findIn('clubs',id); if(!mm){closeModal();return}
     var st=clubStatus(mm), inv=mm.invoiceId&&invById(mm.invoiceId), ix=inv?invInfo(inv):null, plan=findIn('clubPlans',mm.planId), sv=clubSavings(mm), tot=r2(sv.reduce(function(s,x){return s+x.saving},0));
     var prices=plan?Object.keys(plan.prices||{}).map(function(sid){var s=findIn('services',sid);return s?{n:s.name,std:+s.price||0,mp:plan.prices[sid]}:null}).filter(Boolean).sort(function(a,b){return byText(a.n,b.n)}):[];
-    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry)+'</dd>'+
-      '<dt>Invoice</dt><dd>'+(inv?'<button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> · '+money(inv.total)+' '+statusPill(ix.status):esc(mm.invoiceNo||'—'))+'</dd></dl>'+
+    m.innerHTML='<h2>Membership '+esc(mm.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(mm.clientName)+'</strong></dd><dt>Phone</dt><dd>'+esc(mm.clientPhone||'')+'</dd><dt>Plan</dt><dd>'+esc(mm.planName)+'</dd><dt>Valid</dt><dd>'+(mm.broughtForward&&!mm.start?'till '+fmtDate(mm.expiry):fmtDate(mm.start||mm.date)+' to '+fmtDate(mm.expiry))+'</dd>'+
+      (mm.broughtForward?'<dt>Invoice</dt><dd><span class="pill partial">Brought forward (old system)</span> · no payment recorded here</dd>'+(mm.note?'<dt>Note</dt><dd>'+esc(mm.note)+'</dd>':''):'<dt>Invoice</dt><dd>'+(inv?'<button class="link" data-inv="'+esc(inv.id)+'">'+esc(inv.no)+'</button> · '+money(inv.total)+' '+statusPill(ix.status):esc(mm.invoiceNo||'—'))+'</dd>')+'</dl>'+
       '<div style="text-align:right"><span class="pill '+(st==='Active'?'paid':st==='Upcoming'?'partial':'unpaid')+'">'+esc(st)+'</span><div class="big" style="margin-top:6px">'+money(tot)+'</div><div class="sub">saved so far</div></div></div>'+
       '<h3 class="sec-h">Member prices</h3>'+(prices.length?'<div class="tbl"><table><thead><tr><th>Service</th><th class="num">Standard</th><th class="num">Member price</th></tr></thead><tbody>'+prices.map(function(p){return '<tr><td>'+esc(p.n)+'</td><td class="num"><s class="sub">'+money(p.std)+'</s></td><td class="num"><strong>'+money(p.mp)+'</strong></td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">The plan has no member prices.</p>')+
       '<h3 class="sec-h">Bills at member price</h3>'+(sv.length?'<div class="tbl"><table><thead><tr><th>Date</th><th>Invoice</th><th class="num">Total</th><th class="num">Saved</th></tr></thead><tbody>'+sv.sort(function(a,b){return (b.i.date||'').localeCompare(a.i.date||'')}).map(function(x){return '<tr><td class="nowrap">'+fmtDate(x.i.date)+'</td><td><button class="link" data-inv="'+esc(x.i.id)+'">'+esc(x.i.no)+'</button></td><td class="num">'+money(x.i.total)+'</td><td class="num">'+money(x.saving)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">Not used yet.</p>')+
