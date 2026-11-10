@@ -3570,8 +3570,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'price',label:'Price before GST (₹)',type:'number',req:true},
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
-    {id:'consent',label:'Consent form text',type:'rich',word:true,hint:'Type here and use the buttons for bold, headings and lists, or upload a Word file (.docx). Leave empty to use the standard text.'},
-    {id:'consentPdf',label:'Consent form PDF (optional: if uploaded, clients read and sign this PDF instead of the text above)',type:'pdf',keepOld:true},
+    {id:'consent',label:'Consent form text',type:'rich',hint:'Use the buttons for bold, headings and lists. Leave empty to use the standard text.'},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
@@ -4140,7 +4139,7 @@ function istStamp(iso){try{return new Date(iso).toLocaleString('en-IN',{timeZone
 function openConsent(quoteId,lineKey,onDone){
   if(readOnly){toast('You need Contributor access to record consent.');return}
   var q=findIn('aeQuotes',quoteId), ln=sesLine(q,lineKey); if(!ln){toast('Choose the quotation and procedure first.');return}
-  var cl=clientById(q.clientId)||{name:q.clientName}, text=consentText(ln.l.procId,cl.name,ln.l.name), prc=findIn('aeProcs',ln.l.procId), cpdf=prc&&prc.consentPdf&&prc.consentPdf.id?prc.consentPdf:null;
+  var cl=clientById(q.clientId)||{name:q.clientName}, text=consentText(ln.l.procId,cl.name,ln.l.name), cpdf=null;
   var st={tab:'sign',drawn:false,file:null,upBusy:false};
   var m=openModal('<h2>Consent form</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(cl.name)+'</strong> '+esc(cl.phone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(ln.l.name)+'</strong> · '+esc(q.no)+'</dd></dl></div>'+
     '<div class="actions" role="group" aria-label="How" style="margin-bottom:12px"><button type="button" class="btn primary" data-tab="sign">Sign on screen</button><button type="button" class="btn" data-tab="upload">Upload signed form</button></div>'+
