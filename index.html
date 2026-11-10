@@ -2848,7 +2848,7 @@ SECTIONS.cities=simpleMaster({
 });
 
 /* optional pages for a Consultant/Doctor; Consultations is always on */
-var DOC_VIEWS=[['ae-appointments','Appointments'],['ae-quotations','Quotations'],['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker'],['clients','Clients']];
+var DOC_VIEWS=[['ae-appointments','Appointments'],['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker']]; /* doctors never see Quotations or Clients pages */
 SECTIONS.users=simpleMaster({
   kind:'users',prefix:'u',title:'Users',singular:'user',singularCap:'User',color:'--m10',searchPh:'Name, role or phone',
   emptyText:'Add your staff. They appear in Performed by and Referred by on the Invoice Form.',
