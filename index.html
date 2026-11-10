@@ -2891,7 +2891,7 @@ function docSign(staffIds){
   var u=(d.length?d:us)[0];return u?u.signature:null;
 }
 /* optional pages for a Consultant/Doctor; Consultations is always on */
-var DOC_VIEWS=[['ae-appointments','Appointments'],['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker']]; /* doctors never see Quotations or Clients pages */
+var DOC_VIEWS=[['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker']]; /* doctors never see Quotations or Clients pages */
 SECTIONS.users=simpleMaster({
   kind:'users',prefix:'u',title:'Users',singular:'user',singularCap:'User',color:'--m10',searchPh:'Name, role or phone',
   emptyText:'Add your staff. They appear in Performed by and Referred by on the Invoice Form.',
@@ -2903,7 +2903,7 @@ SECTIONS.users=simpleMaster({
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'signature',label:'Signature (printed on prescriptions)',type:'image'},
-    {id:'access',label:'Pages this doctor can see (Consultations is always on)',type:'checks',showIf:{field:'role',value:'Consultant/Doctor'},options:function(){return DOC_VIEWS}}],
+    {id:'access',label:'Pages this doctor can see (Appointments and Consultations are always on)',type:'checks',showIf:{field:'role',value:'Consultant/Doctor'},options:function(){return DOC_VIEWS}}],
   cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Signature',text:function(r){return r.signature&&r.signature.data?'Yes':''},html:function(r){return r.signature&&r.signature.data?'<img src="'+r.signature.data+'" alt="Signature" style="height:28px;max-width:110px;object-fit:contain;display:block">':'<span class="sub">—</span>'}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
     {h:'Services performed',num:true,text:function(r){return String(userLineCount(r.id,'performedBy'))}},{h:'Referrals',num:true,text:function(r){return String(userLineCount(r.id,'referredBy'))}}],
   search:function(r){return r.name+' '+(r.userId||'')+' '+(r.email||'')+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
@@ -7537,7 +7537,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
+  if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-appointments','ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
