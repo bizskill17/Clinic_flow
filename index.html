@@ -1756,6 +1756,15 @@ function revealActiveMenu(){
 }
 window.addEventListener('resize',revealActiveMenu);
 window.addEventListener('scroll',sizeActiveMenu,{passive:true});
+/* opening a page from the menu always shows its list, never a half-filled form */
+function toListMode(k){
+  if(k==='ae-consultations'){conMode='list';conDraft=null}
+  else if(k==='ae-sessions'){sesMode='list';sesDraft=null}
+  else if(k==='ae-invoices'){aiMode='list';aiDraft=null}
+  else if(k==='ae-quotations'){qtMode='list';qtDraft=null}
+  else if(k==='ph-item-in'){phMode.in='list';phDraft.in=null}
+  else if(k==='ph-item-issue'){phMode.out='list';phDraft.out=null}
+}
 function go(key,opts){
   current=key;
   var nav=$('#nav-'+dept);
@@ -7463,7 +7472,7 @@ $('#back-home-aes').onclick=function(){show('home')};
 $('#notice-close').onclick=function(){notice.hidden=true};
 $('#back-home').onclick=function(){show('home')};
 $('#back-home-pha').onclick=function(){show('home')};
-$$('.mi[data-key]').forEach(function(b){b.onclick=function(){if(b.dataset.key==='ae-consultations'){conMode='list';conDraft=null}go(b.dataset.key)}});
+$$('.mi[data-key]').forEach(function(b){b.onclick=function(){toListMode(b.dataset.key);go(b.dataset.key)}});
 /* mobile: hamburger opens the department menu as a drawer */
 document.body.insertAdjacentHTML('beforeend','<div class="nav-backdrop" id="nav-backdrop"></div>');
 function setNav(open){document.body.classList.toggle('nav-open',open);$$('[data-menu]').forEach(function(b){b.setAttribute('aria-expanded',String(open))});if(open){var n=$('#nav-'+dept);var c=n&&(n.querySelector('.mi[aria-current="page"]')||n.querySelector('.mi'));if(c)c.focus()}}
@@ -7532,8 +7541,8 @@ function resumeApp(){
     var m=st.modes||{}, d=st.drafts||{};
     try{
       draft=d.spa||null; aiDraft=d.ai||null; sesDraft=d.ses||null; conDraft=d.con||null; qtDraft=d.qt||null; if(d.ph)phDraft=d.ph;
-      aiMode=(m.ai==='form'&&aiDraft)?'form':'list'; sesMode=(m.ses==='form'&&sesDraft)?'form':'list'; conMode='list'; qtMode=(m.qt==='form'&&qtDraft)?'form':'list';
-      if(m.ph){phMode.in=(m.ph.in==='form'&&phDraft.in)?'form':'list';phMode.out=(m.ph.out==='form'&&phDraft.out)?'form':'list'}
+      aiMode='list'; sesMode='list'; conMode='list'; qtMode='list';
+      phMode.in='list';phMode.out='list';
     }catch(e){}
   }
   show(st.view);
