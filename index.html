@@ -333,6 +333,7 @@ tr.click-row{cursor:pointer}
 .ph-frame{aspect-ratio:3/4;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ph-frame img{width:100%;height:100%;object-fit:cover;display:block}
 .ph-acts{display:flex;gap:6px;flex-wrap:wrap}
+.rte-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.rte-bar .rte-chip{font-family:var(--mono,monospace);font-size:12px}.rte{border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:180px;max-height:460px;overflow:auto;background:var(--surface,#fff);line-height:1.55;font-size:14px;outline:none}.rte:focus{border-color:var(--accent,#2e6b4f);box-shadow:0 0 0 3px rgba(46,107,79,.12)}.rte p,.consent-rich p{margin:0 0 4px}.rte h3,.consent-rich h3{font-size:16px;margin:10px 0 4px}.rte ul,.rte ol,.consent-rich ul,.consent-rich ol{margin:2px 0 6px;padding-left:22px}.consent-text.consent-rich{white-space:normal}
 .consent-text{white-space:pre-line;border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:260px;overflow:auto;font-size:14px;line-height:1.55;background:var(--surface-2)}
 .sig-wrap{position:relative;border:1.5px dashed var(--line);border-radius:10px;background:#fff;height:180px;max-width:560px}
 .sig-wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;border-radius:10px}
@@ -1208,6 +1209,35 @@ function aeInvoice(J,ctx){
   return d.output('arraybuffer');
 }
 /* ctx: {biz, c:{no,date,procName,quoteNo,text,signedBy,relation,witness,signature:{data,w,h}}, client:{name,phone,gender,age}, stamp, fmtDate} */
+function richBlocks(text){
+  var out=[];String(text||'').replace(/\r/g,'').split('\n').forEach(function(l){var m,t=l.replace(/\s+$/,'');
+    if(!t.trim()){out.push({t:'gap'});return}
+    if((m=/^\s*#{1,3}\s+(.*)$/.exec(t)))out.push({t:'h',s:m[1]});
+    else if((m=/^\s*[-•*]\s+(.*)$/.exec(t)))out.push({t:'ul',s:m[1]});
+    else if((m=/^\s*(\d{1,3})[.)]\s+(.*)$/.exec(t)))out.push({t:'ol',n:+m[1],s:m[2]});
+    else out.push({t:'p',s:t.trim()})});
+  out.forEach(function(b){if(b.s!=null){var r=[];String(b.s).split(/\*\*/).forEach(function(x,i){if(x)r.push({s:x,b:i%2===1})});b.runs=r}});
+  return out;
+}
+function richPdf(d,text,y,W){
+  var lh=5.2;
+  var line=function(runs,x,maxW,size,forceBold){
+    var words=[];runs.forEach(function(r){String(r.s).split(/(\s+)/).forEach(function(w){if(w)words.push({w:w,b:forceBold||r.b})})});
+    var cur=[],cw=0,lines=[];
+    words.forEach(function(o){font(d,o.b?'bold':'normal',size,INK);var ww=d.getTextWidth(o.w);if(/^\s+$/.test(o.w)){if(cur.length){cur.push({w:' ',b:o.b,ww:d.getTextWidth(' ')});cw+=d.getTextWidth(' ')}return}
+      if(cw+ww>maxW&&cur.length){while(cur.length&&cur[cur.length-1].w===' '){cw-=cur.pop().ww}lines.push(cur);cur=[];cw=0}cur.push({w:o.w,b:o.b,ww:ww});cw+=ww});
+    if(cur.length)lines.push(cur);
+    lines.forEach(function(ln){y=ensure(d,y,6);var xx=x;ln.forEach(function(o){font(d,o.b?'bold':'normal',size,INK);d.text(o.w,xx,y);xx+=o.ww});y+=size>10?6:lh});
+  };
+  richBlocks(text).forEach(function(b){
+    if(b.t==='gap'){y+=2.5;return}
+    if(b.t==='h'){y+=1.5;y=ensure(d,y,10);line(b.runs,L,W,11.5,true);y+=0.8;return}
+    if(b.t==='ul'||b.t==='ol'){y=ensure(d,y,6);font(d,'normal',10,INK);if(b.t==='ul'){d.setFillColor.apply(d,INK);d.circle(L+3.6,y-1.25,0.75,'F')}else d.text(b.n+'.',L+2,y);line(b.runs,L+8,W-8,10);return}
+    line(b.runs,L,W,10);
+  });
+  font(d,'normal',10,INK);
+  return y;
+}
 function consent(J,ctx){
   var d=newDoc(J), b=ctx.biz, c=ctx.c, fd=ctx.fmtDate;
   var ACC=[15,107,120], TINT=[234,245,246], W=R-L;
@@ -1224,10 +1254,7 @@ function consent(J,ctx){
   if(c.quoteNo) d.text('Quotation '+c.quoteNo,mid,y+12.8);
   y+=cardH+7;
   font(d,'normal',10,INK);
-  String(c.text||'').split(/\n/).forEach(function(p){
-    if(!p.trim()){y+=2.5;return}
-    d.splitTextToSize(p.trim(),W).forEach(function(t){y=ensure(d,y,6);d.text(t,L,y);y+=5.2});
-  });
+  y=richPdf(d,c.text,y,W);
   y+=6;
   y=ensure(d,y,52);
   /* signature block */
@@ -2720,6 +2747,7 @@ function simpleMaster(cfg){
         if(f.type==='select') return fc+lab+'<select id="mf-'+f.id+'">'+optList((f.noBlank?[]:[['',f.placeholder()]]).concat(f.options()),r[f.id]||f.def||'')+'</select></div>';
         if(f.type==='static') return '<div class="field"><label>'+esc(f.label)+'</label><div class="ro-field" id="mf-'+f.id+'" aria-live="polite">'+esc(f.compute(r[f.from])||'—')+'</div></div>';
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
+        if(f.type==='rich') return '<div class="field span2"><label>'+esc(f.label)+'</label>'+(f.hint?'<p class="hint" style="margin:0 0 6px">'+f.hint+'</p>':'')+'<div id="mf-'+f.id+'"></div></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='svcprices') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
@@ -2734,6 +2762,7 @@ function simpleMaster(cfg){
         cfg.fields.forEach(function(f){if(f.id==='phone')bindContactPhone(m.querySelector('#mf-'+f.id))});
         var consVals={}, fileVals={};
         var svcVals={}, priceVals={};
+        cfg.fields.forEach(function(f){if(f.type==='rich')richEditor(m.querySelector('#mf-'+f.id),r[f.id]||'',{label:f.label,chips:f.chips})});
         cfg.fields.forEach(function(f){if(f.type==='svcprices'){priceVals[f.id]=Object.assign({},r[f.id]||{});svcPriceTable(m.querySelector('#mf-'+f.id),function(){return priceVals[f.id]},function(v){priceVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='services'){svcVals[f.id]=Array.isArray(r[f.id])?r[f.id].slice():[];svcPicker(m.querySelector('#mf-'+f.id),function(){return svcVals[f.id]},function(v){svcVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
@@ -2743,7 +2772,7 @@ function simpleMaster(cfg){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
           cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.id==='phone'&&obj[f.id]&&!validContactPhone(obj[f.id])){msg='Phone must contain exactly 10 digits (numbers only).';return true}
@@ -3540,7 +3569,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'price',label:'Price before GST (₹)',type:'number',req:true},
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
-    {id:'consent',label:'Consent form text',type:'textarea'},
+    {id:'consent',label:'Consent form text',type:'rich',hint:'Use the buttons for bold, headings and lists. The {client}, {procedure} and {clinic} buttons insert words that are filled in for each client. Leave empty to use the standard text.',chips:[['{client}','Client name'],['{procedure}','Procedure name'],['{clinic}','Clinic name']]},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
@@ -4019,6 +4048,69 @@ function conPdf(c,mode){
    AESTHETICS: Consent forms (one per quotation item, needed before its first session)
    ========================================================= */
 var CONSENT_DEFAULT='I, {client}, give my consent to undergo {procedure} at {clinic}.\n\nThe nature of the procedure, the expected results, the possible risks and side effects (such as redness, swelling, bruising, discomfort and, rarely, infection or a change in skin colour) and the alternatives have been explained to me, and I have had the chance to ask questions.\n\nI understand that results differ from person to person and are not guaranteed, and that more than one session may be needed. I confirm that I have told the clinic about my medical history, medicines and allergies, and I agree to follow the aftercare advice given to me.\n\nI agree to photographs being taken for my clinical record.';
+function richBlocksApp(text){
+  var out=[];String(text||'').replace(/\r/g,'').split('\n').forEach(function(l){var m,t=l.replace(/\s+$/,'');
+    if(!t.trim()){out.push({t:'gap'});return}
+    if((m=/^\s*#{1,3}\s+(.*)$/.exec(t)))out.push({t:'h',s:m[1]});
+    else if((m=/^\s*[-•*]\s+(.*)$/.exec(t)))out.push({t:'ul',s:m[1]});
+    else if((m=/^\s*(\d{1,3})[.)]\s+(.*)$/.exec(t)))out.push({t:'ol',n:+m[1],s:m[2]});
+    else out.push({t:'p',s:t.trim()})});
+  out.forEach(function(b){if(b.s!=null){var r=[];String(b.s).split(/\*\*/).forEach(function(x,i){if(x)r.push({s:x,b:i%2===1})});b.runs=r}});
+  return out;
+}
+function richHtml(text){
+  var h='',list='';
+  var inl=function(b){return (b.runs||[]).map(function(r){return r.b?'<b>'+esc(r.s)+'</b>':esc(r.s)}).join('')};
+  var close=function(){if(list){h+='</'+list+'>';list=''}};
+  richBlocksApp(text).forEach(function(b){
+    if(b.t==='ul'||b.t==='ol'){if(list!==b.t){close();h+='<'+b.t+(b.t==='ol'&&b.n>1?' start="'+b.n+'"':'')+'>';list=b.t}h+='<li>'+inl(b)+'</li>';return}
+    close();
+    if(b.t==='gap')h+='<p><br></p>';else if(b.t==='h')h+='<h3>'+inl(b)+'</h3>';else h+='<p>'+inl(b)+'</p>';
+  });
+  close();return h;
+}
+function richFromHtml(root){
+  var lines=[];
+  var isBold=function(n){if(n.nodeType!==1)return false;var t=n.tagName;if(t==='B'||t==='STRONG')return true;var fw=n.style&&n.style.fontWeight;return fw==='bold'||+fw>=600};
+  var inline=function(n,bold){var o='';Array.prototype.forEach.call(n.childNodes,function(c){
+    if(c.nodeType===3){var t=c.nodeValue.replace(/\s*\n\s*/g,' ');o+=bold?t:t;return}
+    if(c.nodeType!==1)return;if(c.tagName==='BR'){o+='\n';return}
+    var b=isBold(c)&&!bold, inner=inline(c,bold||isBold(c));
+    if(b&&inner.trim()){var m=/^(\s*)([\s\S]*?)(\s*)$/.exec(inner);o+=m[1]+'**'+m[2].replace(/\n/g,'**\n**')+'**'+m[3]}else o+=inner});return o};
+  var push=function(prefix,txt){txt.split('\n').forEach(function(t,i){t=t.replace(/ /g,' ').replace(/\*\*\*\*/g,'').replace(/\s+$/,'');lines.push(i===0?prefix+t:(prefix&&t?(/^\d/.test(prefix)?'   ':'  ')+t:t))})};
+  var block=function(n){Array.prototype.forEach.call(n.childNodes,function(c){
+    if(c.nodeType===3){if(c.nodeValue.trim())push('',c.nodeValue.trim());return}
+    if(c.nodeType!==1)return;var t=c.tagName;
+    if(/^H[1-6]$/.test(t)){push('# ',inline(c).trim());return}
+    if(t==='UL'||t==='OL'){var k=+(c.getAttribute('start')||1);Array.prototype.forEach.call(c.children,function(li){if(li.tagName==='LI'){push(t==='UL'?'- ':(k++)+'. ',inline(li).trim())}});return}
+    if(t==='BR'){lines.push('');return}
+    if((t==='DIV'||t==='P'||t==='SECTION')&&c.querySelector('p,div,ul,ol,h1,h2,h3,h4,h5,h6')){block(c);return}
+    var tx=inline(c);push('',tx.trim()?tx.replace(/^\s+/,''):'')});};
+  block(root);
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
+}
+/* simple rich editor: bold, heading, bullet and numbered lists; stored as plain text with **bold**, # heading, - and 1. lists */
+function richEditor(host,value,opt){
+  opt=opt||{};
+  var tb=function(cmd,label,title){return '<button type="button" class="btn sm" data-rt="'+cmd+'" title="'+title+'" aria-label="'+title+'">'+label+'</button>'};
+  host.innerHTML='<div class="rte-bar">'+tb('bold','<b>B</b>','Bold')+tb('h','H','Heading')+tb('ul','• List','Bullet list')+tb('ol','1. List','Numbered list')+
+    (opt.chips||[]).map(function(c){return '<button type="button" class="btn sm rte-chip" data-ins="'+esc(c[0])+'" title="'+esc(c[1])+'">'+esc(c[0])+'</button>'}).join('')+
+    '</div><div class="rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="'+esc(opt.label||'Text')+'"></div>';
+  var ed=host.querySelector('.rte'); ed.innerHTML=value?richHtml(value):'<p><br></p>';
+  try{document.execCommand('defaultParagraphSeparator',false,'p')}catch(e){}
+  $$('[data-rt],[data-ins]',host).forEach(function(b){
+    b.onmousedown=function(e){e.preventDefault()};
+    b.onclick=function(){ed.focus();var c=b.dataset.rt;
+      if(b.dataset.ins){document.execCommand('insertText',false,b.dataset.ins);return}
+      if(c==='bold')document.execCommand('bold');
+      else if(c==='ul')document.execCommand('insertUnorderedList');
+      else if(c==='ol')document.execCommand('insertOrderedList');
+      else if(c==='h'){var cur=(document.queryCommandValue('formatBlock')||'').toLowerCase();document.execCommand('formatBlock',false,cur==='h3'?'p':'h3')}};
+  });
+  ed.addEventListener('paste',function(e){var t=(e.clipboardData||window.clipboardData);if(!t)return;var tx=t.getData('text/plain');if(tx==null)return;e.preventDefault();document.execCommand('insertText',false,tx)});
+  host._get=function(){return richFromHtml(ed)};
+  return host;
+}
 function consentText(procId,clientName,procName){
   var p=findIn('aeProcs',procId), t=(p&&String(p.consent||'').trim())||CONSENT_DEFAULT;
   return t.replace(/\{client\}/g,clientName||'the client').replace(/\{procedure\}/g,procName||(p&&p.name)||'the procedure').replace(/\{clinic\}/g,biz().name||'the clinic');
@@ -4038,7 +4130,7 @@ function openConsent(quoteId,lineKey,onDone){
   var st={tab:'sign',drawn:false,file:null,upBusy:false};
   var m=openModal('<h2>Consent form</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(cl.name)+'</strong> '+esc(cl.phone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(ln.l.name)+'</strong> · '+esc(q.no)+'</dd></dl></div>'+
     '<div class="actions" role="group" aria-label="How" style="margin-bottom:12px"><button type="button" class="btn primary" data-tab="sign">Sign on screen</button><button type="button" class="btn" data-tab="upload">Upload signed form</button></div>'+
-    '<form id="csf" novalidate><div id="cs-sign"><div class="consent-text">'+esc(text)+'</div>'+
+    '<form id="csf" novalidate><div id="cs-sign"><div class="consent-text consent-rich">'+richHtml(text)+'</div>'+
     '<label class="check" style="margin:12px 0"><input type="checkbox" id="cs-agree"> The client has read and agrees to the above</label>'+
     '<div class="f-grid"><input type="hidden" id="cs-name" value="'+esc(cl.name||'')+'">'+
     '<div class="field"><label for="cs-wit">Witness (staff)</label><select id="cs-wit">'+optList([['','None']].concat(userOptions('')),'')+'</select></div></div>'+
@@ -4099,7 +4191,7 @@ function viewConsent(id){
     var signed=c.method==='signed', src=c.file?blobUrl(c.file.id,c.file.type):'';
     m.innerHTML='<h2>Consent '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(c.procName)+'</strong> · '+esc(c.quoteNo||'')+'</dd><dt>How</dt><dd>'+(signed?'Signed on screen':'Signed form uploaded')+'</dd>'+
       (signed?'<dt>Signed by</dt><dd>'+esc(c.signedBy)+'</dd><dt>Signed at</dt><dd>'+esc(istStamp(c.signedAt))+'</dd>'+(c.witness?'<dt>Witness</dt><dd>'+esc(c.witness)+'</dd>':''):'<dt>Date signed</dt><dd>'+fmtDate(c.date)+'</dd>')+'</dl></div>'+
-      (signed?'<div class="consent-text">'+esc(c.text)+'</div><div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
+      (signed?'<div class="consent-text consent-rich">'+richHtml(c.text)+'</div><div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
         '<p><a class="btn" href="'+esc(src)+'" target="_blank" rel="noopener">Open '+esc(c.file&&c.file.name||'signed form')+'</a></p>')+
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
