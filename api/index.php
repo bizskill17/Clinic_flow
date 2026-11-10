@@ -269,7 +269,7 @@ function docScope(PDO $p,string $uid):array{
   return['uid'=>$uid,'ap'=>$ap,'cn'=>$cn,'se'=>$se,'qt'=>$qt];}
 function docSees(array $s,string $c,array $d):bool{
   $id=(string)($d['id']??'');
-  if($c==='ae_appointments')return isset($s['ap'][$id])||isset($s['qt'][(string)($d['quoteId']??'')]);
+  if($c==='ae_appointments')return true; /* all appointments: a doctor may consult on another doctor's appointment; the app lists only their own */
   if($c==='ae_consultations')return isset($s['cn'][$id]);
   if($c==='ae_sessions')return isset($s['se'][$id])||isset($s['qt'][(string)($d['quoteId']??'')]);
   if($c==='ae_quotations')return isset($s['qt'][$id]);

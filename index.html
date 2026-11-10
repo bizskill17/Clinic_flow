@@ -974,7 +974,7 @@ function prescription(J,ctx){
   font(d,'bold',7.2,ACC);d.text('PATIENT',cx,y+1.5);d.text('DOCTOR',mid,y+1.5);
   font(d,'bold',11.5);d.text(d.splitTextToSize(ctx.client.name||'',mid-cx-6)[0],cx,y+7.5);d.text(d.splitTextToSize(ctx.doctor||'—',R-mid-4)[0],mid,y+7.5);
   font(d,'normal',8.6,MUTED);
-  var info=[ctx.client.phone?ctx.client.phone:'',ctx.client.gender||'',ctx.client.age?ctx.client.age+' years':''].filter(Boolean).join('  ·  ');
+  var info=[ctx.client.phone?ctx.client.phone:'',ctx.client.gender||'',ctx.client.age?ctx.client.age+' years':'',ctx.client.weight?ctx.client.weight+' kg':'',ctx.client.marital||''].filter(Boolean).join('  ·  ');
   if(info) d.text(info,cx,y+12.8);
   d.text('Visit: '+fd(c.date)+(ctx.apptNo?'  ·  '+ctx.apptNo:''),mid,y+12.8);
   y+=cardH+5;
@@ -995,6 +995,7 @@ function prescription(J,ctx){
   }
   var showD=(!rx||ctx.showDiag)&&String(c.diagnosis||'').trim(), showO=(!rx||ctx.showObs)&&String(c.observations||'').trim(), lb=ctx.labels||{};
   if(ctx.lead&&ctx.lead.text){title(ctx.lead.title);box(ctx.lead.text)}
+  if(String(c.systemic||'').trim()){title('Systemic conditions');box(c.systemic)}
   if(showD){title(lb.diag||'Diagnosis');box(c.diagnosis)}
   if(showO){title(lb.obs||'Observations');box(c.observations)}
   /* medicines */
@@ -3624,6 +3625,7 @@ function apMissed(a){return a.status==='No-show'||(a.date<todayStr()&&AP_ACTIVE.
 function apList(){
   var q=norm(apF.q), t=todayStr();
   return activeVouchers('aeAppts').filter(function(a){
+    if(isDoctor()&&apStaff(a).indexOf(CURRENT_USER.id)<0) return false;
     if(apF.view==='day'&&a.date!==apF.date) return false;
     if(apF.view==='upcoming'&&(a.date<t||a.status==='Cancelled'||a.status==='Completed'||a.status==='No-show')) return false;
     if(apF.view==='missed'&&!apMissed(a)) return false;
@@ -3820,7 +3822,18 @@ var AP_ACTIVE=['Booked','Confirmed','Arrived'];
 var DOSES=['OD','BD','TDS'], FOODS=['Before Food','After Food'];
 function conBlankMed(){return {itemId:'',name:'',dose:'',food:'',duration:''}}
 function conBlankProc(){return {procId:'',name:'',sessions:1}}
-function conNew(){return {id:null,date:todayStr(),clientId:'',apptId:'',diagnosis:'',observations:'',rxDiag:true,rxObs:true,rxProcs:true,meds:[conBlankMed()],procs:[conBlankProc()],consumables:[]}}
+/* new consultation: fill age (from date of birth) and marital status / systemic conditions from the client's last consultation, only where blank */
+function conPrefill(d){
+  if(d.id||!d.clientId) return;
+  var last=activeVouchers('aeCons').filter(function(x){return x.clientId===d.clientId}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.seq||0)-(a.seq||0)})[0]||{};
+  var age=clientAge(clientById(d.clientId)||{});
+  if(!d.age&&(age||last.age)) d.age=String(age||last.age);
+  if(!d.marital&&last.marital) d.marital=last.marital;
+  if(!d.systemic&&last.systemic) d.systemic=last.systemic;
+  var set=function(id,v){var e=$(id);if(e)e.value=v||''};
+  set('#cf-age',d.age);set('#cf-marital',d.marital);set('#cf-sys',d.systemic);
+}
+function conNew(){return {id:null,date:todayStr(),clientId:'',apptId:'',age:'',marital:'',weight:'',systemic:'',diagnosis:'',observations:'',rxDiag:true,rxObs:true,rxProcs:true,meds:[conBlankMed()],procs:[conBlankProc()],consumables:[]}}
 function apptLabel(a){return a.no+' · '+fmtDate(a.date)+' · '+fmtTime(apFrom(a))+' to '+fmtTime(apTo(a))+' · '+(a.type==='Procedure'?apWhat(a):'Consultation')+(apStaffNames(a)?' · '+apStaffNames(a):'')+' · '+a.status}
 function clientAge(c){if(!c||!c.dob)return '';var b=parseD(c.dob),n=nowIST(),y=n.getFullYear()-b.getFullYear();if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))y--;return y>0&&y<130?String(y):''}
 SECTIONS['ae-consultations']={
@@ -3835,7 +3848,7 @@ function conListMount(){
   $('#cn-from').onchange=function(e){conF.from=e.target.value;up()};
   $('#cn-to').onchange=function(e){conF.to=e.target.value;up()};
   $('#cn-new').onclick=function(){conDraft=conNew();conOldFiles=[];conMode='form';go(current)};
-  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
+  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Age','Marital status','Weight (kg)','Systemic conditions','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.age||'',c.marital||'',c.weight||'',c.systemic||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
 }
 function conFiltered(){
   var q=norm(conF.q);
@@ -3864,7 +3877,7 @@ function conListUpdate(){
 function conEdit(id){
   if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var c=findIn('aeCons',id); if(!c) return;
-  conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
+  conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',age:c.age||'',marital:c.marital||'',weight:c.weight||'',systemic:c.systemic||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
     meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables),files:(c.files||[]).map(function(f){return Object.assign({saved:true},f)})};
   conOldFiles=[];
   if(!conDraft.meds.length) conDraft.meds=[conBlankMed()];
@@ -3886,6 +3899,10 @@ function conFormMount(){
     '<div class="field"><label for="cf-date">Date</label><input type="date" id="cf-date" value="'+esc(d.date)+'"></div>'+
     '<div class="field span2"><label for="cf-client2">Client <span class="req">*</span></label><div id="cf-client-host"></div></div>'+
     '<div class="field span2"><label for="cf-appt">Appointment <span class="req">*</span></label><select id="cf-appt"></select><p class="hint" id="cf-appt-hint" style="margin:4px 0 0"></p></div>'+
+    '<div class="field"><label for="cf-age">Age</label><input type="number" id="cf-age" min="0" max="120" step="1" inputmode="numeric" value="'+esc(d.age)+'"></div>'+
+    '<div class="field"><label for="cf-marital">Marital status</label><select id="cf-marital">'+['','Single','Married','Divorced','Widowed'].map(function(o){return '<option value="'+o+'"'+(d.marital===o?' selected':'')+'>'+(o||'—')+'</option>'}).join('')+'</select></div>'+
+    '<div class="field"><label for="cf-weight">Weight (kg)</label><input type="number" id="cf-weight" min="0" step="0.1" inputmode="decimal" value="'+esc(d.weight)+'"></div>'+
+    '<div class="field span2"><label for="cf-sys">Systemic conditions</label><textarea id="cf-sys" rows="2" placeholder="e.g. Diabetes, BP, thyroid, allergies">'+esc(d.systemic)+'</textarea></div>'+
     '<div class="field span2"><label for="cf-diag">Diagnosis</label><textarea id="cf-diag" rows="3">'+esc(d.diagnosis)+'</textarea><label class="check" style="margin-top:4px"><input type="checkbox" id="cf-rxdiag"'+(d.rxDiag===false?'':' checked')+'> Show diagnosis on the prescription PDF</label></div>'+
     '<div class="field span2"><label for="cf-obs">Observations</label><textarea id="cf-obs" rows="3">'+esc(d.observations)+'</textarea></div>'+
     '</div>'+
@@ -3897,15 +3914,20 @@ function conFormMount(){
   $('#cf-back').onclick=function(){conMode='list';go(current)};
   if(!d.files) d.files=[];
   conRenderFiles();
+  conPrefill(d);
   $('#cf-file-in').onchange=function(e){Array.prototype.slice.call(e.target.files||[]).forEach(conUploadFile);e.target.value=''};
   $('#cf-date').onchange=function(e){d.date=e.target.value};
   $('#cf-diag').oninput=function(e){d.diagnosis=e.target.value};
   $('#cf-obs').oninput=function(e){d.observations=e.target.value};
+  $('#cf-age').oninput=function(e){d.age=e.target.value};
+  $('#cf-marital').onchange=function(e){d.marital=e.target.value};
+  $('#cf-weight').oninput=function(e){d.weight=e.target.value};
+  $('#cf-sys').oninput=function(e){d.systemic=e.target.value};
   $('#cf-rxdiag').onchange=function(e){d.rxDiag=e.target.checked};
   $('#cf-rxprocs').onchange=function(e){d.rxProcs=e.target.checked};
   conCombos.push(combo($('#cf-client-host'),{id:'cf-client2',label:'Client',placeholder:'Type to search name or phone',value:d.clientId,
     options:function(){return S.clients.slice().sort(function(x,y){return byText(x.name,y.name)}).map(function(c){var n=activeVouchers('aeAppts').filter(function(a){return a.clientId===c.id&&AP_ACTIVE.indexOf(a.status)>=0}).length;return [c.id,c.name,c.phone+(n?' · '+n+' active appointment'+(n===1?'':'s'):'')]})},
-    missing:function(){return d.clientName||''},onChange:function(v){d.clientId=v;d.apptId='';conFillAppts()}}));
+    missing:function(){return d.clientName||''},onChange:function(v){d.clientId=v;d.apptId='';conPrefill(d);conFillAppts()}}));
   $('#cf-appt').onchange=function(e){d.apptId=e.target.value;var a=findIn('aeAppts',d.apptId);if(a&&!editing){d.date=a.date;$('#cf-date').value=a.date}conApptHint()};
   $('#cf-addmed').onclick=function(){d.meds.push(conBlankMed());conRenderMeds();var x=$$('#cf-meds .combo-in');if(x.length)x[x.length-1].focus()};
   $('#cf-addproc').onclick=function(){d.procs.push(conBlankProc());conRenderProcs();var x=$$('#cf-procs .combo-in');if(x.length)x[x.length-1].focus()};
@@ -4016,8 +4038,8 @@ function conSave(){
   var procs=d.procs.filter(function(p){return p.procId});
   for(var j=0;j<procs.length;j++){var sN=+procs[j].sessions,cpr=findIn('aeProcs',procs[j].procId);if(procPU(cpr)){if(!(sN>0))return show('Enter the '+(cpr.unitName||'units')+' for '+procs[j].name+'.')}else if(!(sN>=1)||Math.round(sN)!==sN) return show('Sessions for '+procs[j].name+' must be a whole number of at least 1.')}
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeCons);
-  var obj={id:d.id||newId('cn'),seq:seq,no:editing?d.no:'CON-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',apptId:a.id,apptNo:a.no,staffIds:apStaff(a),doctor:apStaffNames(a),
-    diagnosis:String(d.diagnosis||'').trim(),observations:String(d.observations||'').trim(),rxDiag:d.rxDiag!==false,rxObs:d.rxObs!==false,rxProcs:d.rxProcs!==false,
+  var obj={id:d.id||newId('cn'),seq:seq,no:editing?d.no:'CON-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',apptId:a.id,apptNo:a.no,staffIds:meIfDoc(apStaff(a)),doctor:meIfDoc(apStaff(a)).map(userName).filter(Boolean).join(', '),
+    age:String(d.age||'').trim(),marital:d.marital||'',weight:String(d.weight||'').trim(),systemic:String(d.systemic||'').trim(),diagnosis:String(d.diagnosis||'').trim(),observations:String(d.observations||'').trim(),rxDiag:d.rxDiag!==false,rxObs:d.rxObs!==false,rxProcs:d.rxProcs!==false,
     meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
     procs:procs.map(function(p){var pr=findIn('aeProcs',p.procId)||{},pu=procPU(pr);return Object.assign({procId:p.procId,name:p.name,sessions:+p.sessions,price:+pr.price||0,gst:+pr.gst||0},pu?{perUnit:true,units:+p.sessions,unitName:pr.unitName||'units'}:{})}),
     consumables:cleanCons(d.consumables),files:(d.files||[]).filter(function(f){return f.id}).map(function(f){return {id:f.id,type:f.type,name:String(f.name||'').slice(0,120),caption:String(f.caption||'').trim().slice(0,80)}}),
@@ -4035,7 +4057,8 @@ function viewCon(id,fallback){
   var render=function(m){
     var c=findIn('aeCons',id)||fallback; if(!c){closeModal();return}
     var txt=function(t){return t?'<div style="white-space:pre-line">'+esc(t)+'</div>':'<span class="sub">—</span>'};
-    m.innerHTML='<h2>Consultation '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(c.date)+'</dd><dt>Appointment</dt><dd>'+esc(c.apptNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(c.doctor||'—')+'</dd></dl></div>'+
+    m.innerHTML='<h2>Consultation '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(c.date)+'</dd><dt>Appointment</dt><dd>'+esc(c.apptNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(c.doctor||'—')+'</dd><dt>Age</dt><dd>'+esc(c.age||'—')+'</dd><dt>Marital status</dt><dd>'+esc(c.marital||'—')+'</dd><dt>Weight</dt><dd>'+(c.weight?esc(c.weight)+' kg':'—')+'</dd></dl></div>'+
+      '<div class="field" style="margin-bottom:14px"><label>Systemic conditions</label>'+txt(c.systemic)+'</div>'+
       '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+(x.perUnit?esc(r2(+x.units||+x.sessions||0)+' '+(x.unitName||'units')):x.sessions)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
@@ -4051,7 +4074,7 @@ function viewCon(id,fallback){
 function conPdf(c,mode){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{}, rx=mode==='prescription';
-  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});pdfView(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:c.age||clientAge(cl),weight:c.weight||'',marital:rx?'':(c.marital||'')},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});pdfView(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -7437,7 +7460,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Consultant/Doctor')return ['ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','clients'];
+  if(CURRENT_USER.role==='Consultant/Doctor')return ['ae-appointments','ae-consultations','ae-sessions','ae-procedures','clients'];
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
