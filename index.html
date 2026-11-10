@@ -1426,6 +1426,7 @@ function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
   var common=['clients','cities','states','users','business','waLog','expCats','vendors','expenses','vpays'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
+  if(CURRENT_USER.role==='Consultant/Doctor')return ['clients','cities','states','users','business','phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeConsents','aeLineEv'];
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','aeLineEv','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
 }
@@ -1637,7 +1638,10 @@ function balanceCell(a){return a.due>0.004?'<span class="due">'+money(a.due)+' d
 function invInfo(inv,pm){if(inv&&inv.cancelled)return {paid:0,bal:0,status:'cancelled'};var paid=r2((pm||paidMap())[inv.id]||0);var bal=r2((+inv.total||0)-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
 function statusPill(s){return '<span class="pill '+s+'">'+({paid:'Paid',partial:'Part paid',unpaid:'Unpaid',cancelled:'Cancelled'}[s])+'</span>'}
 /* next number = the lowest number not in use, so numbers freed by a delete are reused (1, 2, 3 … again) */
-function nextSeq(list){var used={};list.forEach(function(x){used[+x.seq||0]=1});var n=1;while(used[n])n++;return n}
+function isDoctor(){return !!(CURRENT_USER&&CURRENT_USER.role==='Consultant/Doctor')}
+/* a Consultant/Doctor is always on their own appointments and sessions, so they keep seeing them */
+function meIfDoc(list){list=list||[];return isDoctor()&&CURRENT_USER.id&&list.indexOf(CURRENT_USER.id)<0?list.concat(CURRENT_USER.id):list}
+function nextSeq(list){if(isDoctor()){for(var k in S){if(S[k]===list){var mx=+SEQ_FLOOR[k]||0;list.forEach(function(x){mx=Math.max(mx,+x.seq||0)});return mx+1}}}var used={};list.forEach(function(x){used[+x.seq||0]=1});var n=1;while(used[n])n++;return n}
 var CLI_IX=null;function clientById(id){if(!id)return undefined;var L=S.clients,i=CLI_IX&&CLI_IX[id];if(i!=null&&L[i]&&L[i].id===id)return L[i];if(CLI_IX&&CLI_IX._n===L.length&&CLI_IX._l===L&&!(id in CLI_IX))return undefined;CLI_IX={_n:L.length,_l:L};for(var k=0;k<L.length;k++)CLI_IX[L[k].id]=k;i=CLI_IX[id];return i!=null?L[i]:undefined}
 function findIn(kind,id){return id?S[kind].find(function(x){return x.id===id}):null}
 function catName(s){var c=findIn('categories',s.categoryId);return c?c.name:(s.category||'')}
@@ -2838,7 +2842,7 @@ SECTIONS.users=simpleMaster({
     {id:'userId',label:'User ID',req:true,max:40,placeholderText:'e.g. DR001'},
     {id:'email',label:'Email',type:'email',req:true,max:120},
     {id:'password',label:'Password',type:'password',max:128,placeholderText:'Leave blank to keep the current password'},
-    {id:'role',label:'Role',type:'select',req:true,placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Spa','Pharmacy']}},
+    {id:'role',label:'Role',type:'select',req:true,placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Consultant/Doctor','Spa','Pharmacy']}},
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
   cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
@@ -3686,7 +3690,7 @@ function editAppt(id,preset){
   if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(readOnly){toast('You need Contributor access to book appointments.');return}
   var base=findIn('aeAppts',id), a=Object.assign({},base||{date:apF.view==='day'?apF.date:todayStr(),type:'Consultation'},preset||{});
-  var st={clientId:a.clientId||'',procedureId:a.procedureId||'',quoteKey:a.quoteId?a.quoteId+'|'+a.quoteLineId:'',quoteId:a.quoteId||'',staffIds:(a.staffIds||apStaff(a)).slice(),from:a.from||apFrom(a),to:a.to||apTo(a),pick:null};
+  var st={clientId:a.clientId||'',procedureId:a.procedureId||'',quoteKey:a.quoteId?a.quoteId+'|'+a.quoteLineId:'',quoteId:a.quoteId||'',staffIds:meIfDoc((a.staffIds||apStaff(a)).slice()),from:a.from||apFrom(a),to:a.to||apTo(a),pick:null};
   openModal('<h2>'+(id?(a._resched?'Reschedule ':'Edit appointment ')+esc(a.no):'New appointment')+'</h2><form id="apf" novalidate><div class="f-grid">'+
     '<div class="field span2"><label for="apf-client">Client <span class="req">*</span></label><div class="client-pick"><div id="apf-client-host"></div><button type="button" class="btn icon-plus" id="apf-newclient" aria-label="Add new client" title="Add new client">'+PLUS+'</button></div></div>'+
     '<div class="field" id="apf-qt-wrap"><label for="apf-qt">Quotation no</label><select id="apf-qt"></select></div>'+
@@ -3801,7 +3805,7 @@ function editAppt(id,preset){
         var hit=apBusy(d,st.staffIds,id).filter(function(x){return toMin(f)<x.to&&toMin(t)>x.from});
         if(hit.length){var h=hit[0].appt,who=apStaff(h).filter(function(u){return st.staffIds.indexOf(u)>=0}).map(userName).join(', ');return show(who+' is already booked from '+fmtTime(apFrom(h))+' to '+fmtTime(apTo(h))+' ('+h.no+', '+h.clientName+'). Choose another time.')}
         var now=new Date().toISOString(), seq=id?base.seq:nextSeq(S.aeAppts);
-        var obj={id:id||newId('ap'),seq:seq,no:id?base.no:'APT-'+pad(seq),date:d,from:f,to:t,type:type,procedureId:type==='Procedure'?pr.id:'',procedureName:type==='Procedure'?pr.name:'',quoteId:it?it.q.id:'',quoteLineId:it?it.st.key:'',quoteNo:it?it.q.no:'',clientId:c.id,clientName:c.name,clientPhone:c.phone||'',staffIds:st.staffIds.slice(),status:base?(a._resched?'Booked':(base.status||'Booked')):'Booked',createdAt:(base&&base.createdAt)||now,updatedAt:now};
+        var obj={id:id||newId('ap'),seq:seq,no:id?base.no:'APT-'+pad(seq),date:d,from:f,to:t,type:type,procedureId:type==='Procedure'?pr.id:'',procedureName:type==='Procedure'?pr.name:'',quoteId:it?it.q.id:'',quoteLineId:it?it.st.key:'',quoteNo:it?it.q.no:'',clientId:c.id,clientName:c.name,clientPhone:c.phone||'',staffIds:meIfDoc(st.staffIds.slice()),status:base?(a._resched?'Booked':(base.status||'Booked')):'Booked',createdAt:(base&&base.createdAt)||now,updatedAt:now};
         var btn=q('[type=submit]');btn.disabled=true;
         put('aeAppts',obj).then(function(){closeModal();toast(obj.no+(id?' updated':' booked for '+fmtDate(d)+', '+fmtTime(f)+' to '+fmtTime(t)+' IST'));if(apF.view==='day'&&apF.date!==d){apF.date=d;if(current==='ae-appointments')go(current)}}).catch(function(e2){btn.disabled=false;show(errText(e2))});
       };
@@ -4313,7 +4317,7 @@ function procEdu(p){return !p?[]:(Array.isArray(p.eduPdfs)&&p.eduPdfs.length?p.e
 /* uploaded files live at /_blob/<id> on claude.ai; a local copy keeps them in data/files/ */
 function blobUrl(id,type){return window.claude?'/_blob/'+id:storeMode==='live'?'api/index.php?action=file&id='+encodeURIComponent(id):'data/files/'+id+(type==='application/pdf'?'.pdf':(type==='image/png'?'.png':'.jpg'))}
 function photoSrc(p){return p?(p.id?blobUrl(p.id,'image/jpeg'):(p.data||'')):''}
-function sesNew(){return {id:null,units:'',date:todayStr(),clientId:'',clientName:'',quoteId:'',lineKey:'',apptId:'',staffIds:[],procNotes:'',outcomeNotes:'',rxProc:true,rxOutcome:true,meds:[conBlankMed()],photos:{},consumables:[],consTouched:false,consFor:''}}
+function sesNew(){return {id:null,units:'',date:todayStr(),clientId:'',clientName:'',quoteId:'',lineKey:'',apptId:'',staffIds:meIfDoc([]),procNotes:'',outcomeNotes:'',rxProc:true,rxOutcome:true,meds:[conBlankMed()],photos:{},consumables:[],consTouched:false,consFor:''}}
 function sesLine(q,key){var out=null;(q&&q.lines||[]).some(function(l,i){if(qtLineKey(q,l,i)===key){out={l:l,i:i};return true}});return out}
 /* Session n of N for a session record */
 function sesOrdinal(s){
@@ -4608,7 +4612,7 @@ function sesSave(){
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeSessions);
   var obj={id:d.id||newId('se'),seq:seq,no:editing?d.no:'SES-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
     quoteId:q.id,quoteNo:q.no,quoteLineId:d.lineKey,procId:ln.l.procId,procName:ln.l.name,apptId:a?a.id:'',apptNo:a?a.no:'',
-    staffIds:d.staffIds.slice(),performedBy:d.staffIds.map(userName).filter(Boolean).join(', '),
+    staffIds:meIfDoc(d.staffIds.slice()),performedBy:meIfDoc(d.staffIds.slice()).map(userName).filter(Boolean).join(', '),
     procNotes:String(d.procNotes||'').trim(),outcomeNotes:String(d.outcomeNotes||'').trim(),rxProc:d.rxProc!==false,rxOutcome:d.rxOutcome!==false,
     meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
     consumables:cleanCons(d.consumables),photos:photos,createdAt:d.createdAt||now,updatedAt:now};
@@ -6249,7 +6253,7 @@ var IMP={
   cities:{title:'Cities',file:'cities',prefix:'ci',key:function(o){return norm(o.name)+'|'+o.stateId},keyLabel:'name and state',cols:[{k:'name',h:'City name',req:1,ex:'Guwahati'},{k:'stateId',h:'State',t:'ref',ref:'states',req:1,ex:'Assam'}]},
   users:{title:'Users',file:'users',prefix:'u',key:function(o){return norm(o.userId)},keyLabel:'User ID',single:true,
     cols:[{k:'name',h:'Full name',req:1,ex:'Dr Pankaj Jain'},{k:'userId',h:'User ID',req:1,ex:'DR001'},{k:'email',h:'Email',req:1,t:'email',ex:'pankaj@example.com'},{k:'password',h:'Temporary password',t:'password',ex:'Welcome@123'},
-      {k:'role',h:'Role',req:1,t:'choice',ch:['Admin','Manager','Aesthetics','Spa','Pharmacy'],ex:'Aesthetics'},{k:'phone',h:'Phone',t:'phone',ex:'9800000000'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
+      {k:'role',h:'Role',req:1,t:'choice',ch:['Admin','Manager','Aesthetics','Consultant/Doctor','Spa','Pharmacy'],ex:'Aesthetics'},{k:'phone',h:'Phone',t:'phone',ex:'9800000000'},{k:'status',h:'Status',t:'choice',ch:['Active','Inactive'],def:'Active',ex:'Active'}]},
   phCats:{title:'Item Categories',file:'item-categories',prefix:'pc',key:function(o){return norm(o.name)},keyLabel:'name',cols:[{k:'name',h:'Category name',req:1,ex:'Tablets'}]},
   phItems:{title:'Items',file:'items',prefix:'pi',key:function(o){return norm(o.name)},keyLabel:'name',
     cols:[{k:'name',h:'Item name',req:1,ex:'Paracetamol 500mg'},{k:'categoryId',h:'Category',t:'ref',ref:'phCats',ex:'Tablets'},{k:'unit',h:'Unit',t:'choice',ch:function(){return PH_UNITS},def:'Strip',ex:'Strip'},{k:'secQty',h:'Secondary qty per unit',t:'int',ex:'10'},
@@ -7409,7 +7413,7 @@ function show(view){
     $$('.work').forEach(function(w){w.innerHTML=''});
     dept=view; work=$('#work-'+view);
     $$('#nav-'+view+' .mgroup').forEach(function(g){var id=g.getAttribute('aria-controls'),open=/-ops-sub$/.test(id)||id==='ph-reports-sub';g.setAttribute('aria-expanded',String(open));var sub=$('#'+id);if(sub)sub.hidden=!open});
-    go({spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[view]);
+    go(view==='aes'&&isDoctor()?'ae-appointments':{spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[view]);
   }
 }
 $('#btn-spa').onclick=function(){notice.hidden=true;show('spa')};
@@ -7433,10 +7437,11 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Consultant/Doctor')return ['ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','clients'];
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
-function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||(CURRENT_USER.role==='Aesthetics'&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
+function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||((CURRENT_USER.role==='Aesthetics'||CURRENT_USER.role==='Consultant/Doctor')&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
 function applyRoleUI(){
   var keys=roleKeys();
   $$('.dept').forEach(function(b){b.hidden=!allowedDept(b.id==='btn-spa'?'spa':b.id==='btn-aes'?'aes':'pha')});
@@ -7496,7 +7501,7 @@ function resumeApp(){
   return true;
 }
 function initials(n){var w=String(n||'').trim().split(/\s+/).filter(Boolean);return ((w[0]||'?')[0]+(w.length>1?w[w.length-1][0]:'')).toUpperCase()}
-function startApp(){waLoadStatus().then(function(){scheduleRefresh();setTimeout(waPoll,4000)});applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><div class="su-card"><div class="su-row"><span class="su-av" aria-hidden="true">'+esc(initials(CURRENT_USER.name))+'</span><div class="su-who"><strong>'+esc(CURRENT_USER.name)+'</strong><span class="su-role">'+esc(CURRENT_USER.role)+'</span></div></div><button type="button" class="su-out" data-logout><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Log out</button></div></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(resumeApp())return;if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
+function startApp(){waLoadStatus().then(function(){scheduleRefresh();setTimeout(waPoll,4000)});applyRoleUI();$$('.side').forEach(function(nav){nav.insertAdjacentHTML('beforeend','<div class="sidebar-user"><div class="su-card"><div class="su-row"><span class="su-av" aria-hidden="true">'+esc(initials(CURRENT_USER.name))+'</span><div class="su-who"><strong>'+esc(CURRENT_USER.name)+'</strong><span class="su-role">'+esc(CURRENT_USER.role)+'</span></div></div><button type="button" class="su-out" data-logout><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>Log out</button></div></div>')});$$('[data-logout]').forEach(function(b){b.onclick=function(){authCall('logout').finally(function(){location.reload()})}});initStore();if(resumeApp())return;if(CURRENT_USER.role==='Spa')show('spa');else if(CURRENT_USER.role==='Aesthetics'||CURRENT_USER.role==='Consultant/Doctor')show('aes');else if(CURRENT_USER.role==='Pharmacy')show('pha');else show('home');}
 function initAuth(){authCall('me').then(function(x){CURRENT_USER=x.user;startApp();if(CURRENT_USER.mustChangePassword)passwordDialog();}).catch(function(){authOverlay();});}
 initAuth();
 })();
