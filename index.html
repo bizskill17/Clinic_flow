@@ -1044,7 +1044,7 @@ function prescription(J,ctx){
     d.setDrawColor.apply(d,ACC);d.setLineWidth(0.5);d.line(L,284,R,284);
     font(d,'normal',7.6,MUTED);d.text(rx?'This is a computer-generated prescription.':'This is a computer-generated consultation record.',L,288.5);
     if(b.phone) d.text('For appointments: '+b.phone,R,288.5,{align:'right'});
-    if(p===pages){d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text(ctx.doctor||'',R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Doctor’s signature',R,279,{align:'right'})}
+    if(p===pages){if(ctx.sign&&ctx.sign.data){try{var sw=ctx.sign.w||300,sh=ctx.sign.h||100,sc=Math.min(56/sw,15/sh),iw=sw*sc,ih=sh*sc;d.addImage(ctx.sign.data,ctx.sign.fmt||'PNG',R-iw,269-ih,iw,ih)}catch(e){}}d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text(ctx.doctor||'',R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Doctor’s signature',R,279,{align:'right'})}
     if(pages>1){font(d,'normal',7.5,MUTED);d.text('Page '+p+' of '+pages,(L+R)/2,288.5,{align:'center'})}
   }
   return d.output('arraybuffer');
@@ -1111,7 +1111,7 @@ function quotation(J,ctx){
     d.setDrawColor.apply(d,ACC);d.setLineWidth(0.5);d.line(L,284,R,284);
     font(d,'normal',7.6,MUTED);
     if(b.phone) d.text('For appointments: '+b.phone,R,288.5,{align:'right'});
-    if(p===pages){d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text('For '+(b.name||'Your Business Name'),R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Authorised signatory',R,279,{align:'right'})}
+    if(p===pages){if(ctx.sign&&ctx.sign.data){try{var sw=ctx.sign.w||300,sh=ctx.sign.h||100,sc=Math.min(56/sw,15/sh),iw=sw*sc,ih=sh*sc;d.addImage(ctx.sign.data,ctx.sign.fmt||'PNG',R-iw,269-ih,iw,ih)}catch(e){}}d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text('For '+(b.name||'Your Business Name'),R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Authorised signatory',R,279,{align:'right'})}
     if(pages>1){font(d,'normal',7.5,MUTED);d.text('Page '+p+' of '+pages,(L+R)/2,288.5,{align:'center'})}
   }
   return d.output('arraybuffer');
@@ -1205,7 +1205,7 @@ function aeInvoice(J,ctx){
     d.setDrawColor.apply(d,ACC);d.setLineWidth(0.5);d.line(L,284,R,284);
     font(d,'normal',7.6,MUTED);d.text('This is a computer-generated invoice.',L,288.5);
     if(b.phone) d.text('For appointments: '+b.phone,R,288.5,{align:'right'});
-    if(p===pages){d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text('For '+(b.name||'Your Business Name'),R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Authorised signatory',R,279,{align:'right'})}
+    if(p===pages){if(ctx.sign&&ctx.sign.data){try{var sw=ctx.sign.w||300,sh=ctx.sign.h||100,sc=Math.min(56/sw,15/sh),iw=sw*sc,ih=sh*sc;d.addImage(ctx.sign.data,ctx.sign.fmt||'PNG',R-iw,269-ih,iw,ih)}catch(e){}}d.setDrawColor.apply(d,INK);d.setLineWidth(0.3);d.line(R-62,270,R,270);font(d,'bold',9.5,INK);d.text('For '+(b.name||'Your Business Name'),R,275,{align:'right'});font(d,'normal',8,MUTED);d.text('Authorised signatory',R,279,{align:'right'})}
     if(pages>1){font(d,'normal',7.5,MUTED);d.text('Page '+p+' of '+pages,(L+R)/2,288.5,{align:'center'})}
   }
   if(v.cancelled) cancelStamp(d,v.cancelReason);
@@ -2741,7 +2741,7 @@ function simpleMaster(cfg){
       var list=all.filter(function(r){return (!qq||norm(cfg.search(r)).indexOf(qq)>=0)&&(!cfg.filter||!fv||cfg.filter.test(r,fv))}).sort(cfg.sort);
       if(!list.length){b.innerHTML='<div class="empty"><strong>No matches</strong>Try another search.</div>';return}
       b.innerHTML='<div class="tbl"><table><thead><tr>'+cfg.cols.map(function(c){return '<th'+(c.num?' class="num"':'')+'>'+esc(c.h)+'</th>'}).join('')+'<th></th></tr></thead><tbody>'+
-        list.map(function(r){return '<tr class="tr-click" data-row="'+esc(r.id)+'" title="Click to open">'+cfg.cols.map(function(c,ix){var t=c.text(r);return '<td'+(c.num?' class="num"':'')+'>'+(ix===0?'<strong>'+esc(t)+'</strong>':(t===''?'<span class="sub">—</span>':esc(t)))+'</td>'}).join('')+
+        list.map(function(r){return '<tr class="tr-click" data-row="'+esc(r.id)+'" title="Click to open">'+cfg.cols.map(function(c,ix){if(c.html)return '<td>'+c.html(r)+'</td>';var t=c.text(r);return '<td'+(c.num?' class="num"':'')+'>'+(ix===0?'<strong>'+esc(t)+'</strong>':(t===''?'<span class="sub">—</span>':esc(t)))+'</td>'}).join('')+
           '<td><div class="row-acts w"><button class="btn sm" data-edit="'+esc(r.id)+'">Edit</button><button class="btn sm danger" data-del="'+esc(r.id)+'">Delete</button></div></td></tr>'}).join('')+
         '</tbody></table></div><p class="hint">'+list.length+' of '+all.length+' '+esc(cfg.title.toLowerCase())+'</p>';
       $$('[data-edit]',b).forEach(function(x){x.onclick=function(){edit(x.dataset.edit)}});
@@ -2769,6 +2769,7 @@ function simpleMaster(cfg){
         if(f.type==='pdfs') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='svcprices') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='image') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='checks'){var cv=Array.isArray(r[f.id])?r[f.id]:[];var hid=f.showIf&&(r[f.showIf.field]||'')!==f.showIf.value;return '<div class="field span2" id="mfw-'+f.id+'"'+(hid?' hidden':'')+'><label>'+esc(f.label)+'</label><div style="display:flex;flex-wrap:wrap;gap:6px 18px">'+f.options().map(function(o){return '<label class="check"><input type="checkbox" data-chk="'+f.id+'" value="'+esc(o[0])+'"'+(cv.indexOf(o[0])>=0?' checked':'')+'> '+esc(o[1])+'</label>'}).join('')+'</div></div>'}
         if(f.type==='services') return '<div class="field span2"><label>'+esc(f.label)+(f.req?' <span class="req">*</span>':'')+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
@@ -2787,15 +2788,17 @@ function simpleMaster(cfg){
         cfg.fields.forEach(function(f){if(f.type==='pdfs'){var cur=Array.isArray(r[f.id])?r[f.id]:(f.legacy&&r[f.legacy]&&r[f.legacy].id?[r[f.legacy]]:[]);fileVals[f.id]=cur.map(function(x){return Object.assign({},x)});pdfsField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
+        var imgVals={};
+        cfg.fields.forEach(function(f){if(f.type==='image'){imgVals[f.id]=r[f.id]&&r[f.id].data?r[f.id]:null;sigField(m.querySelector('#mf-'+f.id),function(){return imgVals[f.id]},function(v){imgVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.showIf){var src=m.querySelector('#mf-'+f.showIf.field);if(src)src.addEventListener('change',function(){m.querySelector('#mfw-'+f.id).hidden=src.value!==f.showIf.value})}});
         cfg.fields.forEach(function(f){if(f.type==='static'){var src=m.querySelector('#mf-'+f.from);if(src)src.addEventListener('change',function(){m.querySelector('#mf-'+f.id).textContent=f.compute(src.value)||'—'})}});
         m.querySelector('#mf').onsubmit=function(e){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='checks')obj[f.id]=Array.prototype.slice.call(m.querySelectorAll('input[data-chk="'+f.id+'"]:checked')).map(function(x){return x.value});else if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdfs'){obj[f.id]=(fileVals[f.id]||[]).filter(function(x){return x&&x.id});if(f.legacy)obj[f.legacy]=obj[f.id][0]||null}else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='image')obj[f.id]=imgVals[f.id]||null;else if(f.type==='checks')obj[f.id]=Array.prototype.slice.call(m.querySelectorAll('input[data-chk="'+f.id+'"]:checked')).map(function(x){return x.value});else if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdfs'){obj[f.id]=(fileVals[f.id]||[]).filter(function(x){return x&&x.id});if(f.legacy)obj[f.legacy]=obj[f.id][0]||null}else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='checks'||f.type==='consumables'||f.type==='pdf'||f.type==='pdfs'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='image'||f.type==='checks'||f.type==='consumables'||f.type==='pdf'||f.type==='pdfs'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.id==='phone'&&obj[f.id]&&!validContactPhone(obj[f.id])){msg='Phone must contain exactly 10 digits (numbers only).';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
@@ -2847,6 +2850,44 @@ SECTIONS.cities=simpleMaster({
   usage:function(r){var n=S.clients.filter(function(c){return c.cityId===r.id}).length+S.phSuppliers.filter(function(c){return c.cityId===r.id}).length+(biz().cityId===r.id?1:0);return n?r.name+' is in use (clients, suppliers or business details), so it can’t be deleted.':''}
 });
 
+/* signature image: cleaned in the browser (paper background made transparent, margins trimmed) and kept small inside the user record */
+function sigField(host,get,set){
+  function render(){
+    var v=get();
+    host.innerHTML='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+(v?'<div style="border:1px solid var(--line,#ddd);border-radius:8px;padding:6px 10px;background:#fff"><img src="'+v.data+'" alt="Signature" style="height:48px;max-width:220px;object-fit:contain;display:block"></div>':'')+
+      '<label class="btn sm" style="cursor:pointer">'+(v?'Replace':PLUS+' Upload signature')+'<input type="file" accept="image/png,image/jpeg" hidden></label>'+(v?'<button type="button" class="btn sm danger" data-rm>Remove</button>':'')+'<span class="sub" data-msg>'+(v?'':'PNG or JPG. A photo of the signature on white paper works.')+'</span></div>';
+    var rm=host.querySelector('[data-rm]');if(rm)rm.onclick=function(){set(null);render()};
+    host.querySelector('input').onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var msg=host.querySelector('[data-msg]');
+      if(!/^image\/(png|jpeg)$/.test(f.type)){msg.textContent='Choose a PNG or JPG image.';return}
+      if(f.size>8*1024*1024){msg.textContent='That image is larger than 8 MB.';return}
+      msg.textContent='Processing…';
+      cleanSignature(f).then(function(v){set(v);render()}).catch(function(){msg.textContent='The image could not be opened.'})};
+  }
+  render();
+}
+function cleanSignature(file){
+  return new Promise(function(res,rej){
+    var rd=new FileReader();rd.onerror=rej;rd.onload=function(){var img=new Image();img.onerror=rej;img.onload=function(){
+      var r=Math.min(1,900/img.width,900/img.height),w=Math.max(1,Math.round(img.width*r)),h=Math.max(1,Math.round(img.height*r));
+      var cv=document.createElement('canvas');cv.width=w;cv.height=h;var cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(img,0,0,w,h);
+      var id=cx.getImageData(0,0,w,h),p=id.data,x0=w,y0=h,x1=-1,y1=-1;
+      for(var y=0;y<h;y++)for(var x=0;x<w;x++){var i=(y*w+x)*4,l=0.3*p[i]+0.59*p[i+1]+0.11*p[i+2];
+        if(l>175){p[i+3]=0}else{p[i+3]=l>120?Math.round(255*(175-l)/55):255;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+      cx.putImageData(id,0,0);
+      if(x1<0){x0=0;y0=0;x1=w-1;y1=h-1}
+      var pad=4;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w-1,x1+pad);y1=Math.min(h-1,y1+pad);
+      var tw=x1-x0+1,th=y1-y0+1,s2=Math.min(1,480/tw,160/th),ow=Math.max(1,Math.round(tw*s2)),oh=Math.max(1,Math.round(th*s2));
+      var out=document.createElement('canvas');out.width=ow;out.height=oh;out.getContext('2d').drawImage(cv,x0,y0,tw,th,0,0,ow,oh);
+      res({data:out.toDataURL('image/png'),w:ow,h:oh,fmt:'PNG'});
+    };img.src=rd.result};rd.readAsDataURL(file);
+  });
+}
+/* the signature to print: a doctor on the record who has one, preferring Consultant/Doctor users */
+function docSign(staffIds){
+  var us=(staffIds||[]).map(function(id){return findIn('users',id)}).filter(function(u){return u&&u.signature&&u.signature.data});
+  var d=us.filter(function(u){return u.role==='Consultant/Doctor'});
+  var u=(d.length?d:us)[0];return u?u.signature:null;
+}
 /* optional pages for a Consultant/Doctor; Consultations is always on */
 var DOC_VIEWS=[['ae-appointments','Appointments'],['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker']]; /* doctors never see Quotations or Clients pages */
 SECTIONS.users=simpleMaster({
@@ -2859,8 +2900,9 @@ SECTIONS.users=simpleMaster({
     {id:'role',label:'Role',type:'select',req:true,placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Consultant/Doctor','Spa','Pharmacy']}},
     {id:'phone',label:'Phone',max:20},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
+    {id:'signature',label:'Signature (printed on prescriptions)',type:'image'},
     {id:'access',label:'Pages this doctor can see (Consultations is always on)',type:'checks',showIf:{field:'role',value:'Consultant/Doctor'},options:function(){return DOC_VIEWS}}],
-  cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
+  cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Signature',text:function(r){return r.signature&&r.signature.data?'Yes':''},html:function(r){return r.signature&&r.signature.data?'<img src="'+r.signature.data+'" alt="Signature" style="height:28px;max-width:110px;object-fit:contain;display:block">':'<span class="sub">—</span>'}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
     {h:'Services performed',num:true,text:function(r){return String(userLineCount(r.id,'performedBy'))}},{h:'Referrals',num:true,text:function(r){return String(userLineCount(r.id,'referredBy'))}}],
   search:function(r){return r.name+' '+(r.userId||'')+' '+(r.email||'')+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){
@@ -4104,7 +4146,7 @@ function viewCon(id,fallback){
 function conPdf(c,mode){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{}, rx=mode==='prescription';
-  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:c.age||clientAge(cl),weight:c.weight||'',marital:rx?'':(c.marital||'')},doctor:c.doctor||'',apptNo:c.apptNo||'',fmtDate:fmtDate});pdfView(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
+  try{var pdf=window.PDFKIT.prescription(J,{mode:rx?'prescription':'consultation',showDiag:c.rxDiag!==false,showObs:false,showProcs:c.rxProcs!==false,biz:bizCtx(),con:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:c.age||clientAge(cl),weight:c.weight||'',marital:rx?'':(c.marital||'')},doctor:c.doctor||'',sign:docSign(c.staffIds),apptNo:c.apptNo||'',fmtDate:fmtDate});pdfView(c.no+(rx?'-prescription':'-consultation')+'.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
@@ -4708,7 +4750,7 @@ function sesPdf(s){
   var con={no:s.no,date:s.date,diagnosis:s.procNotes||'',observations:s.outcomeNotes||'',meds:s.meds||[],procs:[]};
   try{var pdf=window.PDFKIT.prescription(J,{mode:'prescription',showDiag:s.rxProc!==false,showObs:s.rxOutcome!==false,showProcs:false,labels:{diag:'Procedure notes',obs:'Outcome notes'},
     lead:{title:'Procedure performed',text:(s.procName||'')+(s.unitName&&+s.units>0?'  ·  '+r2(s.units)+' '+s.unitName:'')+(sesOrdinal(s)?'  ·  '+sesOrdinal(s):'')+(s.quoteNo?'  ·  '+s.quoteNo:'')},
-    biz:bizCtx(),con:con,client:{name:s.clientName,phone:s.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:s.performedBy||'',apptNo:s.apptNo||'',fmtDate:fmtDate});pdfView(s.no+'-prescription.pdf',pdf)}
+    biz:bizCtx(),con:con,client:{name:s.clientName,phone:s.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:s.performedBy||'',sign:docSign(s.staffIds),apptNo:s.apptNo||'',fmtDate:fmtDate});pdfView(s.no+'-prescription.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
 
