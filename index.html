@@ -3958,11 +3958,23 @@ function conFormUpdate(){
   conCombos.forEach(function(c){c.refresh()});
   var act=document.activeElement; if(!(act&&act.id==='cf-appt')) conFillAppts();
 }
+/* + next to Medicine: a medicine not in the pharmacy list. It prints on the prescription only (itemId 'ext'): no billing, no stock. */
+function medOutside(m,done){
+  openModal('<h2>Add a medicine</h2><p class="hint">For a medicine you don\u2019t keep in the pharmacy. It prints on the prescription; it is not billed or taken from stock.</p><form id="mo-f" novalidate><div class="field"><label for="mo-name">Medicine name <span class="req">*</span></label><input type="text" id="mo-name" maxlength="80" autocomplete="off" value="'+esc(m.itemId==='ext'?m.name:'')+'" placeholder="e.g. Sunscreen SPF 50"></div><p class="err" id="mo-err" hidden></p><div class="m-actions"><button type="button" class="btn" id="mo-x">Cancel</button><button type="submit" class="btn primary">Add</button></div></form>','--m6',false,function(md){
+    var inp=md.querySelector('#mo-name');setTimeout(function(){inp.focus()},50);
+    md.querySelector('#mo-x').onclick=closeModal;
+    md.querySelector('#mo-f').onsubmit=function(e){e.preventDefault();var v=inp.value.replace(/\s+/g,' ').trim(),er=md.querySelector('#mo-err');
+      if(!v){er.textContent='Enter the medicine name.';er.hidden=false;return}
+      var hit=S.phItems.find(function(x){return x.status!=='Inactive'&&norm(x.name)===norm(v)});
+      if(hit){m.itemId=hit.id;m.name=hit.name}else{m.itemId='ext';m.name=v}
+      closeModal();done()};
+  });
+}
 function conRenderMeds(){
   var d=conDraft, box=$('#cf-meds'); if(!box) return;
   conCombos=conCombos.filter(function(c){return c.part!=='med'});
   box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
-    '<div class="field"><label for="cm-item-'+i+'">Medicine</label><div class="h-med"></div></div>'+
+    '<div class="field"><label for="cm-item-'+i+'">Medicine'+(m.itemId==='ext'?' <span class="sub">(not in pharmacy)</span>':'')+'</label><div class="client-pick"><div class="h-med"></div><button type="button" class="btn icon-plus med-plus" aria-label="Add a medicine not in the list" title="Add a medicine not in the list">'+PLUS+'</button></div></div>'+
     '<div class="field"><label for="cm-dose-'+i+'">Dose <span class="req">*</span></label><select id="cm-dose-'+i+'" class="cm-dose">'+optList([['','Select']].concat(DOSES.indexOf(m.dose)<0&&m.dose?[m.dose]:[]).concat(DOSES),m.dose||'')+'</select></div>'+
     '<div class="field"><label for="cm-food-'+i+'">Food</label><select id="cm-food-'+i+'" class="cm-food">'+optList([['','Select']].concat(FOODS),m.food||'')+'</select></div>'+
     '<div class="field"><label for="cm-dur-'+i+'">Duration <span class="req">*</span></label><input type="text" id="cm-dur-'+i+'" class="cm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
@@ -3973,6 +3985,7 @@ function conRenderMeds(){
       options:function(){var bm=phBatches();return S.phItems.filter(function(x){return x.status!=='Inactive'||x.id===m.itemId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,phStockRec(bm,x.id).qty+' in stock']})},
       missing:function(){return m.name},onChange:function(v){var it=phItem(v);m.itemId=v;m.name=it?it.name:'';var n=$('#cm-dose-'+i);if(n)n.focus()}});
     cb.part='med'; conCombos.push(cb);
+    row.querySelector('.med-plus').onclick=function(){medOutside(m,function(){conRenderMeds();var n=$('#cm-dose-'+i);if(n)n.focus()})};
     row.querySelector('.cm-dose').onchange=function(e){m.dose=e.target.value};
     row.querySelector('.cm-food').onchange=function(e){m.food=e.target.value};
     row.querySelector('.cm-dur').oninput=function(e){m.duration=e.target.value};
@@ -4543,7 +4556,7 @@ function sesRenderMeds(){
   var d=sesDraft, box=$('#sf-meds'); if(!box) return;
   sesCombos=sesCombos.filter(function(c){return c.part!=='med'});
   box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
-    '<div class="field"><label for="sm-item-'+i+'">Medicine</label><div class="h-med"></div></div>'+
+    '<div class="field"><label for="sm-item-'+i+'">Medicine'+(m.itemId==='ext'?' <span class="sub">(not in pharmacy)</span>':'')+'</label><div class="client-pick"><div class="h-med"></div><button type="button" class="btn icon-plus med-plus" aria-label="Add a medicine not in the list" title="Add a medicine not in the list">'+PLUS+'</button></div></div>'+
     '<div class="field"><label for="sm-dose-'+i+'">Dose <span class="req">*</span></label><select id="sm-dose-'+i+'" class="sm-dose">'+optList([['','Select']].concat(DOSES.indexOf(m.dose)<0&&m.dose?[m.dose]:[]).concat(DOSES),m.dose||'')+'</select></div>'+
     '<div class="field"><label for="sm-food-'+i+'">Food</label><select id="sm-food-'+i+'" class="sm-food">'+optList([['','Select']].concat(FOODS),m.food||'')+'</select></div>'+
     '<div class="field"><label for="sm-dur-'+i+'">Duration <span class="req">*</span></label><input type="text" id="sm-dur-'+i+'" class="sm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
@@ -4554,6 +4567,7 @@ function sesRenderMeds(){
       options:function(){var bm=phBatches();return S.phItems.filter(function(x){return x.status!=='Inactive'||x.id===m.itemId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,phStockRec(bm,x.id).qty+' in stock']})},
       missing:function(){return m.name},onChange:function(v){var it=phItem(v);m.itemId=v;m.name=it?it.name:'';var n=$('#sm-dose-'+i);if(n)n.focus()}});
     cb.part='med'; sesCombos.push(cb);
+    row.querySelector('.med-plus').onclick=function(){medOutside(m,function(){sesRenderMeds();var n=$('#sm-dose-'+i);if(n)n.focus()})};
     row.querySelector('.sm-dose').onchange=function(e){m.dose=e.target.value};
     row.querySelector('.sm-food').onchange=function(e){m.food=e.target.value};
     row.querySelector('.sm-dur').oninput=function(e){m.duration=e.target.value};
