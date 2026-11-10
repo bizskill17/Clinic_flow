@@ -1010,12 +1010,14 @@ function prescription(J,ctx){
     meds.forEach(function(m,ix){
       font(d,'normal',9.4);
       var nm=d.splitTextToSize(m.name||'',M.dose-M.name-4), ds2=d.splitTextToSize(m.dose||'—',M.food-M.dose-3), fo=d.splitTextToSize(m.food||'—',M.dur-M.food-3), du=d.splitTextToSize(m.duration||'—',R-M.dur-3);
-      var h=Math.max(nm.length,ds2.length,fo.length,du.length)*4.3+3.6;
+      var nt=m.notes?(font(d,'normal',8.4),d.splitTextToSize('Note: '+m.notes,R-M.name-4)):[];font(d,'normal',9.4);
+      var h=Math.max(nm.length,ds2.length,fo.length,du.length)*4.3+3.6+nt.length*3.9;
       y=ensure(d,y,h+2,th);
       if(ix%2===1){d.setFillColor.apply(d,FILL);d.rect(L,y-4.4,W,h,'F')}
       font(d,'bold',9.4,ACC);d.text(String(ix+1),M.n,y);
       font(d,'bold',9.4,INK);nm.forEach(function(t,k){d.text(t,M.name,y+k*4.3)});
       font(d,'normal',9.4,INK);ds2.forEach(function(t,k){d.text(t,M.dose,y+k*4.3)});fo.forEach(function(t,k){d.text(t,M.food,y+k*4.3)});du.forEach(function(t,k){d.text(t,M.dur,y+k*4.3)});
+      if(nt.length){var ny=y+Math.max(nm.length,ds2.length,fo.length,du.length)*4.3;font(d,'normal',8.4,MUTED);nt.forEach(function(t,k){d.text(t,M.name,ny+k*3.9)})}
       y+=h;
     });
     d.setDrawColor.apply(d,LINE);d.setLineWidth(0.3);d.line(L,y-4.4,R,y-4.4);
@@ -3877,7 +3879,7 @@ function editAppt(id,preset){
 var conDraft=null, conMode='list', conF={q:'',from:'',to:''}, conCombos=[], conOldFiles=[];
 var AP_ACTIVE=['Booked','Confirmed','Arrived'];
 var DOSES=['OD','BD','TDS'], FOODS=['Before Food','After Food'];
-function conBlankMed(){return {itemId:'',name:'',dose:'',food:'',duration:''}}
+function conBlankMed(){return {itemId:'',name:'',dose:'',food:'',duration:'',notes:''}}
 function conBlankProc(){return {procId:'',name:'',sessions:1}}
 /* new consultation: fill age (from date of birth) and marital status / systemic conditions from the client's last consultation, only where blank */
 function conPrefill(d){
@@ -3905,7 +3907,7 @@ function conListMount(){
   $('#cn-from').onchange=function(e){conF.from=e.target.value;up()};
   $('#cn-to').onchange=function(e){conF.to=e.target.value;up()};
   $('#cn-new').onclick=function(){conDraft=conNew();conOldFiles=[];conMode='form';go(current)};
-  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Age','Marital status','Weight (kg)','Systemic conditions','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.age||'',c.marital||'',c.weight||'',c.systemic||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
+  $('#cn-export').onclick=function(){saveFile('consultations-'+todayStr()+'.csv',csv([['Number','Date','Client','Phone','Appointment','Doctor','Age','Marital status','Weight (kg)','Systemic conditions','Diagnosis','Observations','Medicines','Procedures']].concat(conFiltered().map(function(c){return [c.no,c.date,c.clientName,c.clientPhone||'',c.apptNo||'',c.doctor||'',c.age||'',c.marital||'',c.weight||'',c.systemic||'',c.diagnosis||'',c.observations||'',(c.meds||[]).map(function(m){return m.name+' ('+[m.dose,m.food,m.duration,m.notes].filter(Boolean).join(', ')+')'}).join('; '),(c.procs||[]).map(function(p){return p.name+' x'+p.sessions}).join('; ')]}))))};
 }
 function conFiltered(){
   var q=norm(conF.q);
@@ -3935,7 +3937,7 @@ function conEdit(id){
   if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var c=findIn('aeCons',id); if(!c) return;
   conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',age:c.age||'',marital:c.marital||'',weight:c.weight||'',systemic:c.systemic||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
-    meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables),files:(c.files||[]).map(function(f){return Object.assign({saved:true},f)})};
+    meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||'',notes:m.notes||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables),files:(c.files||[]).map(function(f){return Object.assign({saved:true},f)})};
   conOldFiles=[];
   if(!conDraft.meds.length) conDraft.meds=[conBlankMed()];
   if(!conDraft.procs.length) conDraft.procs=[conBlankProc()];
@@ -4032,11 +4034,12 @@ function medOutside(m,done){
 function conRenderMeds(){
   var d=conDraft, box=$('#cf-meds'); if(!box) return;
   conCombos=conCombos.filter(function(c){return c.part!=='med'});
-  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1fr) minmax(0,1fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
+  box.innerHTML=d.meds.map(function(m,i){return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,.9fr) minmax(0,.9fr) minmax(0,1.3fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
     '<div class="field"><label for="cm-item-'+i+'">Medicine'+(m.itemId==='ext'?' <span class="sub">(not in pharmacy)</span>':'')+'</label><div class="client-pick"><div class="h-med"></div><button type="button" class="btn icon-plus med-plus" aria-label="Add a medicine not in the list" title="Add a medicine not in the list">'+PLUS+'</button></div></div>'+
     '<div class="field"><label for="cm-dose-'+i+'">Dose <span class="req">*</span></label><select id="cm-dose-'+i+'" class="cm-dose">'+optList([['','Select']].concat(DOSES.indexOf(m.dose)<0&&m.dose?[m.dose]:[]).concat(DOSES),m.dose||'')+'</select></div>'+
     '<div class="field"><label for="cm-food-'+i+'">Food</label><select id="cm-food-'+i+'" class="cm-food">'+optList([['','Select']].concat(FOODS),m.food||'')+'</select></div>'+
     '<div class="field"><label for="cm-dur-'+i+'">Duration <span class="req">*</span></label><input type="text" id="cm-dur-'+i+'" class="cm-dur" maxlength="40" value="'+esc(m.duration)+'" placeholder="e.g. 5 days" autocomplete="off"></div>'+
+    '<div class="field"><label for="cm-note-'+i+'">Notes</label><input type="text" id="cm-note-'+i+'" class="cm-note" maxlength="120" value="'+esc(m.notes||'')+'" placeholder="e.g. Apply at night" autocomplete="off"></div>'+
     '<button type="button" class="icon-btn cm-del" aria-label="Remove medicine '+(i+1)+'">×</button></div></div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, m=d.meds[i];
@@ -4048,6 +4051,7 @@ function conRenderMeds(){
     row.querySelector('.cm-dose').onchange=function(e){m.dose=e.target.value};
     row.querySelector('.cm-food').onchange=function(e){m.food=e.target.value};
     row.querySelector('.cm-dur').oninput=function(e){m.duration=e.target.value};
+    row.querySelector('.cm-note').oninput=function(e){m.notes=e.target.value};
     row.querySelector('.cm-del').onclick=function(){d.meds.splice(i,1);if(!d.meds.length)d.meds.push(conBlankMed());conRenderMeds()};
   });
 }
@@ -4112,7 +4116,7 @@ function conSave(){
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeCons);
   var obj={id:d.id||newId('cn'),seq:seq,no:editing?d.no:'CON-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',apptId:a.id,apptNo:a.no,staffIds:meIfDoc(apStaff(a)),doctor:meIfDoc(apStaff(a)).map(userName).filter(Boolean).join(', '),
     age:String(d.age||'').trim(),marital:d.marital||'',weight:String(d.weight||'').trim(),systemic:String(d.systemic||'').trim(),diagnosis:String(d.diagnosis||'').trim(),observations:String(d.observations||'').trim(),rxDiag:d.rxDiag!==false,rxObs:d.rxObs!==false,rxProcs:d.rxProcs!==false,
-    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
+    meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim(),notes:String(m.notes||'').trim()}}),
     procs:procs.map(function(p){var pr=findIn('aeProcs',p.procId)||{},pu=procPU(pr);return Object.assign({procId:p.procId,name:p.name,sessions:+p.sessions,price:+pr.price||0,gst:+pr.gst||0},pu?{perUnit:true,units:+p.sessions,unitName:pr.unitName||'units'}:{})}),
     consumables:cleanCons(d.consumables),files:(d.files||[]).filter(function(f){return f.id}).map(function(f){return {id:f.id,type:f.type,name:String(f.name||'').slice(0,120),caption:String(f.caption||'').trim().slice(0,80)}}),
     createdAt:d.createdAt||now,updatedAt:now};
@@ -4132,7 +4136,7 @@ function viewCon(id,fallback){
     m.innerHTML='<h2>Consultation '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(c.date)+'</dd><dt>Appointment</dt><dd>'+esc(c.apptNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(c.doctor||'—')+'</dd><dt>Age</dt><dd>'+esc(c.age||'—')+'</dd><dt>Marital status</dt><dd>'+esc(c.marital||'—')+'</dd><dt>Weight</dt><dd>'+(c.weight?esc(c.weight)+' kg':'—')+'</dd></dl></div>'+
       '<div class="field" style="margin-bottom:14px"><label>Systemic conditions</label>'+txt(c.systemic)+'</div>'+
       '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
-      '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
+      '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th><th>Notes</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td><td>'+esc(x.notes||'—')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+(x.perUnit?esc(r2(+x.units||+x.sessions||0)+' '+(x.unitName||'units')):x.sessions)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       ((c.files||[]).length?'<h3 class="sec-h">Photos &amp; files</h3><div class="cf-files">'+c.files.map(function(f){return '<div class="cf-file">'+conFileView(f)+(f.caption?'<div class="cf-capv">'+esc(f.caption)+'</div>':'')+'</div>'}).join('')+'</div>':'')+
       waTag('conrx',c.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
