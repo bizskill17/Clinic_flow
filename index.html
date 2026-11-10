@@ -2769,6 +2769,7 @@ function simpleMaster(cfg){
         if(f.type==='pdfs') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='svcprices') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='checks'){var cv=Array.isArray(r[f.id])?r[f.id]:[];var hid=f.showIf&&(r[f.showIf.field]||'')!==f.showIf.value;return '<div class="field span2" id="mfw-'+f.id+'"'+(hid?' hidden':'')+'><label>'+esc(f.label)+'</label><div style="display:flex;flex-wrap:wrap;gap:6px 18px">'+f.options().map(function(o){return '<label class="check"><input type="checkbox" data-chk="'+f.id+'" value="'+esc(o[0])+'"'+(cv.indexOf(o[0])>=0?' checked':'')+'> '+esc(o[1])+'</label>'}).join('')+'</div></div>'}
         if(f.type==='services') return '<div class="field span2"><label>'+esc(f.label)+(f.req?' <span class="req">*</span>':'')+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='number') return fc+lab+'<input type="number" id="mf-'+f.id+'"'+(f.allowNeg?'':' min="0"')+' step="'+(f.step||'0.01')+'" value="'+esc(v)+'"'+(f.placeholderText?' placeholder="'+esc(f.placeholderText)+'"':'')+'>'+(f.hint?'<span class="hint">'+esc(f.hint)+'</span>':'')+'</div>';
         var inputType=f.type==='email'?'email':(f.type==='password'?'password':'text');
@@ -2786,14 +2787,15 @@ function simpleMaster(cfg){
         cfg.fields.forEach(function(f){if(f.type==='pdfs'){var cur=Array.isArray(r[f.id])?r[f.id]:(f.legacy&&r[f.legacy]&&r[f.legacy].id?[r[f.legacy]]:[]);fileVals[f.id]=cur.map(function(x){return Object.assign({},x)});pdfsField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
+        cfg.fields.forEach(function(f){if(f.showIf){var src=m.querySelector('#mf-'+f.showIf.field);if(src)src.addEventListener('change',function(){m.querySelector('#mfw-'+f.id).hidden=src.value!==f.showIf.value})}});
         cfg.fields.forEach(function(f){if(f.type==='static'){var src=m.querySelector('#mf-'+f.from);if(src)src.addEventListener('change',function(){m.querySelector('#mf-'+f.id).textContent=f.compute(src.value)||'—'})}});
         m.querySelector('#mf').onsubmit=function(e){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdfs'){obj[f.id]=(fileVals[f.id]||[]).filter(function(x){return x&&x.id});if(f.legacy)obj[f.legacy]=obj[f.id][0]||null}else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='checks')obj[f.id]=Array.prototype.slice.call(m.querySelectorAll('input[data-chk="'+f.id+'"]:checked')).map(function(x){return x.value});else if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdfs'){obj[f.id]=(fileVals[f.id]||[]).filter(function(x){return x&&x.id});if(f.legacy)obj[f.legacy]=obj[f.id][0]||null}else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='pdfs'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='checks'||f.type==='consumables'||f.type==='pdf'||f.type==='pdfs'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.id==='phone'&&obj[f.id]&&!validContactPhone(obj[f.id])){msg='Phone must contain exactly 10 digits (numbers only).';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
@@ -2845,6 +2847,8 @@ SECTIONS.cities=simpleMaster({
   usage:function(r){var n=S.clients.filter(function(c){return c.cityId===r.id}).length+S.phSuppliers.filter(function(c){return c.cityId===r.id}).length+(biz().cityId===r.id?1:0);return n?r.name+' is in use (clients, suppliers or business details), so it can’t be deleted.':''}
 });
 
+/* optional pages for a Consultant/Doctor; Consultations is always on */
+var DOC_VIEWS=[['ae-appointments','Appointments'],['ae-quotations','Quotations'],['ae-sessions','Completed Sessions'],['ae-procedures','Sessions Tracker'],['clients','Clients']];
 SECTIONS.users=simpleMaster({
   kind:'users',prefix:'u',title:'Users',singular:'user',singularCap:'User',color:'--m10',searchPh:'Name, role or phone',
   emptyText:'Add your staff. They appear in Performed by and Referred by on the Invoice Form.',
@@ -2854,7 +2858,8 @@ SECTIONS.users=simpleMaster({
     {id:'password',label:'Password',type:'password',max:128,placeholderText:'Leave blank to keep the current password'},
     {id:'role',label:'Role',type:'select',req:true,placeholder:function(){return 'Select a role'},options:function(){return ['Admin','Manager','Aesthetics','Consultant/Doctor','Spa','Pharmacy']}},
     {id:'phone',label:'Phone',max:20},
-    {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}}],
+    {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
+    {id:'access',label:'Pages this doctor can see (Consultations is always on)',type:'checks',showIf:{field:'role',value:'Consultant/Doctor'},options:function(){return DOC_VIEWS}}],
   cols:[{h:'Name',text:function(r){return r.name}},{h:'User ID',text:function(r){return r.userId||''}},{h:'Email',text:function(r){return r.email||''}},{h:'Role',text:function(r){return r.role||''}},{h:'Phone',text:function(r){return r.phone||''}},{h:'Status',text:function(r){return r.status||'Active'}},
     {h:'Services performed',num:true,text:function(r){return String(userLineCount(r.id,'performedBy'))}},{h:'Referrals',num:true,text:function(r){return String(userLineCount(r.id,'referredBy'))}}],
   search:function(r){return r.name+' '+(r.userId||'')+' '+(r.email||'')+' '+(r.role||'')+' '+(r.phone||'')},sort:function(a,b){return byText(a.name,b.name)},
@@ -7462,7 +7467,7 @@ function show(view){
     $$('.work').forEach(function(w){w.innerHTML=''});
     dept=view; work=$('#work-'+view);
     $$('#nav-'+view+' .mgroup').forEach(function(g){var id=g.getAttribute('aria-controls'),open=/-ops-sub$/.test(id)||id==='ph-reports-sub';g.setAttribute('aria-expanded',String(open));var sub=$('#'+id);if(sub)sub.hidden=!open});
-    go(view==='aes'&&isDoctor()?'ae-appointments':{spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[view]);
+    go(view==='aes'&&isDoctor()?'ae-consultations':{spa:'dashboard',aes:'ae-dashboard',pha:'ph-dashboard'}[view]);
   }
 }
 $('#btn-spa').onclick=function(){notice.hidden=true;show('spa')};
@@ -7486,7 +7491,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Consultant/Doctor')return ['ae-appointments','ae-consultations','ae-sessions','ae-procedures','clients'];
+  if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
