@@ -334,6 +334,7 @@ tr.click-row{cursor:pointer}
 .ph-frame img{width:100%;height:100%;object-fit:cover;display:block}
 .ph-acts{display:flex;gap:6px;flex-wrap:wrap}
 .rte-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.rte-bar .rte-chip{font-family:var(--mono,monospace);font-size:12px}.rte{border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:180px;max-height:460px;overflow:auto;background:var(--surface,#fff);line-height:1.55;font-size:14px;outline:none}.rte:focus{border-color:var(--accent,#2e6b4f);box-shadow:0 0 0 3px rgba(46,107,79,.12)}.rte p,.consent-rich p{margin:0 0 4px}.rte h3,.consent-rich h3{font-size:16px;margin:10px 0 4px}.rte ul,.rte ol,.consent-rich ul,.consent-rich ol{margin:2px 0 6px;padding-left:22px}.consent-text.consent-rich{white-space:normal}
+.pdfs{display:flex;flex-direction:column;gap:6px}
 .consent-pdf{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.consent-pdf iframe{width:100%;height:420px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .consent-text{white-space:pre-line;border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:260px;overflow:auto;font-size:14px;line-height:1.55;background:var(--surface-2)}
 .sig-wrap{position:relative;border:1.5px dashed var(--line);border-radius:10px;background:#fff;height:180px;max-width:560px}
@@ -2751,6 +2752,7 @@ function simpleMaster(cfg){
         if(f.type==='textarea') return fc+lab+'<textarea id="mf-'+f.id+'" rows="3">'+esc(v)+'</textarea></div>';
         if(f.type==='rich') return '<div class="field span2"><label>'+esc(f.label)+'</label>'+(f.hint?'<p class="hint" style="margin:0 0 6px">'+f.hint+'</p>':'')+'<div id="mf-'+f.id+'"></div></div>';
         if(f.type==='consumables') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
+        if(f.type==='pdfs') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='pdf') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='svcprices') return '<div class="field span2"><label>'+esc(f.label)+'</label><div id="mf-'+f.id+'"></div></div>';
         if(f.type==='services') return '<div class="field span2"><label>'+esc(f.label)+(f.req?' <span class="req">*</span>':'')+'</label><div id="mf-'+f.id+'"></div></div>';
@@ -2767,6 +2769,7 @@ function simpleMaster(cfg){
         cfg.fields.forEach(function(f){if(f.type==='rich')richEditor(m.querySelector('#mf-'+f.id),r[f.id]||'',{label:f.label,chips:f.chips,word:f.word})});
         cfg.fields.forEach(function(f){if(f.type==='svcprices'){priceVals[f.id]=Object.assign({},r[f.id]||{});svcPriceTable(m.querySelector('#mf-'+f.id),function(){return priceVals[f.id]},function(v){priceVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='services'){svcVals[f.id]=Array.isArray(r[f.id])?r[f.id].slice():[];svcPicker(m.querySelector('#mf-'+f.id),function(){return svcVals[f.id]},function(v){svcVals[f.id]=v})}});
+        cfg.fields.forEach(function(f){if(f.type==='pdfs'){var cur=Array.isArray(r[f.id])?r[f.id]:(f.legacy&&r[f.legacy]&&r[f.legacy].id?[r[f.legacy]]:[]);fileVals[f.id]=cur.map(function(x){return Object.assign({},x)});pdfsField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='consumables'){consVals[f.id]=copyCons(r[f.id]);consBlock(m.querySelector('#mf-'+f.id),{dk:f.dk,idp:'mfc',noAvail:true,emptyText:'None set.',get:function(){return consVals[f.id]},set:function(a){consVals[f.id]=a},copy:{label:f.copyLabel,options:function(){return f.copyOptions(id)}}})}});
         cfg.fields.forEach(function(f){if(f.type==='static'){var src=m.querySelector('#mf-'+f.from);if(src)src.addEventListener('change',function(){m.querySelector('#mf-'+f.id).textContent=f.compute(src.value)||'—'})}});
@@ -2774,9 +2777,9 @@ function simpleMaster(cfg){
           e.preventDefault();
           var err=m.querySelector('#mf-err'),now=new Date().toISOString();
           var obj={id:id||newId(cfg.prefix),createdAt:r.createdAt||now,updatedAt:now};
-          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
+          cfg.fields.forEach(function(f){if(f.type==='consumables')obj[f.id]=cleanCons(consVals[f.id]);else if(f.type==='pdfs'){obj[f.id]=(fileVals[f.id]||[]).filter(function(x){return x&&x.id});if(f.legacy)obj[f.legacy]=obj[f.id][0]||null}else if(f.type==='pdf')obj[f.id]=fileVals[f.id]||null;else if(f.type==='services')obj[f.id]=(svcVals[f.id]||[]).slice();else if(f.type==='svcprices')obj[f.id]=Object.assign({},priceVals[f.id]||{});else if(f.type==='rich')obj[f.id]=m.querySelector('#mf-'+f.id)._get();else if(f.type!=='static')obj[f.id]=m.querySelector('#mf-'+f.id).value.trim()});
           var msg='';
-          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
+          cfg.fields.some(function(f){if(f.type==='services'){if(f.req&&!obj[f.id].length){msg='Choose at least one service.';return true}return false}if(f.type==='static'||f.type==='consumables'||f.type==='pdf'||f.type==='pdfs'||f.type==='svcprices')return false;if(f.req&&!obj[f.id]){msg=(f.type==='select'?'Choose ':'Enter ')+f.label.toLowerCase()+'.';return true}
             if(f.id==='phone'&&obj[f.id]&&!validContactPhone(obj[f.id])){msg='Phone must contain exactly 10 digits (numbers only).';return true}
             if(f.upper)obj[f.id]=obj[f.id].toUpperCase();
             if(f.type==='number'&&obj[f.id]!==''){if(isNaN(+obj[f.id])||(!f.allowNeg&&+obj[f.id]<0)){msg=f.label+(f.allowNeg?' must be a number.':' must be 0 or more.');return true}obj[f.id]=f.step==='1'?Math.round(+obj[f.id]):r2(obj[f.id])}});
@@ -2785,6 +2788,7 @@ function simpleMaster(cfg){
           var btn=m.querySelector('[type=submit]');btn.disabled=true;
           put(cfg.kind,obj).then(function(){
             closeModal();toast(id?cfg.singularCap+' updated':cfg.singularCap+' added');
+            cfg.fields.forEach(function(f){if(f.type==='pdfs'){var was=Array.isArray(r[f.id])?r[f.id]:(f.legacy&&r[f.legacy]&&r[f.legacy].id?[r[f.legacy]]:[]),now2={};(obj[f.id]||[]).forEach(function(x){now2[x.id]=1});was.forEach(function(x){if(x&&x.id&&!now2[x.id])getAssets().then(function(a){if(a)a.delete(x.id).catch(function(){})})})}});
             cfg.fields.forEach(function(f){if(f.type==='pdf'&&!f.keepOld&&r[f.id]&&r[f.id].id&&(!obj[f.id]||obj[f.id].id!==r[f.id].id))getAssets().then(function(a){if(a)a.delete(r[f.id].id).catch(function(){})})});
             if(cfg.afterSave) cfg.afterSave(obj,r);
           }).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
@@ -3575,7 +3579,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'unitItemId',label:'Stock item used per unit (optional)',type:'select',placeholder:function(){return 'None'},options:function(){return S.phItems.filter(function(x){return x.status!=='Inactive'}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name+(secQty(x)>1?' (1 '+(x.unit||'unit')+' = '+secQty(x)+')':'')]})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'consent',label:'Consent form text',type:'rich',hint:'Use the buttons for bold, headings and lists. Leave empty to use the standard text.'},
-    {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
+    {id:'eduPdfs',label:'Educational content (PDFs)',type:'pdfs',legacy:'eduPdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
     {h:'Price',num:true,text:function(r){return r.price===''||r.price==null?'':money(r.price)}},{h:'GST',num:true,text:function(r){return (r.gst==null?'':r.gst+'%')}},
@@ -4284,6 +4288,28 @@ function pdfField(host,get,set,opt){
   }
   render();
 }
+/* several PDFs: list with Remove, and Add PDF (more than one at a time) */
+function pdfsField(host,get,set){
+  function render(busy){
+    var list=get()||[];
+    host.innerHTML='<div class="pdfs">'+list.map(function(f,i){return '<div class="pdf-box"><a class="pdf-name" href="'+esc(blobUrl(f.id,'application/pdf'))+'" target="_blank" rel="noopener">'+esc(f.name||'Document.pdf')+'</a><span class="sub">'+(f.size?Math.max(1,Math.round(f.size/1024))+' KB':'')+'</span><button type="button" class="btn sm danger" data-rmi="'+i+'">Remove</button></div>'}).join('')+
+      '<div class="pdf-box"><button type="button" class="btn sm" data-pick'+(busy?' disabled':'')+'>'+PLUS+' '+(list.length?'Add another PDF':'Upload PDF')+'</button><input type="file" accept="application/pdf,.pdf" multiple hidden><span class="pdf-msg sub" aria-live="polite">'+(busy||'')+'</span></div></div>';
+    var inp=host.querySelector('input[type=file]');
+    host.querySelector('[data-pick]').onclick=function(){if(readOnly){toast('You need Contributor access to upload files.');return}inp.click()};
+    $$('[data-rmi]',host).forEach(function(b){b.onclick=function(){var l=(get()||[]).slice();l.splice(+b.dataset.rmi,1);set(l);render()}});
+    inp.onchange=function(){
+      var files=Array.prototype.slice.call(inp.files||[]); if(!files.length) return;
+      var bad=files.filter(function(f){return !(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name))||f.size>15*1024*1024});
+      if(bad.length){host.querySelector('.pdf-msg').textContent=bad[0].name+': only PDF files up to 15 MB.';return}
+      var i=0;
+      (function next(){if(i>=files.length){render();return}var file=files[i++];render('Uploading '+file.name+'…');
+        getAssets().then(function(a){if(!a)throw new Error('File upload is not available here.');return a.upload(file,{type:'application/pdf'})}).then(function(up){set((get()||[]).concat([{id:up.id,name:file.name,size:file.size,type:'application/pdf',uploadedAt:new Date().toISOString()}]));next()})
+          .catch(function(e){render();host.querySelector('.pdf-msg').textContent=file.name+': '+(e&&e.message?e.message:'upload failed. Try again.')})})();
+    };
+  }
+  render();
+}
+function procEdu(p){return !p?[]:(Array.isArray(p.eduPdfs)&&p.eduPdfs.length?p.eduPdfs:(p.eduPdf&&p.eduPdf.id?[p.eduPdf]:[]))}
 /* uploaded files live at /_blob/<id> on claude.ai; a local copy keeps them in data/files/ */
 function blobUrl(id,type){return window.claude?'/_blob/'+id:storeMode==='live'?'api/index.php?action=file&id='+encodeURIComponent(id):'data/files/'+id+(type==='application/pdf'?'.pdf':(type==='image/png'?'.png':'.jpg'))}
 function photoSrc(p){return p?(p.id?blobUrl(p.id,'image/jpeg'):(p.data||'')):''}
@@ -4332,7 +4358,7 @@ function sesListUpdate(){
   b.innerHTML='<div class="tbl"><table><thead><tr><th>Number</th><th>Date</th><th>Client</th><th>Procedure</th><th>Performed by</th><th class="num">Photos</th><th>Billing</th><th></th></tr></thead><tbody>'+
     list.map(function(s){var od=sesOrdinal(s), bl=sesBilling(s,bm);return '<tr><td class="nowrap"><button class="link" data-ses="'+esc(s.id)+'">'+esc(s.no)+'</button></td><td class="nowrap">'+fmtDate(s.date)+'</td><td><button class="link" style="color:inherit;font-weight:500" data-client-view="'+esc(s.clientId)+'">'+esc(s.clientName)+'</button><div class="sub">'+esc(s.clientPhone||'')+'</div></td>'+
       '<td>'+esc(s.procName||'')+'<div class="sub">'+esc([od,s.quoteNo].filter(Boolean).join(' · '))+'</div></td><td>'+esc(s.performedBy||'—')+'</td><td class="num">'+Object.keys(s.photos||{}).length+' / 5</td><td class="nowrap">'+(bl.billed?'<span class="pill paid">Billed</span><div class="sub">'+esc(bl.how)+'</div>':'<span class="pill unpaid">Not billed</span>')+'</td>'+
-      '<td><div class="row-acts">'+waRowBtn('sesrx',s.id,waMeds(s.meds),'Send prescription on WhatsApp')+(function(){var sp=waSesProc(s);return waRowBtn('edu',s.id,!!(sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id),'Send aftercare PDF on WhatsApp')})()+''+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">'+EYE+' Prescription</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
+      '<td><div class="row-acts">'+waRowBtn('sesrx',s.id,waMeds(s.meds),'Send prescription on WhatsApp')+(function(){var sp=waSesProc(s);return waRowBtn('edu',s.id,procEdu(sp.proc).length>0,'Send aftercare PDF'+(procEdu(sp.proc).length>1?'s':'')+' on WhatsApp')})()+''+(!bl.billed&&!readOnly?'<button class="btn sm w" data-sesbill="'+esc(s.id)+'">Invoice</button>':'')+'<button class="btn sm" data-sesrx="'+esc(s.id)+'">'+EYE+' Prescription</button>'+(isAdmin()?'<button class="btn sm w" data-sesedit="'+esc(s.id)+'">Edit</button>':'')+'<button class="btn sm danger w" data-sesdel="'+esc(s.id)+'">Delete</button></div></td></tr>'}).join('')+
     '</tbody></table></div><p class="hint">'+countOf(list.length,activeVouchers('aeSessions').length,'sessions')+'</p>';
   $$('[data-ses]',b).forEach(function(x){x.onclick=function(){viewSes(x.dataset.ses)}});
   $$('[data-sesrx]',b).forEach(function(x){x.onclick=function(){sesPdf(findIn('aeSessions',x.dataset.sesrx))}});
@@ -4610,7 +4636,7 @@ function viewSes(id,fallback){
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
-      waTag('sesrx',s.id)+(function(){var sp=waSesProc(s);return sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id?waTag('edu',s.id):''})()+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>'+EYE+' Prescription</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
+      waTag('sesrx',s.id)+(function(){var sp=waSesProc(s);return procEdu(sp.proc).length?waTag('edu',s.id):''})()+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-rx>'+EYE+' Prescription</button>'+(isAdmin()&&!readOnly?'<button class="btn w" data-edit>Edit</button>':'')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-rx]').onclick=function(){sesPdf(s)};
     var se=m.querySelector('[data-edit]'); if(se) se.onclick=function(){sesEdit(id)};
@@ -6797,8 +6823,9 @@ function waBuild(kind,id){
   else if(kind==='receipt'){d=findIn('receipts',id)||findIn('phReceipts',id);if(!d||!d.clientId)return null;o={pdf:waCapture(function(){var p=receiptPdf(d);if(p)pdfView(d.no+'.pdf',p)}),params:[waFirst(d.clientName),money(d.amount),d.no,B]}}
   else if(kind==='conrx'){d=findIn('aeCons',id);if(!d||!waMeds(d.meds))return null;o={pdf:waCapture(function(){conPdf(d,'prescription')}),params:[waFirst(d.clientName),B,fmtDate(d.date)]}}
   else if(kind==='sesrx'){d=findIn('aeSessions',id);if(!d||!waMeds(d.meds))return null;o={pdf:waCapture(function(){sesPdf(d)}),params:[waFirst(d.clientName),B,fmtDate(d.date)]}}
-  else if(kind==='edu'){d=findIn('aeSessions',id);if(!d)return null;var sp=waSesProc(d),f=sp.proc&&sp.proc.eduPdf;if(!f||!f.id)return null;
-    o={fileId:f.id,filename:(sp.name||'Information').replace(/[^A-Za-z0-9 ._-]/g,'')+'.pdf',params:[waFirst(d.clientName),sp.name||'your procedure',B],dedupe:d.clientId+'|'+sp.id,docNo:sp.name}}
+  else if(kind==='edu'){var ep=String(id).split('~'),ek=+ep[1]||0;d=findIn('aeSessions',ep[0]);if(!d)return null;var sp=waSesProc(d),el=procEdu(sp.proc),f=el[ek];if(!f||!f.id)return null;
+    var fn=(el.length>1&&f.name?f.name.replace(/\.pdf$/i,''):(sp.name||'Information')).replace(/[^A-Za-z0-9 ._-]/g,'').trim()||'Information';
+    o={docId:ep[0],fileId:f.id,filename:fn+'.pdf',params:[waFirst(d.clientName),sp.name||'your procedure',B],dedupe:d.clientId+'|'+sp.id+(ek?'|'+f.id:''),docNo:sp.name}}
   if(!o) return null;
   var c=clientById(d.clientId)||{};
   return Object.assign({group:WA_GROUP[kind],kind:kind,docId:id,docNo:d.no,clientId:d.clientId||'',clientName:d.clientName||c.name||'',to:c.phone||d.clientPhone||''},o);
@@ -6807,6 +6834,7 @@ function waBuild(kind,id){
 var waQ=[],waT=null,waBusy=false;
 function waQueue(kind,id,manual){
   if(!manual&&!waOn(WA_GROUP[kind])) return;
+  if(kind==='edu'&&String(id).indexOf('~')<0){var es=findIn('aeSessions',id),en=es?procEdu(waSesProc(es).proc).length:0;for(var ei=0;ei<en;ei++)waQueue('edu',id+'~'+ei,manual);return}
   if(waQ.some(function(j){return j.kind===kind&&j.id===id})) return;
   waQ.push({kind:kind,id:id,manual:!!manual}); clearTimeout(waT); waT=setTimeout(waRun,manual?50:4000);
 }
@@ -6841,7 +6869,7 @@ function waOnSaved(kind,obj){
     else if(kind==='aeSessions'){
       if(waMeds(obj.meds)) waQueue('sesrx',obj.id);
       var sp=waSesProc(obj);
-      if(sp.id&&sp.proc&&sp.proc.eduPdf&&sp.proc.eduPdf.id&&activeVouchers('aeSessions').filter(function(x){return x.clientId===obj.clientId&&waSesProc(x).id===sp.id}).length===1) waQueue('edu',obj.id);
+      if(sp.id&&procEdu(sp.proc).length&&activeVouchers('aeSessions').filter(function(x){return x.clientId===obj.clientId&&waSesProc(x).id===sp.id}).length===1) waQueue('edu',obj.id);
     }
   }catch(e){}
 }
