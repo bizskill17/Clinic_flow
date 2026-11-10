@@ -3961,7 +3961,7 @@ function conFormUpdate(){
 }
 /* + next to Medicine: a medicine not in the pharmacy list. It prints on the prescription only (itemId 'ext'): no billing, no stock. */
 function medOutside(m,done){
-  openModal('<h2>Add a medicine</h2><p class="hint">For a medicine not in the list. It is added to Pharmacy \u203a Items with no stock, so it appears in this list next time. Pharmacy can fill in its details later.</p><form id="mo-f" novalidate><div class="field"><label for="mo-name">Medicine name <span class="req">*</span></label><input type="text" id="mo-name" maxlength="80" autocomplete="off" value="'+esc(m.itemId==='ext'?m.name:'')+'" placeholder="e.g. Sunscreen SPF 50"></div><p class="err" id="mo-err" hidden></p><div class="m-actions"><button type="button" class="btn" id="mo-x">Cancel</button><button type="submit" class="btn primary">Add</button></div></form>','--m6',false,function(md){
+  openModal('<h2>Add a medicine</h2><form id="mo-f" novalidate><div class="field"><label for="mo-name">Medicine name <span class="req">*</span></label><input type="text" id="mo-name" maxlength="80" autocomplete="off" value="'+esc(m.itemId==='ext'?m.name:'')+'" placeholder="e.g. Sunscreen SPF 50"></div><p class="err" id="mo-err" hidden></p><div class="m-actions"><button type="button" class="btn" id="mo-x">Cancel</button><button type="submit" class="btn primary">Add</button></div></form>','--m6',false,function(md){
     var inp=md.querySelector('#mo-name');setTimeout(function(){inp.focus()},50);
     md.querySelector('#mo-x').onclick=closeModal;
     md.querySelector('#mo-f').onsubmit=function(e){e.preventDefault();var v=inp.value.replace(/\s+/g,' ').trim(),er=md.querySelector('#mo-err');
