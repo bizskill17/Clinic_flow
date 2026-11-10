@@ -3459,7 +3459,7 @@ SECTIONS['ph-inventory']={
     if(!S.phItems.length){b.innerHTML='<div class="empty"><strong>No items yet</strong>Add items in Masters › Items, then record purchases in Item In.</div>';return}
     var all=phInvRows(true), rows=phInvRows();
     var val=0,mrpVal=0,low=0,outN=0;
-    all.forEach(function(r){val+=Math.max(0,r.value);mrpVal+=Math.max(0,r.mrpValue);if(r.low)low++;if(r.qty<=0)outN++});
+    all.forEach(function(r){val+=Math.max(0,r.value);mrpVal+=Math.max(0,r.mrpValue);if(r.low)low++;if(r.isOut)outN++});
     var html='<div class="tiles">'+tile('--m7','Stock value at cost',money0(val),'Opening value '+money0(all.reduce(function(t,r){return t+r.opening*(+r.item.openingRate||0)},0)))+tile('--m11','Stock value at MRP',money0(mrpVal),'At last MRP')+tile('--m3','Low stock items',String(low),'At or below reorder level')+tile('--m6','Out of stock',String(outN),'Items with no stock')+'</div>';
     if(!rows.length){b.innerHTML=html+'<div class="empty"><strong>No matches</strong>No item matches these filters.</div>';return}
     var T={op:0,in:0,out:0,q:0,v:0};
@@ -3493,17 +3493,18 @@ function viewItemLedger(itemId){
 }
 function phInvRows(unfiltered){
   var bm=phBatches(), q=norm(phInvF.q), mv={};
-  activeVouchers('phMoves').forEach(function(m){if(m.cancelled)return;(m.lines||[]).forEach(function(l){var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
+  activeVouchers('phMoves').forEach(function(m){if(m.cancelled)return;(m.lines||[]).forEach(function(l){if(!(+l.qty))return;var x=mv[l.itemId]=mv[l.itemId]||{i:0,o:0};if(PH_KIND[m.type]==='in')x.i+=+l.qty||0;else x.o+=+l.qty||0})});
   return S.phItems.slice().sort(function(a,b){return byText(a.name,b.name)}).map(function(it){
     var sr=phStockRec(bm,it.id), x=mv[it.id]||{i:0,o:0}, reorder=it.reorder===''||it.reorder==null?null:+it.reorder;
-    return {item:it,opening:+it.openingQty||0,inQty:x.i,outQty:x.o,qty:sr.qty,rate:sr.rate,mrp:sr.mrp,value:r2(sr.qty*sr.rate),mrpValue:r2(sr.qty*sr.mrp),reorder:reorder,low:reorder!=null&&sr.qty<=reorder};
+    var used=(+it.openingQty||0)>0||!!mv[it.id];
+    return {item:it,used:used,isOut:sr.qty<=0&&used&&it.status!=='Inactive',opening:+it.openingQty||0,inQty:x.i,outQty:x.o,qty:sr.qty,rate:sr.rate,mrp:sr.mrp,value:r2(sr.qty*sr.rate),mrpValue:r2(sr.qty*sr.mrp),reorder:reorder,low:reorder!=null&&sr.qty<=reorder};
   }).filter(function(r){
     if(unfiltered) return true;
     if(phInvF.cat&&r.item.categoryId!==phInvF.cat) return false;
     if(q&&norm(r.item.name+' '+(r.item.hsn||'')).indexOf(q)<0) return false;
     if(phInvF.show==='instock') return r.qty>0;
     if(phInvF.show==='low') return r.low;
-    if(phInvF.show==='out') return r.qty<=0;
+    if(phInvF.show==='out') return r.isOut;
     return true;
   });
 }
@@ -3960,14 +3961,16 @@ function conFormUpdate(){
 }
 /* + next to Medicine: a medicine not in the pharmacy list. It prints on the prescription only (itemId 'ext'): no billing, no stock. */
 function medOutside(m,done){
-  openModal('<h2>Add a medicine</h2><p class="hint">For a medicine you don\u2019t keep in the pharmacy. It prints on the prescription; it is not billed or taken from stock.</p><form id="mo-f" novalidate><div class="field"><label for="mo-name">Medicine name <span class="req">*</span></label><input type="text" id="mo-name" maxlength="80" autocomplete="off" value="'+esc(m.itemId==='ext'?m.name:'')+'" placeholder="e.g. Sunscreen SPF 50"></div><p class="err" id="mo-err" hidden></p><div class="m-actions"><button type="button" class="btn" id="mo-x">Cancel</button><button type="submit" class="btn primary">Add</button></div></form>','--m6',false,function(md){
+  openModal('<h2>Add a medicine</h2><p class="hint">For a medicine not in the list. It is added to Pharmacy \u203a Items with no stock, so it appears in this list next time. Pharmacy can fill in its details later.</p><form id="mo-f" novalidate><div class="field"><label for="mo-name">Medicine name <span class="req">*</span></label><input type="text" id="mo-name" maxlength="80" autocomplete="off" value="'+esc(m.itemId==='ext'?m.name:'')+'" placeholder="e.g. Sunscreen SPF 50"></div><p class="err" id="mo-err" hidden></p><div class="m-actions"><button type="button" class="btn" id="mo-x">Cancel</button><button type="submit" class="btn primary">Add</button></div></form>','--m6',false,function(md){
     var inp=md.querySelector('#mo-name');setTimeout(function(){inp.focus()},50);
     md.querySelector('#mo-x').onclick=closeModal;
     md.querySelector('#mo-f').onsubmit=function(e){e.preventDefault();var v=inp.value.replace(/\s+/g,' ').trim(),er=md.querySelector('#mo-err');
       if(!v){er.textContent='Enter the medicine name.';er.hidden=false;return}
       var hit=S.phItems.find(function(x){return x.status!=='Inactive'&&norm(x.name)===norm(v)});
-      if(hit){m.itemId=hit.id;m.name=hit.name}else{m.itemId='ext';m.name=v}
-      closeModal();done()};
+      if(hit){m.itemId=hit.id;m.name=hit.name;closeModal();done();return}
+      var now=new Date().toISOString(),it={id:newId('pi'),name:v,categoryId:'',unit:'',hsn:'',gst:'',reorder:'',openingQty:0,openingRate:'',status:'Active',addedFrom:'prescription',createdAt:now,updatedAt:now};
+      var btn=md.querySelector('button[type=submit]');btn.disabled=true;
+      putRaw('phItems',it).then(function(){m.itemId=it.id;m.name=it.name;closeModal();toast(v+' added to Pharmacy items.');done()}).catch(function(err){btn.disabled=false;er.textContent=(err&&err.message)||'Could not add the medicine.';er.hidden=false})};
   });
 }
 function conRenderMeds(){
@@ -5637,7 +5640,7 @@ function lastPurchase(itemId){
 }
 function lsRows(){
   var q=norm(lsF.q);
-  return phInvRows(true).filter(function(r){return r.item.status!=='Inactive'&&(r.qty<=0||r.low)}).map(function(r){
+  return phInvRows(true).filter(function(r){return r.item.status!=='Inactive'&&(r.isOut||r.low)}).map(function(r){
     var lp=lastPurchase(r.item.id);
     r.shortfall=r.reorder==null?0:Math.max(0,r.reorder-r.qty);
     r.suggest=Math.max(1,r.shortfall||(r.reorder||0)||1);
@@ -5647,7 +5650,7 @@ function lsRows(){
     if(lsF.cat&&r.item.categoryId!==lsF.cat) return false;
     if(q&&norm(r.item.name+' '+(r.item.hsn||'')).indexOf(q)<0) return false;
     if(lsF.show==='low') return r.qty>0;
-    if(lsF.show==='out') return r.qty<=0;
+    if(lsF.show==='out') return r.isOut;
     return true;
   }).sort(function(a,b){return (a.qty>0?1:0)-(b.qty>0?1:0)||(b.shortfall-a.shortfall)||byText(a.item.name,b.item.name)});
 }
@@ -5706,7 +5709,7 @@ SECTIONS['ph-dashboard']={
     var recT=allReceipts().filter(function(r){return phRec(r)&&r.date===t});
     /* stock */
     var rows=phInvRows(true), stockVal=0, low=[], out=0;
-    rows.forEach(function(r){stockVal+=Math.max(0,r.value);if(r.qty<=0)out++;else if(r.low)low.push(r)});
+    rows.forEach(function(r){stockVal+=Math.max(0,r.value);if(r.isOut)out++;else if(r.low&&r.qty>0)low.push(r)});
     low.sort(function(a,c){return (a.qty-(a.reorder||0))-(c.qty-(c.reorder||0))});
     /* dues */
     var al=allocate(), phDue=0, phDueN=0;
