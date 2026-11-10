@@ -1030,7 +1030,7 @@ function prescription(J,ctx){
       y=ensure(d,y,7,th2);
       font(d,'bold',9.4,ACC);d.text(String(ix+1),P.n,y);
       font(d,'normal',9.4,INK);d.text(d.splitTextToSize(p.name||'',P.s-P.name-30)[0],P.name,y);
-      font(d,'bold',9.4,INK);d.text(String(p.sessions),P.s,y,{align:'right'});
+      font(d,'bold',9.4,INK);d.text(p.perUnit?(+p.units||+p.sessions||0)+' '+(p.unitName||'units'):String(p.sessions),P.s,y,{align:'right'});
       d.setDrawColor.apply(d,LINE);d.setLineWidth(0.2);d.line(L,y+2.2,R,y+2.2);
       y+=6.6;
     });
@@ -1068,7 +1068,7 @@ function quotation(J,ctx){
   function th(yy){
     d.setFillColor.apply(d,ACC);d.roundedRect(L,yy-4.8,W,7.4,1.5,1.5,'F');
     font(d,'bold',6.9,[255,255,255]);
-    d.text('#',C.n,yy);d.text('PROCEDURE',C.name,yy);d.text('SESSIONS',C.ses,yy,{align:'right'});d.text('RATE',C.rate,yy,{align:'right'});d.text('AMOUNT',C.amt,yy,{align:'right'});
+    d.text('#',C.n,yy);d.text('PROCEDURE',C.name,yy);d.text((ctx.q&&(ctx.q.lines||[]).some(function(x){return x.perUnit}))?'QTY':'SESSIONS',C.ses,yy,{align:'right'});d.text('RATE',C.rate,yy,{align:'right'});d.text('AMOUNT',C.amt,yy,{align:'right'});
     d.text('DISCOUNT',C.disc,yy,{align:'right'});d.text('AFTER DISC.',C.net,yy,{align:'right'});d.text('GST',C.gst,yy,{align:'right'});d.text('TOTAL',C.tot,yy,{align:'right'});
     return yy+7.2;
   }
@@ -1081,7 +1081,7 @@ function quotation(J,ctx){
     font(d,'bold',8.4,ACC);d.text(String(ix+1),C.n,y);
     font(d,'bold',8.4,INK);nm.forEach(function(t,k){d.text(t,C.name,y+k*3.9)});
     font(d,'normal',8.4,INK);
-    d.text(String(l.sessions),C.ses,y,{align:'right'});d.text(inr(l.rate),C.rate,y,{align:'right'});d.text(inr(l.amount),C.amt,y,{align:'right'});
+    d.text(l.perUnit?(+l.units||0)+' '+(l.unitName||'units').slice(0,5):String(l.sessions),C.ses,y,{align:'right'});d.text(inr(l.rate),C.rate,y,{align:'right'});d.text(inr(l.amount),C.amt,y,{align:'right'});
     d.text(l.disc?inr(l.disc):'—',C.disc,y,{align:'right'});d.text(inr(l.net),C.net,y,{align:'right'});d.text(inr(l.tax),C.gst,y,{align:'right'});
     font(d,'bold',8.4,INK);d.text(inr(l.total),C.tot,y,{align:'right'});
     y+=h;
@@ -1379,9 +1379,9 @@ var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','A
 var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],'exp-cats':['--m6','--m6-soft'],vendors:['--m13','--m13-soft'],expenses:['--m6','--m6-soft'],'vendor-pay':['--m13','--m13-soft'],'exp-report':['--m6','--m6-soft'],'vendor-payable':['--m13','--m13-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
-var S={clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[],expCats:[],vendors:[],expenses:[],vpays:[],waInbox:[]};
+var S={aeLineEv:[],clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[],expCats:[],vendors:[],expenses:[],vpays:[],waInbox:[]};
 var loaded={clients:false,services:false,invoices:false,receipts:false,categories:false,cities:false,states:false,users:false,business:false,phItems:false,phCats:false,phSuppliers:false,phMoves:false,phReceipts:false,aeCats:false,aeProcs:false,aeAppts:false,aeCons:false,aeQuotes:false,aeSessions:false,aeInvoices:false,aeConsents:false,deptOpen:false,deptUsage:false,memPlans:false,members:false,redemptions:false,phPays:false,clubPlans:false,clubs:false,waLog:false,expCats:false,vendors:false,expenses:false,vpays:false,waInbox:false};
-var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log',expCats:'exp_categories',vendors:'exp_vendors',expenses:'exp_expenses',vpays:'exp_vendor_payments',waInbox:'wa_inbox'};
+var COL={clients:'spa_clients',services:'spa_services',invoices:'spa_invoices',receipts:'spa_receipts',categories:'spa_categories',cities:'spa_cities',states:'spa_states',users:'spa_users',business:'spa_business',phItems:'ph_items',phCats:'ph_item_categories',phSuppliers:'ph_suppliers',phMoves:'ph_moves',phReceipts:'ph_receipts',aeCats:'ae_proc_categories',aeProcs:'ae_procedures',aeAppts:'ae_appointments',aeCons:'ae_consultations',aeQuotes:'ae_quotations',aeSessions:'ae_sessions',aeInvoices:'ae_invoices',aeConsents:'ae_consents',aeLineEv:'ae_line_events',deptOpen:'dept_openings',deptUsage:'dept_usage',memPlans:'spa_mem_plans',members:'spa_memberships',redemptions:'spa_redemptions',phPays:'ph_supplier_payments',clubPlans:'spa_mship_plans',clubs:'spa_mships',waLog:'wa_log',expCats:'exp_categories',vendors:'exp_vendors',expenses:'exp_expenses',vpays:'exp_vendor_payments',waInbox:'wa_inbox'};
 var DB=null, storeMode='connecting', readOnly=false, bannerMsg='';
 var CURRENT_USER=null;
 function isAdmin(){return !!CURRENT_USER&&CURRENT_USER.role==='Admin'}
@@ -1425,7 +1425,7 @@ function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
   var common=['clients','cities','states','users','business','waLog','expCats','vendors','expenses','vpays'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
-  if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','deptOpen','deptUsage']);
+  if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','aeLineEv','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
 }
 function initMySqlStore(){
@@ -3568,15 +3568,18 @@ SECTIONS['ae-proc-master']=simpleMaster({
   fields:[
     {id:'name',label:'Procedure name',req:true,max:120,span2:true},
     {id:'sac',label:'SAC code',max:8},
-    {id:'price',label:'Price before GST (₹)',type:'number',req:true},
+    {id:'price',label:'Price before GST (₹) · per session, or per unit',type:'number',req:true},
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
+    {id:'billing',label:'Billed',type:'select',noBlank:true,def:'Per session',options:function(){return ['Per session','Per unit']}},
+    {id:'unitName',label:'Unit name (per unit only)',max:20,placeholderText:'units'},
+    {id:'unitItemId',label:'Stock item used per unit (optional)',type:'select',placeholder:function(){return 'None'},options:function(){return S.phItems.filter(function(x){return x.status!=='Inactive'}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name+(secQty(x)>1?' (1 '+(x.unit||'unit')+' = '+secQty(x)+')':'')]})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'consent',label:'Consent form text',type:'rich',hint:'Use the buttons for bold, headings and lists. Leave empty to use the standard text.'},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
     {h:'Price',num:true,text:function(r){return r.price===''||r.price==null?'':money(r.price)}},{h:'GST',num:true,text:function(r){return (r.gst==null?'':r.gst+'%')}},
-    {h:'Price incl. GST',num:true,text:function(r){return r.price===''||r.price==null?'':money((+r.price)*(1+(+r.gst||0)/100))}},{h:'Status',text:function(r){return r.status||'Active'}}],
+    {h:'Price incl. GST',num:true,text:function(r){return r.price===''||r.price==null?'':money((+r.price)*(1+(+r.gst||0)/100))}},{h:'Billed',text:function(r){return procPU(r)?'Per '+(r.unitName?r.unitName.replace(/s$/,''):'unit'):'Per session'}},{h:'Status',text:function(r){return r.status||'Active'}}],
   search:function(r){return r.name+' '+(r.sac||'')},sort:function(a,b){return byText(a.name,b.name)},
   validate:function(o,id){
     o.gst=+o.gst||0;
@@ -3952,7 +3955,7 @@ function conRenderProcs(){
   box.innerHTML=d.procs.map(function(p,i){
     return '<div class="line" data-i="'+i+'"><div class="line-top" style="grid-template-columns:26px minmax(0,2fr) minmax(0,.8fr) minmax(0,1.2fr) 32px"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
     '<div class="field"><label for="cp-proc-'+i+'">Procedure</label><div class="h-proc"></div></div>'+
-    '<div class="field"><label for="cp-ses-'+i+'">Sessions</label><input type="number" id="cp-ses-'+i+'" class="cp-ses num" min="1" step="1" value="'+esc(p.sessions)+'"></div>'+
+    (function(){var pr=findIn('aeProcs',p.procId),pu=procPU(pr);return '<div class="field"><label for="cp-ses-'+i+'">'+(pu?esc((pr.unitName||'units').replace(/^./,function(c){return c.toUpperCase()})):'Sessions')+'</label><input type="number" id="cp-ses-'+i+'" class="cp-ses num" min="'+(pu?'0':'1')+'" step="'+(pu?'0.01':'1')+'" value="'+esc(p.sessions)+'"></div>'})()+
     '<div></div>'+
     '<button type="button" class="icon-btn cp-del" aria-label="Remove procedure '+(i+1)+'">×</button></div></div>'}).join('');
   $$('.line',box).forEach(function(row){
@@ -4003,12 +4006,12 @@ function conSave(){
   for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Choose the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
   if((d.files||[]).some(function(f){return f.busy})) return show('Wait for the files to finish uploading.');
   var procs=d.procs.filter(function(p){return p.procId});
-  for(var j=0;j<procs.length;j++){var sN=+procs[j].sessions;if(!(sN>=1)||Math.round(sN)!==sN) return show('Sessions for '+procs[j].name+' must be a whole number of at least 1.')}
+  for(var j=0;j<procs.length;j++){var sN=+procs[j].sessions,cpr=findIn('aeProcs',procs[j].procId);if(procPU(cpr)){if(!(sN>0))return show('Enter the '+(cpr.unitName||'units')+' for '+procs[j].name+'.')}else if(!(sN>=1)||Math.round(sN)!==sN) return show('Sessions for '+procs[j].name+' must be a whole number of at least 1.')}
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeCons);
   var obj={id:d.id||newId('cn'),seq:seq,no:editing?d.no:'CON-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',apptId:a.id,apptNo:a.no,staffIds:apStaff(a),doctor:apStaffNames(a),
     diagnosis:String(d.diagnosis||'').trim(),observations:String(d.observations||'').trim(),rxDiag:d.rxDiag!==false,rxObs:d.rxObs!==false,rxProcs:d.rxProcs!==false,
     meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
-    procs:procs.map(function(p){var pr=findIn('aeProcs',p.procId)||{};return {procId:p.procId,name:p.name,sessions:+p.sessions,price:+pr.price||0,gst:+pr.gst||0}}),
+    procs:procs.map(function(p){var pr=findIn('aeProcs',p.procId)||{},pu=procPU(pr);return Object.assign({procId:p.procId,name:p.name,sessions:+p.sessions,price:+pr.price||0,gst:+pr.gst||0},pu?{perUnit:true,units:+p.sessions,unitName:pr.unitName||'units'}:{})}),
     consumables:cleanCons(d.consumables),files:(d.files||[]).filter(function(f){return f.id}).map(function(f){return {id:f.id,type:f.type,name:String(f.name||'').slice(0,120),caption:String(f.caption||'').trim().slice(0,80)}}),
     createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#con-form [type=submit]'); btn.disabled=true; var oldF=conOldFiles.slice();
@@ -4027,7 +4030,7 @@ function viewCon(id,fallback){
     m.innerHTML='<h2>Consultation '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(c.date)+'</dd><dt>Appointment</dt><dd>'+esc(c.apptNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(c.doctor||'—')+'</dd></dl></div>'+
       '<div class="f-grid"><div class="field"><label>Diagnosis'+(c.rxDiag===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(c.diagnosis)+'</div><div class="field"><label>Observations <span class="sub">(not on prescription)</span></label>'+txt(c.observations)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
-      '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.sessions+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
+      '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+(x.perUnit?esc(r2(+x.units||+x.sessions||0)+' '+(x.unitName||'units')):x.sessions)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       ((c.files||[]).length?'<h3 class="sec-h">Photos &amp; files</h3><div class="cf-files">'+c.files.map(function(f){return '<div class="cf-file">'+conFileView(f)+(f.caption?'<div class="cf-capv">'+esc(f.caption)+'</div>':'')+'</div>'}).join('')+'</div>':'')+
       waTag('conrx',c.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
@@ -4284,7 +4287,7 @@ function pdfField(host,get,set,opt){
 /* uploaded files live at /_blob/<id> on claude.ai; a local copy keeps them in data/files/ */
 function blobUrl(id,type){return window.claude?'/_blob/'+id:storeMode==='live'?'api/index.php?action=file&id='+encodeURIComponent(id):'data/files/'+id+(type==='application/pdf'?'.pdf':(type==='image/png'?'.png':'.jpg'))}
 function photoSrc(p){return p?(p.id?blobUrl(p.id,'image/jpeg'):(p.data||'')):''}
-function sesNew(){return {id:null,date:todayStr(),clientId:'',clientName:'',quoteId:'',lineKey:'',apptId:'',staffIds:[],procNotes:'',outcomeNotes:'',rxProc:true,rxOutcome:true,meds:[conBlankMed()],photos:{},consumables:[],consTouched:false,consFor:''}}
+function sesNew(){return {id:null,units:'',date:todayStr(),clientId:'',clientName:'',quoteId:'',lineKey:'',apptId:'',staffIds:[],procNotes:'',outcomeNotes:'',rxProc:true,rxOutcome:true,meds:[conBlankMed()],photos:{},consumables:[],consTouched:false,consFor:''}}
 function sesLine(q,key){var out=null;(q&&q.lines||[]).some(function(l,i){if(qtLineKey(q,l,i)===key){out={l:l,i:i};return true}});return out}
 /* Session n of N for a session record */
 function sesOrdinal(s){
@@ -4295,7 +4298,7 @@ function sesOrdinal(s){
     .concat(st.appts.filter(function(a){return a.status==='Completed'&&!linked[a.id]}).map(function(a){return {k:'a:'+a.id,d:(a.date||'')+'|'+apFrom(a)}}))
     .sort(function(a,b){return a.d.localeCompare(b.d)});
   var n=all.findIndex(function(x){return x.k==='s:'+s.id})+1;
-  return n?'Session '+n+' of '+ln.l.sessions:'';
+  return n?(qlPU(ln.l)?'Visit '+n:'Session '+n+' of '+ln.l.sessions):'';
 }
 SECTIONS['ae-sessions']={
   mount:function(){if(sesMode==='form') sesFormMount(); else sesListMount()},
@@ -4349,7 +4352,7 @@ function sesEdit(id){
   if(!isAdmin()){toast('Saved sessions can only be changed by an Admin.');return}
   var s=findIn('aeSessions',id); if(!s) return;
   var ph={}; Object.keys(s.photos||{}).forEach(function(k){ph[k]=Object.assign({},s.photos[k])});
-  sesDraft={id:s.id,seq:s.seq,no:s.no,createdAt:s.createdAt,date:s.date,clientId:s.clientId,clientName:s.clientName,quoteId:s.quoteId||'',lineKey:s.quoteLineId||'',apptId:s.apptId||'',staffIds:(s.staffIds||[]).slice(),
+  sesDraft={id:s.id,units:s.units!=null?String(s.units):'',seq:s.seq,no:s.no,createdAt:s.createdAt,date:s.date,clientId:s.clientId,clientName:s.clientName,quoteId:s.quoteId||'',lineKey:s.quoteLineId||'',apptId:s.apptId||'',staffIds:(s.staffIds||[]).slice(),
     procNotes:s.procNotes||'',outcomeNotes:s.outcomeNotes||'',rxProc:s.rxProc!==false,rxOutcome:s.rxOutcome!==false,
     meds:(s.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||''}}),photos:ph,consumables:copyCons(s.consumables),consTouched:true,consFor:s.quoteLineId||''};
   if(!sesDraft.meds.length) sesDraft.meds=[conBlankMed()];
@@ -4383,6 +4386,7 @@ function sesFormMount(){
     '<div class="field"><label for="sf-qt">Quotation no <span class="req">*</span></label><select id="sf-qt"></select></div>'+
     '<div class="field"><label for="sf-line">Procedure <span class="req">*</span></label><select id="sf-line"></select></div>'+
     '<div class="field"><label for="sf-appt">Appointment</label><select id="sf-appt"></select></div>'+
+    '<div class="field" id="sf-units-wrap" hidden><label for="sf-units" id="sf-units-l">Units given <span class="req">*</span></label><input type="number" id="sf-units" class="num" min="0" step="0.01" value="'+esc(d.units)+'"><p class="hint" id="sf-units-h" style="margin:4px 0 0"></p></div>'+
     '<div class="field span2" id="sf-consent-wrap" hidden><label>Consent</label><div id="sf-consent" class="cons-line"></div></div>'+
     '<div class="field span2"><label for="sf-staff">Performed by <span class="req">*</span></label><div class="chips" id="sf-chips"></div><div id="sf-staff-host"></div></div>'+
     '<div class="field span2"><label for="sf-pnotes">Procedure notes</label><textarea id="sf-pnotes" rows="3">'+esc(d.procNotes)+'</textarea><label class="check" style="margin-top:4px"><input type="checkbox" id="sf-rxproc"'+(d.rxProc===false?'':' checked')+'> Show procedure notes on the prescription PDF</label></div>'+
@@ -4411,6 +4415,7 @@ function sesFormMount(){
   $('#sf-addmed').onclick=function(){d.meds.push(conBlankMed());sesRenderMeds();var x=$$('#sf-meds .combo-in');if(x.length)x[x.length-1].focus()};
   $('#sf-reset').onclick=function(){var wasEdit=!!d.id;sesDraft=wasEdit?null:sesNew();if(wasEdit)sesMode='list';go(current)};
   $('#ses-form').onsubmit=function(e){e.preventDefault();sesSave()};
+  $('#sf-units').oninput=function(e){d.units=e.target.value;sesUnitsCons()};
   sesFillQuotes(); sesRenderChips(); sesRenderMeds(); sesRenderPhotos();
 }
 /* when only one procedure on the quotation still has sessions left, pick it */
@@ -4428,7 +4433,26 @@ function sesFillQuotes(){
   var q=findIn('aeQuotes',d.quoteId);
   ls.innerHTML=optList([['',q?'Select a procedure':'Choose the quotation first']].concat(q?(q.lines||[]).map(function(l,i){var st=qtLineStats(q,i);return [qtLineKey(q,l,i),l.name]}):[]),d.lineKey);
   ls.disabled=!q;
-  sesFillAppts(); sesRenderChips(); sesRenderConsent(); sesRenderCons();
+  sesFillAppts(); sesRenderChips(); sesRenderConsent(); sesRenderCons(); sesRenderUnits();
+}
+/* per-unit procedures: units given at this visit (0 for a review visit) */
+function sesRenderUnits(){
+  var d=sesDraft, w=$('#sf-units-wrap'); if(!w||!d) return;
+  var q=findIn('aeQuotes',d.quoteId), ln=sesLine(q,d.lineKey), pu=ln&&qlPU(ln.l);
+  w.hidden=!pu; if(!pu) return;
+  var st=qtLineStats(q,ln.i), un=qlUnit(ln.l);
+  $('#sf-units-l').innerHTML=esc(un.charAt(0).toUpperCase()+un.slice(1))+' given <span class="req">*</span>';
+  $('#sf-units-h').textContent=r2(st.unitsUsed)+' of '+r2(st.unitsQ)+' '+un+' used so far. Enter 0 for a review visit (photos only).';
+}
+function sesUnitsCons(){
+  var d=sesDraft; if(!d) return;
+  var q=findIn('aeQuotes',d.quoteId), ln=sesLine(q,d.lineKey); if(!ln||!qlPU(ln.l)) return;
+  var pr=findIn('aeProcs',ln.l.procId), item=pr&&pr.unitItemId; if(!item||!phItem(item)) return;
+  var u=+d.units||0, arr=d.consumables||[], i=arr.findIndex(function(x){return x.itemId===item&&x.auto});
+  if(i<0) i=arr.findIndex(function(x){return x.itemId===item});
+  if(u>0){if(i>=0){arr[i].qty=r2(u);arr[i].auto=true}else arr.push({itemId:item,name:(phItem(item)||{}).name||'',qty:r2(u),auto:true})}
+  else if(i>=0&&arr[i].auto) arr.splice(i,1);
+  d.consumables=arr; d.consTouched=true; var h=$('#sf-cons'); if(h){h._for=null;h._cb=null} sesRenderCons();
 }
 function sesStdCons(d){var q=findIn('aeQuotes',d.quoteId),ln=sesLine(q,d.lineKey),p=ln&&findIn('aeProcs',ln.l.procId);return p?p.consumables||[]:null}
 function sesRenderCons(){
@@ -4547,9 +4571,11 @@ function sesSave(){
   if(!d.staffIds.length) return show('Choose who performed the procedure.');
   if(Object.keys(d.photos).some(function(k){return d.photos[k].busy})) return show('Wait for the photos to finish uploading.');
   if(consentNeeded(q.id,d.lineKey,d.id)) return show('Take the client’s consent for '+ln.l.name+' before recording the first session. Use Take consent above.');
-  var st=qtLineStats(q,ln.i), mine=d.id&&st.sessions.some(function(x){return x.id===d.id});
+  var st=qtLineStats(q,ln.i), mine=d.id&&st.sessions.some(function(x){return x.id===d.id}), pu=qlPU(ln.l);
+  if(pu){if(String(d.units).trim()===''||isNaN(+d.units)||+d.units<0) return show('Enter the '+qlUnit(ln.l)+' given (0 for a review visit).')}
+  else{
   var countAfter=st.done+(mine?0:1)-(a&&a.status==='Completed'&&!st.sessions.some(function(x){return x.apptId===a.id})?1:0);
-  if(countAfter>(+ln.l.sessions||0)) return show('All '+ln.l.sessions+' sessions of '+ln.l.name+' on '+q.no+' are already recorded.');
+  if(countAfter>(+ln.l.sessions||0)) return show('All '+ln.l.sessions+' sessions of '+ln.l.name+' on '+q.no+' are already recorded.');}
   var meds=d.meds.filter(function(m){return m.itemId});
   for(var k=0;k<meds.length;k++){if(!String(meds[k].dose||'').trim()) return show('Choose the dose for '+meds[k].name+'.');if(!String(meds[k].duration||'').trim()) return show('Enter the duration for '+meds[k].name+'.')}
   var photos={}; Object.keys(d.photos).forEach(function(k2){var p=d.photos[k2];photos[k2]=p.id?{id:p.id}:{data:p.data}});
@@ -4560,6 +4586,7 @@ function sesSave(){
     procNotes:String(d.procNotes||'').trim(),outcomeNotes:String(d.outcomeNotes||'').trim(),rxProc:d.rxProc!==false,rxOutcome:d.rxOutcome!==false,
     meds:meds.map(function(m){return {itemId:m.itemId,name:m.name,dose:String(m.dose).trim(),food:m.food||'',duration:String(m.duration).trim()}}),
     consumables:cleanCons(d.consumables),photos:photos,createdAt:d.createdAt||now,updatedAt:now};
+  if(pu){obj.units=r2(+d.units);obj.unitName=qlUnit(ln.l)}
   var btn=$('#ses-form [type=submit]'); btn.disabled=true;
   var old=sesOldPhotos.slice();
   put('aeSessions',obj).then(function(){
@@ -4576,10 +4603,10 @@ function viewSes(id,fallback){
     var txt=function(t){return t?'<div style="white-space:pre-line">'+esc(t)+'</div>':'<span class="sub">—</span>'};
     var ph=SES_PHOTOS.filter(function(p){return s.photos&&s.photos[p[0]]});
     var nx=activeVouchers('aeAppts').filter(function(a){return a.clientId===s.clientId&&a.id!==s.apptId&&a.date>=todayStr()&&AP_ACTIVE.indexOf(a.status)>=0}).sort(function(a,b){return (a.date+apFrom(a)).localeCompare(b.date+apFrom(b))})[0];
-    var sq=findIn('aeQuotes',s.quoteId), sl=sq&&sesLine(sq,s.quoteLineId), left=sl?qtLineStats(sq,sl.i).left:0;
+    var sq=findIn('aeQuotes',s.quoteId), sl=sq&&sesLine(sq,s.quoteLineId), sst=sl?qtLineStats(sq,sl.i):null, left=sst?sst.left:0, pu=sl&&qlPU(sl.l);
     var nextBox='<div class="next-box">'+(nx?'<span class="sub">Next appointment</span> <strong>'+esc(nx.no)+' · '+fmtDate(nx.date)+' · '+esc(fmtTime(apFrom(nx)))+'</strong> <span class="sub">'+esc(apWhat(nx))+(apStaffNames(nx)?' · '+esc(apStaffNames(nx)):'')+'</span>'
-      :(left>0?'<span>No next appointment booked · '+left+' session'+(left===1?'':'s')+' left</span>'+(readOnly?'':' <button type="button" class="btn sm primary w" data-booknext>Book next session</button>'):'<span>All sessions of this procedure are completed.</span>'))+'</div>';
-    m.innerHTML='<h2>Session '+esc(s.no)+'</h2>'+nextBox+'<div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(s.clientName)+'</strong> '+esc(s.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(s.procName||'')+'</strong> '+esc(sesOrdinal(s))+'</dd><dt>Quotation</dt><dd>'+esc(s.quoteNo||'—')+'</dd><dt>Performed on</dt><dd>'+fmtDate(s.date)+'</dd><dt>Performed by</dt><dd>'+esc(s.performedBy||'—')+'</dd><dt>Appointment</dt><dd>'+esc(s.apptNo||'—')+'</dd></dl></div>'+
+      :pu?'<span>No next appointment booked · '+esc(r2(sst.unitsUsed)+' of '+r2(sst.unitsQ)+' '+qlUnit(sl.l))+' used</span>'+(readOnly?'':' <button type="button" class="btn sm primary w" data-booknext>Book next visit</button>'):(left>0?'<span>No next appointment booked · '+left+' session'+(left===1?'':'s')+' left</span>'+(readOnly?'':' <button type="button" class="btn sm primary w" data-booknext>Book next session</button>'):'<span>All sessions of this procedure are completed.</span>'))+'</div>';
+    m.innerHTML='<h2>Session '+esc(s.no)+'</h2>'+nextBox+'<div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(s.clientName)+'</strong> '+esc(s.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(s.procName||'')+'</strong> '+esc(sesOrdinal(s))+(s.units!=null&&s.unitName?' · <strong>'+esc(r2(s.units)+' '+s.unitName)+'</strong>':'')+'</dd><dt>Quotation</dt><dd>'+esc(s.quoteNo||'—')+'</dd><dt>Performed on</dt><dd>'+fmtDate(s.date)+'</dd><dt>Performed by</dt><dd>'+esc(s.performedBy||'—')+'</dd><dt>Appointment</dt><dd>'+esc(s.apptNo||'—')+'</dd></dl></div>'+
       '<div class="f-grid"><div class="field"><label>Procedure notes'+(s.rxProc===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.procNotes)+'</div><div class="field"><label>Outcome notes'+(s.rxOutcome===false?' <span class="sub">(not on prescription)</span>':'')+'</label>'+txt(s.outcomeNotes)+'</div></div>'+
       '<h3 class="sec-h">Medicines prescribed</h3>'+((s.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th></tr></thead><tbody>'+s.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Photographs</h3>'+(ph.length?'<div class="ph-grid">'+ph.map(function(p){var src=photoSrc(s.photos[p[0]]);return '<div class="ph-slot"><div class="ph-label">'+esc(p[1])+'</div><a class="ph-frame" href="'+esc(src)+'" target="_blank" rel="noopener"><img alt="'+esc(p[1])+' photo" src="'+esc(src)+'"></a></div>'}).join('')+'</div>':'<p class="hint">None.</p>')+
@@ -4596,7 +4623,7 @@ function sesPdf(s){
   var cl=clientById(s.clientId)||{};
   var con={no:s.no,date:s.date,diagnosis:s.procNotes||'',observations:s.outcomeNotes||'',meds:s.meds||[],procs:[]};
   try{var pdf=window.PDFKIT.prescription(J,{mode:'prescription',showDiag:s.rxProc!==false,showObs:s.rxOutcome!==false,showProcs:false,labels:{diag:'Procedure notes',obs:'Outcome notes'},
-    lead:{title:'Procedure performed',text:(s.procName||'')+(sesOrdinal(s)?'  ·  '+sesOrdinal(s):'')+(s.quoteNo?'  ·  '+s.quoteNo:'')},
+    lead:{title:'Procedure performed',text:(s.procName||'')+(s.unitName&&+s.units>0?'  ·  '+r2(s.units)+' '+s.unitName:'')+(sesOrdinal(s)?'  ·  '+sesOrdinal(s):'')+(s.quoteNo?'  ·  '+s.quoteNo:'')},
     biz:bizCtx(),con:con,client:{name:s.clientName,phone:s.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},doctor:s.performedBy||'',apptNo:s.apptNo||'',fmtDate:fmtDate});pdfView(s.no+'-prescription.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
@@ -4625,19 +4652,29 @@ function aiTotals(d){
 function aeInvById(id){return findIn('aeInvoices',id)}
 /* what is already billed, optionally ignoring one invoice (the one being edited) */
 function aiBilledMap(exceptId){
-  var con={},ses={},pre={};
+  var con={},ses={},pre={},sesU={};
   activeVouchers('aeInvoices').forEach(function(v){if(v.id===exceptId||v.cancelled)return;(v.lines||[]).forEach(function(l){
     if(l.src==='con'&&l.srcId) con[l.srcId]=v.no||v.id;
     if(l.src==='ses'&&l.srcId) ses[l.srcId]=v.no||v.id;
+    if(l.src==='ses'&&l.quoteLineId&&l.perUnit){var ku=l.quoteId+'|'+l.quoteLineId;sesU[ku]=r2((sesU[ku]||0)+(+l.qty||0))}
     if(l.src==='qt'&&l.quoteLineId){var k=l.quoteId+'|'+l.quoteLineId;pre[k]=(pre[k]||0)+(+l.qty||0)}
   })});
-  return {con:con,ses:ses,pre:pre};
+  return {con:con,ses:ses,pre:pre,sesU:sesU};
 }
 /* a session is billed if it was invoiced on its own, or falls within sessions billed upfront on its quotation */
 function sesBilling(s,bm){
   bm=bm||aiBilledMap();
   if(bm.ses[s.id]) return {billed:true,how:bm.ses[s.id]};
-  var k=s.quoteId+'|'+s.quoteLineId, pre=bm.pre[k]||0; if(!pre) return {billed:false};
+  var k=s.quoteId+'|'+s.quoteLineId, pre=bm.pre[k]||0;
+  if(s.unitName!=null&&s.units!=null){
+    var u=+s.units||0; if(u<=0) return {billed:true,how:'No '+s.unitName+' given'};
+    if(!pre) return {billed:false,units:u};
+    var mineU=activeVouchers('aeSessions').filter(function(x){return x.quoteId===s.quoteId&&x.quoteLineId===s.quoteLineId&&!bm.ses[x.id]}).sort(function(a,b){return ((a.date||'')+(a.createdAt||'')).localeCompare((b.date||'')+(b.createdAt||''))});
+    var before=0; for(var z=0;z<mineU.length&&mineU[z].id!==s.id;z++) before+=+mineU[z].units||0;
+    var open=r2(Math.max(0,Math.min(u,before+u-pre)));
+    return open<=0?{billed:true,how:'Billed upfront'}:{billed:false,units:open,partial:open<u};
+  }
+  if(!pre) return {billed:false};
   var mine=activeVouchers('aeSessions').filter(function(x){return x.quoteId===s.quoteId&&x.quoteLineId===s.quoteLineId&&!bm.ses[x.id]}).sort(function(a,b){return ((a.date||'')+(a.createdAt||'')).localeCompare((b.date||'')+(b.createdAt||''))});
   var pos=mine.findIndex(function(x){return x.id===s.id});
   return pos>=0&&pos<pre?{billed:true,how:'Billed upfront'}:{billed:false};
@@ -4646,17 +4683,24 @@ function conFeeProc(){return S.aeProcs.find(function(p){return /consultation/i.t
 function aiConLine(c){var p=conFeeProc();return {lid:newId('al'),src:'con',srcId:c.id,ref:c.no+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),procId:p?p.id:'',name:p?p.name:'Consultation fee',sac:p?(p.sac||''):'',qty:1,rate:p?(+p.price||0):0,discPct:0,gst:p?(+p.gst||0):0}}
 function aiSesLine(s){
   var q=findIn('aeQuotes',s.quoteId), ln=sesLine(q,s.quoteLineId), l=ln?ln.l:{};
+  if(qlPU(l)||s.unitName!=null){var sb=sesBilling(s),uu=sb.units!=null?sb.units:(+s.units||0),un=s.unitName||qlUnit(l);
+    return {lid:newId('al'),src:'ses',srcId:s.id,quoteId:s.quoteId,quoteLineId:s.quoteLineId,perUnit:true,unitName:un,ref:s.no+' · '+fmtDate(s.date)+(sesOrdinal(s)?' · '+sesOrdinal(s):'')+(s.quoteNo?' · '+s.quoteNo:'')+(sb.partial?' · extra '+un+' beyond the upfront bill':''),procId:s.procId||l.procId||'',name:(s.procName||l.name||'')+' ('+r2(uu)+' '+un+')',sac:l.sac||'',qty:r2(uu),rate:+l.rate||0,discPct:+l.discPct||0,gst:+l.gst||0}}
   return {lid:newId('al'),src:'ses',srcId:s.id,quoteId:s.quoteId,quoteLineId:s.quoteLineId,ref:s.no+' · '+fmtDate(s.date)+(sesOrdinal(s)?' · '+sesOrdinal(s):'')+(s.quoteNo?' · '+s.quoteNo:''),procId:s.procId||l.procId||'',name:s.procName||l.name||'',sac:l.sac||'',qty:1,rate:+l.rate||0,discPct:+l.discPct||0,gst:+l.gst||0};
 }
 /* sessions of each quotation item not yet billed in any way */
 function aiQuoteRemaining(q,bm,d){
   return (q.lines||[]).map(function(l,i){
     var key=qtLineKey(q,l,i), k=q.id+'|'+key;
+    if(qlPU(l)){var inD=0; if(d) d.lines.forEach(function(x){if(x.quoteLineId===key&&x.quoteId===q.id)inD+=(+x.qty||0)});
+      var given=0; activeVouchers('aeSessions').forEach(function(s){if(s.quoteId===q.id&&s.quoteLineId===key&&!bm.ses[s.id]){var sb=sesBilling(s,bm);if(!sb.billed)given+=+sb.units||0}});
+      if(d) d.lines.forEach(function(x){if(x.src==='ses'&&x.quoteLineId===key&&x.quoteId===q.id){var s2=findIn('aeSessions',x.srcId);if(s2){var sb2=sesBilling(s2,bm);if(!sb2.billed)given-=+sb2.units||0}}});
+      return {l:l,i:i,key:key,left:r2(Math.max(0,(+l.units||0)-(bm.sesU[k]||0)-(bm.pre[k]||0)-inD-Math.max(0,given)))}}
     var single=activeVouchers('aeSessions').filter(function(s){return s.quoteId===q.id&&s.quoteLineId===key&&bm.ses[s.id]}).length;
     var inDraft=0; if(d) d.lines.forEach(function(x){if(x.quoteLineId===key&&x.quoteId===q.id)inDraft+=(x.src==='ses'?1:(+x.qty||0))});
     return {l:l,i:i,key:key,left:Math.max(0,(+l.sessions||0)-single-(bm.pre[k]||0)-inDraft)};
   });
 }
+function aiRemText(q,rem){return rem.filter(function(x){return x.left>0}).map(function(x){return qlPU(x.l)?x.left+' '+qlUnit(x.l)+' of '+x.l.name:x.left+' session'+(x.left===1?'':'s')+(rem.length>1?' of '+x.l.name:'')}).join(', ')}
 function aiPending(d){
   var bm=aiBilledMap(d.id);
   var cons=activeVouchers('aeCons').filter(function(c){return c.clientId===d.clientId&&!bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')});
@@ -4768,12 +4812,12 @@ function aiRenderPending(){
   var p=aiPending(d), inD=function(src,id){return d.lines.some(function(l){return l.src===src&&l.srcId===id})};
   var shown={con:{},ses:{}}; d.lines.forEach(function(l){if(l.src==='con'||l.src==='ses')shown[l.src][l.srcId]=1});
   var cons=p.cons.filter(function(c){return !shown.con[c.id]}), ses=p.ses.filter(function(s){return !shown.ses[s.id]});
-  var qts=activeVouchers('aeQuotes').filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,p.bm,d);return {q:q,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
+  var qts=activeVouchers('aeQuotes').filter(function(q){return q.clientId===d.clientId}).map(function(q){var rem=aiQuoteRemaining(q,p.bm,d);return {q:q,rem:rem,n:rem.reduce(function(t,x){return t+x.left},0)}}).filter(function(x){return x.n>0});
   if(!cons.length&&!ses.length&&!qts.length){box.innerHTML='<h3 class="sec-h">Not yet billed</h3><p class="hint">Nothing else is waiting to be billed for this client.</p>';return}
   box.innerHTML='<h3 class="sec-h">Not yet billed</h3><div class="pend">'+
     cons.map(function(c){return '<div class="pend-row"><div><strong>Consultation '+esc(c.no)+'</strong><div class="sub">'+fmtDate(c.date)+(c.doctor?' · '+esc(c.doctor):'')+'</div></div><button type="button" class="btn sm w" data-pcon="'+esc(c.id)+'">'+PLUS+' Add</button></div>'}).join('')+
     ses.map(function(s){return '<div class="pend-row"><div><strong>'+esc(s.procName||'')+'</strong> <span class="sub">'+esc(s.no)+'</span><div class="sub">'+fmtDate(s.date)+(sesOrdinal(s)?' · '+esc(sesOrdinal(s)):'')+' · '+esc(s.quoteNo||'')+'</div></div><button type="button" class="btn sm w" data-pses="'+esc(s.id)+'">'+PLUS+' Add</button></div>'}).join('')+
-    qts.map(function(x){return '<div class="pend-row"><div><strong>Bill '+esc(x.q.no)+' upfront</strong><div class="sub">'+x.n+' session'+(x.n===1?'':'s')+' not yet billed</div></div><button type="button" class="btn sm w" data-pqt="'+esc(x.q.id)+'">'+PLUS+' Add</button></div>'}).join('')+
+    qts.map(function(x){return '<div class="pend-row"><div><strong>Bill '+esc(x.q.no)+' upfront</strong><div class="sub">'+esc(aiRemText(x.q,x.rem||aiQuoteRemaining(x.q,aiBilledMap(),null)))+' not yet billed</div></div><button type="button" class="btn sm w" data-pqt="'+esc(x.q.id)+'">'+PLUS+' Add</button></div>'}).join('')+
     '</div>'+(cons.length+ses.length>1?'<div style="margin-top:8px"><button type="button" class="btn sm" id="af-addall">Add all consultations and sessions</button></div>':'');
   var addCon=function(id){var c=findIn('aeCons',id);if(c&&!inD('con',id))d.lines.push(aiConLine(c))};
   var addSes=function(id){var s=findIn('aeSessions',id);if(s&&!inD('ses',id))d.lines.push(aiSesLine(s))};
@@ -4781,7 +4825,7 @@ function aiRenderPending(){
   $$('[data-pses]',box).forEach(function(b){b.onclick=function(){addSes(b.dataset.pses);aiRenderPending();aiRenderLines()}});
   $$('[data-pqt]',box).forEach(function(b){b.onclick=function(){
     var q=findIn('aeQuotes',b.dataset.pqt); if(!q) return;
-    aiQuoteRemaining(q,p.bm,d).forEach(function(x){if(x.left>0)d.lines.push({lid:newId('al'),src:'qt',quoteId:q.id,quoteLineId:x.key,ref:q.no+' · billed upfront',procId:x.l.procId,name:x.l.name,sac:x.l.sac||'',qty:x.left,rate:+x.l.rate||0,discPct:+x.l.discPct||0,gst:+x.l.gst||0})});
+    aiQuoteRemaining(q,p.bm,d).forEach(function(x){if(x.left>0)d.lines.push({lid:newId('al'),src:'qt',quoteId:q.id,quoteLineId:x.key,ref:q.no+' · billed upfront',perUnit:qlPU(x.l)||undefined,unitName:qlPU(x.l)?qlUnit(x.l):undefined,procId:x.l.procId,name:x.l.name+(qlPU(x.l)?' ('+x.left+' '+qlUnit(x.l)+')':''),sac:x.l.sac||'',qty:x.left,rate:+x.l.rate||0,discPct:+x.l.discPct||0,gst:+x.l.gst||0})});
     if(!d.other&&q.other&&!activeVouchers('aeInvoices').some(function(v){return v.id!==d.id&&(v.lines||[]).some(function(l){return l.quoteId===q.id})})){d.otherDesc=q.otherDesc||'';d.other=q.other;d.otherGst=q.otherGst!=null?q.otherGst:18;$('#af-odesc').value=d.otherDesc;$('#af-oamt').value=d.other;$('#af-ogst').value=d.otherGst}
     aiRenderPending();aiRenderLines()}});
   var all=$('#af-addall'); if(all) all.onclick=function(){cons.forEach(function(c){addCon(c.id)});ses.forEach(function(s){addSes(s.id)});aiRenderPending();aiRenderLines()};
@@ -4795,7 +4839,7 @@ function aiRenderLines(){
       (l.src==='manual'?'<div class="field"><label for="al-proc-'+i+'">Procedure</label><div class="h-proc"></div></div>':'<div class="field"><label>Item</label><div class="ro-field"><strong>'+esc(l.name)+'</strong>'+(l.ref?' <span class="sub">'+esc(l.ref)+'</span>':'')+'</div></div>')+
       '<button type="button" class="icon-btn al-del" aria-label="Remove item '+(i+1)+'">×</button></div>'+
       '<div class="line-nums n8">'+
-      '<div class="field"><label for="al-qty-'+i+'">'+(l.src==='qt'?'Sessions':'Qty')+'</label>'+(fixed?'<div class="ro-box">1</div>':'<input id="al-qty-'+i+'" class="al-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'">')+'</div>'+
+      '<div class="field"><label for="al-qty-'+i+'">'+(l.perUnit?esc((l.unitName||'units').replace(/^./,function(c){return c.toUpperCase()})):l.src==='qt'?'Sessions':'Qty')+'</label>'+(fixed?'<div class="ro-box">'+(l.perUnit?esc(l.qty):'1')+'</div>':'<input id="al-qty-'+i+'" class="al-qty num" type="number" min="1" step="1" value="'+esc(l.qty)+'">')+'</div>'+
       '<div class="field"><label for="al-rate-'+i+'">Rate</label><input id="al-rate-'+i+'" class="al-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
       '<div class="field"><label>Amount</label><div class="ro-box al-amt">'+money(c.amount)+'</div></div>'+
       '<div class="field"><label for="al-pct-'+i+'">Discount %</label><input id="al-pct-'+i+'" class="al-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(l.discPct))+'"></div>'+
@@ -4861,7 +4905,11 @@ function aiSave(){
     if(x.src==='con'&&bm.con[x.srcId]) return show(x.ref.split(' · ')[0]+' is already billed on '+bm.con[x.srcId]+'. Remove it from this invoice.');
     if(x.src==='ses'){var ss=findIn('aeSessions',x.srcId);if(ss){var sb=sesBilling(ss,bm);if(sb.billed)return show(ss.no+' is already billed ('+sb.how+'). Remove it from this invoice.')}}
   }
-  var qmap={}; lines.forEach(function(x){if(x.quoteLineId&&(x.src==='qt'||x.src==='ses')){var k2=x.quoteId+'|'+x.quoteLineId;qmap[k2]=(qmap[k2]||0)+(x.src==='qt'?+x.qty:1)}});
+  var pum={}; lines.forEach(function(x){if(x.quoteLineId&&x.perUnit){var kk=x.quoteId+'|'+x.quoteLineId;pum[kk]=pum[kk]||{qt:0,ses:0,name:x.name};if(x.src==='qt')pum[kk].qt+=+x.qty||0;else if(x.src==='ses')pum[kk].ses++}});
+  for(var kq in pum){var pq=kq.split('|'),qq0=findIn('aeQuotes',pq[0]),lq=sesLine(qq0,pq[1]);if(!lq)continue;
+    if(pum[kq].qt&&pum[kq].ses) return show('Bill '+lq.l.name+' on '+qq0.no+' either upfront or by visit in one invoice, not both.');
+    if(pum[kq].qt){var remU=r2((+lq.l.units||0)-((bm.pre[kq]||0)+(bm.sesU[kq]||0)));if(pum[kq].qt>remU+0.001) return show(lq.l.name+' on '+qq0.no+' has only '+Math.max(0,remU)+' '+qlUnit(lq.l)+' left to bill upfront.')}}
+  var qmap={}; lines.forEach(function(x){if(x.quoteLineId&&!x.perUnit&&(x.src==='qt'||x.src==='ses')){var k2=x.quoteId+'|'+x.quoteLineId;qmap[k2]=(qmap[k2]||0)+(x.src==='qt'?+x.qty:1)}});
   for(var k3 in qmap){var p2=k3.split('|'),q=findIn('aeQuotes',p2[0]),ln=sesLine(q,p2[1]);if(!ln)continue;
     var single=activeVouchers('aeSessions').filter(function(s){return s.quoteId===q.id&&s.quoteLineId===p2[1]&&bm.ses[s.id]}).length, left=(+ln.l.sessions||0)-single-(bm.pre[k3]||0);
     if(qmap[k3]>left) return show(ln.l.name+' on '+q.no+' has only '+Math.max(0,left)+' session'+(left===1?'':'s')+' left to bill.')}
@@ -4872,7 +4920,7 @@ function aiSave(){
   if(!editing){pay=splitTotal(d);var pe=splitError(d,false);if(pe)return show(pe)}
   var now=new Date().toISOString(), seq=editing?d.seq:nextSeq(S.aeInvoices);
   var obj={id:d.id||newId('ai'),seq:seq,no:editing?d.no:'INV-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',
-    lines:lines.map(function(l){var z=aiCalc(l);return {lid:l.lid,src:l.src,srcId:l.srcId||'',quoteId:l.quoteId||'',quoteLineId:l.quoteLineId||'',ref:l.ref||'',procId:l.procId||'',name:l.name,sac:l.sac||'',qty:+l.qty,rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:z.amount,disc:z.disc,net:z.net,tax:z.tax,total:z.total}}),
+    lines:lines.map(function(l){var z=aiCalc(l);return Object.assign(l.perUnit?{perUnit:true,unitName:l.unitName||'units'}:{},{lid:l.lid,src:l.src,srcId:l.srcId||'',quoteId:l.quoteId||'',quoteLineId:l.quoteLineId||'',ref:l.ref||'',procId:l.procId||'',name:l.name,sac:l.sac||'',qty:+l.qty,rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:z.amount,disc:z.disc,net:z.net,tax:z.tax,total:z.total})}),
     amount:t.amount,discount:t.discount,net:t.net,tax:t.tax,otherDesc:String(d.otherDesc||'').trim(),other:t.other,otherGst:+d.otherGst||0,otherTax:t.otherTax,roundOn:!!d.roundOn,roundOff:t.roundOff,total:t.total,createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#ai-form [type=submit]'); btn.disabled=true;
   put('aeInvoices',obj).then(function(){
@@ -5154,6 +5202,13 @@ SECTIONS['ae-inventory']=deptInvSection('aes');
 
 /* ---------- quotation items ↔ appointments ---------- */
 function qtLineKey(q,l,i){return l.lid||(q.id+':'+i)}
+/* per-unit procedures (e.g. Botox): billed by units, sessions are open-ended */
+function procPU(p){return !!(p&&p.billing==='Per unit')}
+function qlPU(l){return !!(l&&l.perUnit)}
+function qlUnit(l){return (l&&l.unitName)||'units'}
+function qlQty(l){return qlPU(l)?(+l.units||0):(+l.sessions||0)}
+function qlQtyText(l){return qlPU(l)?r2(+l.units||0)+' '+qlUnit(l):String(+l.sessions||0)}
+function lineEvent(q,key,action){if(readOnly){toast('You need Contributor access.');return}var now=new Date().toISOString();return put('aeLineEv',{id:newId('le'),quoteId:q.id,quoteNo:q.no,lineKey:key,action:action,at:now,by:CURRENT_USER?CURRENT_USER.name:'',createdAt:now,updatedAt:now}).then(function(){toast(action==='complete'?'Marked as completed.':'Reopened.')}).catch(function(e){toast(errText(e))})}
 function qtLineStats(q,i){
   var l=q.lines[i], key=qtLineKey(q,l,i);
   var ap=activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key});
@@ -5161,10 +5216,16 @@ function qtLineStats(q,i){
   ses.forEach(function(x){if(x.apptId)linked[x.apptId]=1});
   /* a session record counts as done; a Completed appointment counts too unless a session record already covers it */
   var done=ses.length+ap.filter(function(a){return a.status==='Completed'&&!linked[a.id]}).length, booked=ap.filter(function(a){return AP_ACTIVE.indexOf(a.status)>=0&&!linked[a.id]}).length;
+  if(qlPU(l)){
+    var used=r2(ses.reduce(function(t,x){return t+(+x.units||0)},0)), lastS=ses.map(function(x){return x.createdAt||x.date||''}).sort().pop()||'';
+    var ev=activeVouchers('aeLineEv').filter(function(e){return e.quoteId===q.id&&e.lineKey===key}).sort(function(a,b){return (a.at||'').localeCompare(b.at||'')}).pop();
+    var closed=!!(ev&&ev.action==='complete'&&(!lastS||ev.at>lastS));
+    return {key:key,done:done,booked:booked,perUnit:true,unitsQ:+l.units||0,unitsUsed:used,closed:closed,left:closed?0:1,open:closed?0:1,appts:ap,sessions:ses};
+  }
   return {key:key,done:done,booked:booked,left:Math.max(0,(+l.sessions||0)-done),open:Math.max(0,(+l.sessions||0)-done-booked),appts:ap,sessions:ses};
 }
 function qtUpcoming(q){var t=todayStr();return activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0}).length}
-function qtProgress(q){var t=0,dn=0;(q.lines||[]).forEach(function(l,i){t+=+l.sessions||0;dn+=qtLineStats(q,i).done});return {total:t,done:dn}}
+function qtProgress(q){var t=0,dn=0;(q.lines||[]).forEach(function(l,i){var st=qtLineStats(q,i);if(qlPU(l)){t+=1;dn+=st.closed||st.done?1:0}else{t+=+l.sessions||0;dn+=st.done}});return {total:t,done:dn}}
 function clientQuoteItems(cid){
   var out=[];
   activeVouchers('aeQuotes').filter(function(q){return q.clientId===cid}).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')}).forEach(function(q){
@@ -5179,7 +5240,7 @@ function apSessionLabel(a){
   if(idx<0) return q.no;
   var ap=qtLineStats(q,idx).appts.filter(function(x){return x.status!=='Cancelled'&&x.status!=='No-show'}).sort(function(x,y){return (x.date||'').localeCompare(y.date||'')||toMin(apFrom(x))-toMin(apFrom(y))});
   var n=ap.findIndex(function(x){return x.id===a.id})+1;
-  return (n?'Session '+n+' of '+q.lines[idx].sessions+' · ':'')+q.no;
+  return (n?(qlPU(q.lines[idx])?'Visit '+n:'Session '+n+' of '+q.lines[idx].sessions)+' · ':'')+q.no;
 }
 
 /* =========================================================
@@ -5188,7 +5249,7 @@ function apSessionLabel(a){
 var qtDraft=null, qtMode='list', qtF={q:'',from:'',to:''}, qtCombos=[];
 function qtBlankLine(){return {lid:newId('ql'),procId:'',name:'',sac:'',sessions:1,rate:0,discPct:0,gst:18}}
 function qtNew(){return {id:null,date:todayStr(),clientId:'',conId:'',lines:[qtBlankLine()],otherDesc:'',other:'',otherGst:18,roundOn:true,roundManual:null}}
-function qtLine(l){var amt=r2((+l.sessions||0)*(+l.rate||0)),disc=r2(amt*Math.min(Math.max(+l.discPct||0,0),100)/100),net=r2(amt-disc),tax=r2(net*(+l.gst||0)/100);return {amount:amt,disc:disc,net:net,tax:tax,total:r2(net+tax)}}
+function qtLine(l){var amt=r2(qlQty(l)*(+l.rate||0)),disc=r2(amt*Math.min(Math.max(+l.discPct||0,0),100)/100),net=r2(amt-disc),tax=r2(net*(+l.gst||0)/100);return {amount:amt,disc:disc,net:net,tax:tax,total:r2(net+tax)}}
 function qtTotals(d){
   var t={amount:0,discount:0,net:0,tax:0};
   d.lines.forEach(function(l){if(!l.procId)return;var c=qtLine(l);t.amount+=c.amount;t.discount+=c.disc;t.net+=c.net;t.tax+=c.tax});
@@ -5201,7 +5262,7 @@ function qtTotals(d){
   return t;
 }
 function qtLinesFromCon(c){
-  var lines=(c&&c.procs||[]).map(function(p){var pr=findIn('aeProcs',p.procId)||{};return {lid:newId('ql'),procId:p.procId,name:p.name||pr.name||'',sac:pr.sac||'',sessions:+p.sessions||1,rate:pr.price!=null&&pr.price!==''?+pr.price:(+p.price||0),discPct:0,gst:pr.gst!=null?+pr.gst:(+p.gst||0)}});
+  var lines=(c&&c.procs||[]).map(function(p){var pr=findIn('aeProcs',p.procId)||{},pu=procPU(pr);return {lid:newId('ql'),procId:p.procId,name:p.name||pr.name||'',sac:pr.sac||'',perUnit:pu,units:pu?(+p.units||+p.sessions||0):0,unitName:pu?(pr.unitName||'units'):'',sessions:pu?1:(+p.sessions||1),rate:pr.price!=null&&pr.price!==''?+pr.price:(+p.price||0),discPct:0,gst:pr.gst!=null?+pr.gst:(+p.gst||0)}});
   return lines.length?lines:[qtBlankLine()];
 }
 SECTIONS['ae-quotations']={
@@ -5235,7 +5296,7 @@ SECTIONS['ae-procedures']={
     var up=function(){SECTIONS['ae-procedures'].update();bindCommon()};
     $('#ss-q').oninput=function(e){ssF.q=e.target.value;up()};
     $('#ss-show').onchange=function(e){ssF.show=e.target.value;up()};
-    $('#ss-export').onclick=function(){saveFile('sessions-tracker-'+todayStr()+'.csv',csv([['Client','Phone','Quotation','Procedure','Total sessions','Done','Upcoming','Left','Next appointment']].concat(ssRows().map(function(r){return [r.q.clientName,r.q.clientPhone||'',r.q.no,r.l.name,r.total,r.st.done,r.upcoming,r.st.left,r.next?r.next.date+' '+apFrom(r.next):'']}))))};
+    $('#ss-export').onclick=function(){saveFile('sessions-tracker-'+todayStr()+'.csv',csv([['Client','Phone','Quotation','Procedure','Total sessions','Done','Upcoming','Left','Next appointment']].concat(ssRows().map(function(r){return [r.q.clientName,r.q.clientPhone||'',r.q.no,r.l.name+(r.st.perUnit?' ('+r2(r.st.unitsUsed)+' of '+r2(r.st.unitsQ)+' '+qlUnit(r.l)+')':''),r.st.perUnit?'':r.total,r.st.done,r.upcoming,r.st.perUnit?(r.st.closed?'Completed':'Open'):r.st.left,r.next?r.next.date+' '+apFrom(r.next):'']}))))};
   },
   update:function(){
     var b=$('#body',work); if(!b) return;
@@ -5246,12 +5307,13 @@ SECTIONS['ae-procedures']={
     b.innerHTML='<div class="tbl"><table class="ap-tbl"><thead><tr><th>Client</th><th>Quotation</th><th>Procedure</th><th>Sessions done</th><th class="num">Upcoming</th><th class="num">Left</th><th>Next appointment</th><th>Consent</th><th></th></tr></thead><tbody>'+
       rows.map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'">'+esc(r.q.clientName)+'</button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td>'+
         '<td class="nowrap"><button class="link" data-ss-qt="'+esc(r.q.id)+'">'+esc(r.q.no)+'</button></td>'+
-        '<td>'+esc(r.l.name)+'</td><td class="nowrap">'+progBar(r.st.done,r.total)+'</td><td class="num">'+r.upcoming+'</td><td class="num">'+r.st.left+'</td>'+
+        '<td>'+esc(r.l.name)+(r.st.perUnit?'<div class="sub">'+esc(r2(r.st.unitsUsed)+' of '+r2(r.st.unitsQ)+' '+qlUnit(r.l)+' used')+'</div>':'')+'</td><td class="nowrap">'+(r.st.perUnit?r.st.done+' visit'+(r.st.done===1?'':'s'):progBar(r.st.done,r.total))+'</td><td class="num">'+r.upcoming+'</td><td class="num">'+(r.st.perUnit?(r.st.closed?'Completed':'Open'):r.st.left)+'</td>'+
         '<td class="nowrap">'+(r.next?fmtDate(r.next.date)+'<div class="sub">'+esc(fmtTime(apFrom(r.next)))+'</div>':'—')+'</td>'+
         '<td class="nowrap">'+(function(){var c=consentFor(r.q.id,r.st.key);if(c)return '<button class="link" data-ss-cview="'+esc(c.id)+'"><span class="pill paid">Taken</span></button>';if(consentNeeded(r.q.id,r.st.key))return '<span class="pill unpaid">Required</span>'+(readOnly?'':' <button class="btn sm" data-ss-cons="'+esc(r.q.id)+'|'+r.i+'">Take</button>');return '—'})()+'</td>'+
-        '<td><div class="row-acts">'+(!readOnly&&r.st.left>0?(r.st.open>0?'<button class="btn sm w" data-ss-book="'+esc(r.q.id)+'|'+r.i+'">Appointment</button>':'')+'<button class="btn sm w" data-ss-ses="'+esc(r.q.id)+'|'+r.i+'">Session</button>':'')+'<button class="btn sm" data-ss-photos="'+esc(r.q.id)+'|'+r.i+'">Photos</button></div></td></tr>'}).join('')+
+        '<td><div class="row-acts">'+(!readOnly&&(r.st.left>0||r.st.perUnit)?(r.st.open>0||r.st.perUnit?'<button class="btn sm w" data-ss-book="'+esc(r.q.id)+'|'+r.i+'">Appointment</button>':'')+'<button class="btn sm w" data-ss-ses="'+esc(r.q.id)+'|'+r.i+'">Session</button>':'')+(!readOnly&&r.st.perUnit?(r.st.closed?'<button class="btn sm" data-ss-ev="reopen|'+esc(r.q.id)+'|'+r.i+'">Reopen</button>':'<button class="btn sm" data-ss-ev="complete|'+esc(r.q.id)+'|'+r.i+'" title="Treatment finished: move out of the open list">Mark completed</button>'):'')+'<button class="btn sm" data-ss-photos="'+esc(r.q.id)+'|'+r.i+'">Photos</button></div></td></tr>'}).join('')+
       '</tbody></table></div><p class="hint">'+countOf(rows.length,all,'items')+'</p>';
     $$('[data-ss-qt]',b).forEach(function(x){x.onclick=function(){viewQt(x.dataset.ssQt)}});
+    $$('[data-ss-ev]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssEv.split('|'),q=findIn('aeQuotes',p[1]),l=q&&q.lines[+p[2]];if(!l)return;x.disabled=true;lineEvent(q,qtLineKey(q,l,+p[2]),p[0])}});
     $$('[data-ss-photos]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssPhotos.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)viewLinePhotos(q.id,qtLineKey(q,l,+p[1]))}});
     $$('[data-ss-cview]',b).forEach(function(x){x.onclick=function(){viewConsent(x.dataset.ssCview)}});
     $$('[data-ss-cons]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssCons.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)openConsent(q.id,qtLineKey(q,l,+p[1]))}});
@@ -5312,7 +5374,7 @@ function qtEdit(id){
   if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   var q=findIn('aeQuotes',id); if(!q) return;
   qtDraft={id:q.id,seq:q.seq,no:q.no,createdAt:q.createdAt,date:q.date,clientId:q.clientId,clientName:q.clientName,conId:q.conId||'',conNo:q.conNo||'',
-    lines:(q.lines||[]).map(function(l,i){return {lid:qtLineKey(q,l,i),procId:l.procId,name:l.name,sac:l.sac||'',sessions:l.sessions,rate:l.rate,discPct:l.discPct||0,gst:l.gst}}),
+    lines:(q.lines||[]).map(function(l,i){var pr=findIn('aeProcs',l.procId),cv=!qlPU(l)&&procPU(pr);return {lid:qtLineKey(q,l,i),procId:l.procId,name:l.name,sac:l.sac||'',perUnit:qlPU(l)||cv,units:qlPU(l)?l.units:(cv?l.sessions:0),unitName:qlPU(l)?qlUnit(l):(cv?(pr.unitName||'units'):''),converted:cv,sessions:qlPU(l)||cv?1:l.sessions,rate:l.rate,discPct:l.discPct||0,gst:l.gst}}),
     otherDesc:q.otherDesc||'',other:q.other||'',otherGst:q.otherGst!=null?q.otherGst:18,roundOn:!!q.roundOn,roundManual:q.roundOn?String(q.roundOff||0):null};
   if(!qtDraft.lines.length) qtDraft.lines=[qtBlankLine()];
   qtMode='form'; closeModal(); if(current!=='ae-quotations') go('ae-quotations'); else go(current);
@@ -5383,8 +5445,8 @@ function qtRenderLines(){
       '<div class="field"><label for="ql-proc-'+i+'">Procedure</label><div class="h-proc"></div></div>'+
       '<button type="button" class="icon-btn ql-del" aria-label="Remove procedure '+(i+1)+'"'+(d.lines.length===1?' disabled':'')+'>×</button></div>'+
       '<div class="line-nums n8">'+
-      '<div class="field"><label for="ql-ses-'+i+'">Sessions</label><input id="ql-ses-'+i+'" class="ql-ses num" type="number" min="1" step="1" value="'+esc(l.sessions)+'"></div>'+
-      '<div class="field"><label for="ql-rate-'+i+'">Rate per session</label><input id="ql-rate-'+i+'" class="ql-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
+      (qlPU(l)?'<div class="field"><label for="ql-ses-'+i+'">'+esc(qlUnit(l).replace(/^./,function(c){return c.toUpperCase()}))+'</label><input id="ql-ses-'+i+'" class="ql-ses num" type="number" min="0" step="0.01" value="'+esc(l.units||'')+'"></div>':'<div class="field"><label for="ql-ses-'+i+'">Sessions</label><input id="ql-ses-'+i+'" class="ql-ses num" type="number" min="1" step="1" value="'+esc(l.sessions)+'"></div>')+
+      '<div class="field"><label for="ql-rate-'+i+'">'+(qlPU(l)?'Rate per '+esc(qlUnit(l).replace(/s$/,'')):'Rate per session')+'</label><input id="ql-rate-'+i+'" class="ql-rate num" type="number" min="0" step="0.01" value="'+esc(l.rate)+'"></div>'+
       '<div class="field"><label>Amount</label><div class="ro-box ql-amt">'+money(c.amount)+'</div></div>'+
       '<div class="field"><label for="ql-pct-'+i+'">Discount %</label><input id="ql-pct-'+i+'" class="ql-pct num" type="number" min="0" max="100" step="0.01" value="'+esc(pctFmt(l.discPct))+'"></div>'+
       '<div class="field"><label>Discount</label><div class="ro-box ql-disc">'+money(c.disc)+'</div></div>'+
@@ -5392,16 +5454,16 @@ function qtRenderLines(){
       '<div class="field"><label for="ql-gst-'+i+'">GST rate</label><select id="ql-gst-'+i+'" class="ql-gst">'+optList(GST_RATES.map(function(g){return [g,g+'%']}),l.gst)+'</select></div>'+
       '<div class="field"><label>GST</label><div class="ro-box ql-tax">'+money(c.tax)+'</div></div>'+
       '<div class="field"><label for="ql-tot-'+i+'">Amount after GST</label>'+amtInput('ql-tot',c.total).replace('<input ','<input id="ql-tot-'+i+'" ')+'</div>'+
-      '</div></div>'}).join('');
+      '</div>'+(l.converted?'<p class="hint" style="margin:6px 0 0">'+esc(l.name)+' is billed per unit now, so the '+esc(l.units)+' sessions on this quotation were changed to '+esc(l.units)+' '+esc(qlUnit(l))+'. Check and save.</p>':'')+'</div>'}).join('');
   $$('.line',box).forEach(function(row){
     var i=+row.dataset.i, l=d.lines[i];
     var upd=function(){var c=qtLine(l),set=function(k,v){row.querySelector(k).textContent=money(v)};set('.ql-amt',c.amount);set('.ql-disc',c.disc);set('.ql-net',c.net);set('.ql-tax',c.tax);amtShow(row,'.ql-tot',c.total);qtRenderTotals()};
     amtWire(row,'.ql-tot',l,qtLine,{rate:'.ql-rate',pct:'.ql-pct',upd:function(){upd()}});
     var cb=combo(row.querySelector('.h-proc'),{id:'ql-proc-'+i,placeholder:'Type to search procedures',value:l.procId,emptyText:'Add procedures in Masters › Procedures',
       options:function(){return S.aeProcs.filter(function(x){return x.status!=='Inactive'||x.id===l.procId}).sort(function(a,b){return byText(a.name,b.name)}).map(function(x){return [x.id,x.name,money0(x.price)]})},
-      missing:function(){return l.name},onChange:function(v){var pr=findIn('aeProcs',v);l.procId=v;if(pr){l.name=pr.name;l.sac=pr.sac||'';l.rate=+pr.price||0;l.gst=+pr.gst||0}qtRenderLines();var n=$('#ql-ses-'+i);if(n)n.focus()}});
+      missing:function(){return l.name},onChange:function(v){var pr=findIn('aeProcs',v);l.procId=v;if(pr){l.name=pr.name;l.sac=pr.sac||'';l.rate=+pr.price||0;l.gst=+pr.gst||0;l.perUnit=procPU(pr);l.unitName=l.perUnit?(pr.unitName||'units'):'';if(l.perUnit){l.sessions=1;if(!(+l.units>0))l.units=''}else l.units=0}qtRenderLines();var n=$('#ql-ses-'+i);if(n)n.focus()}});
     cb.line=true; qtCombos.push(cb);
-    row.querySelector('.ql-ses').oninput=function(e){l.sessions=+e.target.value||0;upd()};
+    row.querySelector('.ql-ses').oninput=function(e){if(qlPU(l))l.units=e.target.value===''?'':+e.target.value;else l.sessions=+e.target.value||0;upd()};
     row.querySelector('.ql-rate').oninput=function(e){l.rate=+e.target.value||0;upd()};
     row.querySelector('.ql-pct').oninput=function(e){l.discPct=+e.target.value||0;upd()};
     row.querySelector('.ql-gst').onchange=function(e){l.gst=+e.target.value||0;upd()};
@@ -5432,7 +5494,7 @@ function qtSave(){
   if(!d.date) return show('Choose the date.');
   var lines=d.lines.filter(function(l){return l.procId});
   if(!lines.length) return show('Add at least one procedure.');
-  for(var k=0;k<lines.length;k++){var l=lines[k];if(!(l.sessions>=1)||Math.round(l.sessions)!==l.sessions)return show('Sessions for '+l.name+' must be a whole number of at least 1.');if(l.rate<0)return show('Rate for '+l.name+' can’t be negative.');if(l.discPct<0||l.discPct>100)return show('Discount % for '+l.name+' must be between 0 and 100.')}
+  for(var k=0;k<lines.length;k++){var l=lines[k];if(qlPU(l)){if(!(+l.units>0))return show('Enter the '+qlUnit(l)+' for '+l.name+'.');l.sessions=1}else if(!(l.sessions>=1)||Math.round(l.sessions)!==l.sessions)return show('Sessions for '+l.name+' must be a whole number of at least 1.');if(l.rate<0)return show('Rate for '+l.name+' can’t be negative.');if(l.discPct<0||l.discPct>100)return show('Discount % for '+l.name+' must be between 0 and 100.')}
   if(d.other!==''&&(isNaN(+d.other)||+d.other<0)) return show('Other charges must be 0 or more.');
   var t=qtTotals({lines:lines,other:d.other,otherGst:d.otherGst,roundOn:d.roundOn,roundManual:d.roundManual});
   if(d.roundOn&&Math.abs(t.roundOff)>=100) return show('Round off must be less than ₹100.');
@@ -5441,18 +5503,19 @@ function qtSave(){
     for(var y0=0;y0<cx.length;y0++){if(!lines.find(function(x){return x.lid===cx[y0].quoteLineId})) return show('Consent '+cx[y0].no+' is recorded for a procedure you removed. Delete that consent first.')}
     var sx=activeVouchers('aeSessions').filter(function(z){return z.quoteId===d.id});
     for(var y=0;y<sx.length;y++){var sl=lines.find(function(x){return x.lid===sx[y].quoteLineId});if(!sl) return show(sx[y].no+' is recorded for a procedure you removed. Delete that session first.')}
-    for(var y2=0;y2<lines.length;y2++){var di=d.lines.indexOf(lines[y2]),qq=findIn('aeQuotes',d.id),idx=qq?(qq.lines||[]).findIndex(function(x,i){return qtLineKey(qq,x,i)===lines[y2].lid}):-1;if(idx>=0){var dn=qtLineStats(qq,idx).done;if(+lines[y2].sessions<dn) return show(lines[y2].name+' already has '+dn+' session'+(dn===1?'':'s')+' done, so sessions can’t be fewer than '+dn+'.')}}
+    for(var y2=0;y2<lines.length;y2++){var di=d.lines.indexOf(lines[y2]),qq=findIn('aeQuotes',d.id),idx=qq?(qq.lines||[]).findIndex(function(x,i){return qtLineKey(qq,x,i)===lines[y2].lid}):-1;if(idx>=0&&!qlPU(lines[y2])){var dn=qtLineStats(qq,idx).done;if(+lines[y2].sessions<dn) return show(lines[y2].name+' already has '+dn+' session'+(dn===1?'':'s')+' done, so sessions can’t be fewer than '+dn+'.')}}
     var linked=activeVouchers('aeAppts').filter(function(a){return a.quoteId===d.id&&a.status!=='Cancelled'&&a.status!=='No-show'});
     for(var z=0;z<linked.length;z++){
       var la=linked[z], ln=lines.find(function(x){return x.lid===la.quoteLineId});
       if(!ln) return show(la.no+' is booked for a procedure you removed. Cancel or move that appointment first.');
+      if(qlPU(ln)) continue;
       var used=linked.filter(function(x){return x.quoteLineId===la.quoteLineId}).length;
       if(+ln.sessions<used) return show(ln.name+' already has '+used+' session'+(used===1?'':'s')+' completed or booked, so sessions can’t be fewer than '+used+'.');
     }
   }
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeQuotes);
   var obj={id:d.id||newId('qt'),seq:seq,no:editing?d.no:'QTN-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',conId:con.id,conNo:con.no,doctor:con.doctor||'',
-    lines:lines.map(function(l){var x=qtLine(l);return {lid:l.lid||newId('ql'),procId:l.procId,name:l.name,sac:l.sac||'',sessions:+l.sessions,rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:x.amount,disc:x.disc,net:x.net,tax:x.tax,total:x.total}}),
+    lines:lines.map(function(l){var x=qtLine(l);return Object.assign({lid:l.lid||newId('ql'),procId:l.procId,name:l.name,sac:l.sac||'',sessions:+l.sessions},qlPU(l)?{perUnit:true,units:r2(+l.units),unitName:qlUnit(l)}:{},{rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:x.amount,disc:x.disc,net:x.net,tax:x.tax,total:x.total})}),
     amount:t.amount,discount:t.discount,net:t.net,tax:t.tax,otherDesc:String(d.otherDesc||'').trim(),other:t.other,otherGst:+d.otherGst||0,otherTax:t.otherTax,roundOn:!!d.roundOn,roundOff:t.roundOff,total:t.total,createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#qt-form [type=submit]'); btn.disabled=true;
   put('aeQuotes',obj).then(function(){toast(obj.no+(editing?' updated':' saved'));qtDraft=null;qtMode='list';go(current);viewQt(obj.id,obj)}).catch(function(e){btn.disabled=false;show(errText(e))});
@@ -5461,11 +5524,12 @@ function viewQt(id,fallback){
   var render=function(m){
     var q=findIn('aeQuotes',id)||fallback; if(!q){closeModal();return}
     m.innerHTML='<h2>Quotation '+esc(q.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(q.clientName)+'</strong> '+esc(q.clientPhone||'')+'</dd><dt>Date</dt><dd>'+fmtDate(q.date)+'</dd><dt>Consultation</dt><dd>'+esc(q.conNo||'—')+'</dd><dt>Doctor</dt><dd>'+esc(q.doctor||'—')+'</dd></dl><div style="text-align:right"><div class="big">'+money(q.total)+'</div></div></div>'+
-      '<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Discount</th><th class="num">After discount</th><th class="num">GST</th><th class="num">Total</th></tr></thead><tbody>'+
-      (q.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+money(l.rate)+'</td><td class="num">'+money(l.amount)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(pctFmt(l.discPct))+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
+      '<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">'+((q.lines||[]).some(qlPU)?'Qty':'Sessions')+'</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Discount</th><th class="num">After discount</th><th class="num">GST</th><th class="num">Total</th></tr></thead><tbody>'+
+      (q.lines||[]).map(function(l){return '<tr><td>'+esc(l.name)+'</td><td class="num">'+esc(qlQtyText(l))+'</td><td class="num">'+money(l.rate)+(qlPU(l)?' <span class="sub">/ '+esc(qlUnit(l).replace(/s$/,''))+'</span>':'')+'</td><td class="num">'+money(l.amount)+'</td><td class="num">'+money(l.disc)+(l.discPct?' <span class="sub">('+esc(pctFmt(l.discPct))+'%)</span>':'')+'</td><td class="num">'+money(l.net)+'</td><td class="num">'+money(l.tax)+' <span class="sub">('+l.gst+'%)</span></td><td class="num">'+money(l.total)+'</td></tr>'}).join('')+
       '</tbody></table></div>'+
       '<h3 class="sec-h">Sessions</h3><div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th><th class="num">Completed</th><th class="num">Booked</th><th class="num">Left</th><th>Progress</th><th></th></tr></thead><tbody>'+
-      (q.lines||[]).map(function(l,i){var st=qtLineStats(q,i);return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+st.done+'</td><td class="num">'+st.booked+'</td><td class="num'+(st.left?'':' adv')+'"><strong>'+st.left+'</strong></td><td>'+progBar(st.done,+l.sessions||0)+'</td>'+
+      (q.lines||[]).map(function(l,i){var st=qtLineStats(q,i);if(st.perUnit)return '<tr><td>'+esc(l.name)+' <span class="sub">(per '+esc(qlUnit(l).replace(/s$/,''))+')</span></td><td class="num">—</td><td class="num">'+st.done+'</td><td class="num">'+st.booked+'</td><td class="num">'+(st.closed?'0':'Open')+'</td><td>'+esc(r2(st.unitsUsed)+' of '+r2(st.unitsQ)+' '+qlUnit(l)+' used')+'</td>'+
+        '<td><div class="row-acts">'+(st.appts.length?'<button class="btn sm" data-qsess="'+i+'">History</button>':'')+(readOnly?'':'<button class="btn sm primary" data-qbook="'+i+'">Book session</button>')+'</div></td></tr>';return '<tr><td>'+esc(l.name)+'</td><td class="num">'+l.sessions+'</td><td class="num">'+st.done+'</td><td class="num">'+st.booked+'</td><td class="num'+(st.left?'':' adv')+'"><strong>'+st.left+'</strong></td><td>'+progBar(st.done,+l.sessions||0)+'</td>'+
         '<td><div class="row-acts">'+(st.appts.length?'<button class="btn sm" data-qsess="'+i+'">History</button>':'')+(readOnly?'':'<button class="btn sm primary" data-qbook="'+i+'"'+(st.open?'':' disabled title="All sessions are completed or booked"')+'>Book session</button>')+'</div></td></tr>'}).join('')+
       '</tbody></table></div><div id="qv-hist"></div>'+
       '<div class="form-bottom" style="margin-top:12px"><div></div><div class="totals">'+
@@ -6560,7 +6624,7 @@ SECTIONS['ae-dashboard']={
       var st=qtLineStats(q,i); if(st.left<=0) return;
       var up=st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0});
       var last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
-      if(!up) follow.push({q:q,l:l,i:i,st:st,last:last});
+      if(!up&&!st.perUnit) follow.push({q:q,l:l,i:i,st:st,last:last});
       if(consentNeeded(q.id,st.key)) consent.push({q:q,l:l,i:i,up:up});
     })});
     follow.sort(function(a,c){return (a.last||a.q.date||'').localeCompare(c.last||c.q.date||'')});
@@ -6631,11 +6695,11 @@ function pendTasks(d){
     /* 4 consultations pending billing */
     out.push({key:'uncon',label:'Consultations Pending Billing',hint:'Consultations not on any invoice yet.',rows:activeVouchers('aeCons').filter(function(c){return !bm.con[c.id]}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){var ln=aiConLine(c);return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date)+(c.doctor?' · '+c.doctor:''),date:c.date,amt:+ln.rate||0,btn:'Bill',run:function(){aiOpenForm({clientId:c.clientId,conId:c.id})},view:function(){viewCon(c.id)}}})});
     /* 5 sessions pending billing */
-    out.push({key:'unses',label:'Sessions Pending Billing',hint:'Completed sessions not on any invoice and not billed upfront.',rows:activeVouchers('aeSessions').filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){var ln={};try{ln=aiSesLine(s)||{}}catch(e){}return {main:s.clientName,sub:(s.no||'')+' · '+(ln.name||s.procName||'Session')+' · '+fmtDate(s.date),date:s.date,amt:r2((+ln.rate||0)*(1-(+ln.discPct||0)/100)),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
+    out.push({key:'unses',label:'Sessions Pending Billing',hint:'Completed sessions not on any invoice and not billed upfront.',rows:activeVouchers('aeSessions').filter(function(s){return !sesBilling(s,bm).billed}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(s){var ln={};try{ln=aiSesLine(s)||{}}catch(e){}return {main:s.clientName,sub:(s.no||'')+' · '+(ln.name||s.procName||'Session')+' · '+fmtDate(s.date),date:s.date,amt:r2((+ln.qty||1)*(+ln.rate||0)*(1-(+ln.discPct||0)/100)),btn:'Bill',run:function(){aiOpenForm({clientId:s.clientId,sesId:s.id})},view:function(){viewSes(s.id)}}})});
     /* 6 quotations without appointment */
     var follow=[];
     activeVouchers('aeQuotes').forEach(function(q){(q.lines||[]).forEach(function(l,i){
-      var st=qtLineStats(q,i); if(st.left<=0) return;
+      var st=qtLineStats(q,i); if(st.left<=0||st.perUnit) return;
       if(st.appts.some(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0})) return;
       var key=qtLineKey(q,l,i), last=st.sessions.map(function(s){return s.date}).concat(st.appts.filter(function(a){return a.status==='Completed'}).map(function(a){return a.date})).sort().pop()||'';
       follow.push({main:q.clientName,sub:q.no+' · '+l.name+' · '+st.done+' of '+(+l.sessions||0)+' done'+(last?' · last '+fmtDate(last):''),date:last||q.date,btn:'Book',view:function(){viewQt(q.id)},
