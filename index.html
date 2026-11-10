@@ -334,6 +334,7 @@ tr.click-row{cursor:pointer}
 .ph-frame img{width:100%;height:100%;object-fit:cover;display:block}
 .ph-acts{display:flex;gap:6px;flex-wrap:wrap}
 .rte-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}.rte-bar .rte-chip{font-family:var(--mono,monospace);font-size:12px}.rte{border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-height:180px;max-height:460px;overflow:auto;background:var(--surface,#fff);line-height:1.55;font-size:14px;outline:none}.rte:focus{border-color:var(--accent,#2e6b4f);box-shadow:0 0 0 3px rgba(46,107,79,.12)}.rte p,.consent-rich p{margin:0 0 4px}.rte h3,.consent-rich h3{font-size:16px;margin:10px 0 4px}.rte ul,.rte ol,.consent-rich ul,.consent-rich ol{margin:2px 0 6px;padding-left:22px}.consent-text.consent-rich{white-space:normal}
+.consent-pdf{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.consent-pdf iframe{width:100%;height:420px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .consent-text{white-space:pre-line;border:1px solid var(--line);border-radius:10px;padding:12px 14px;max-height:260px;overflow:auto;font-size:14px;line-height:1.55;background:var(--surface-2)}
 .sig-wrap{position:relative;border:1.5px dashed var(--line);border-radius:10px;background:#fff;height:180px;max-width:560px}
 .sig-wrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;border-radius:10px}
@@ -2783,7 +2784,7 @@ function simpleMaster(cfg){
           var btn=m.querySelector('[type=submit]');btn.disabled=true;
           put(cfg.kind,obj).then(function(){
             closeModal();toast(id?cfg.singularCap+' updated':cfg.singularCap+' added');
-            cfg.fields.forEach(function(f){if(f.type==='pdf'&&r[f.id]&&r[f.id].id&&(!obj[f.id]||obj[f.id].id!==r[f.id].id))getAssets().then(function(a){if(a)a.delete(r[f.id].id).catch(function(){})})});
+            cfg.fields.forEach(function(f){if(f.type==='pdf'&&!f.keepOld&&r[f.id]&&r[f.id].id&&(!obj[f.id]||obj[f.id].id!==r[f.id].id))getAssets().then(function(a){if(a)a.delete(r[f.id].id).catch(function(){})})});
             if(cfg.afterSave) cfg.afterSave(obj,r);
           }).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
         };
@@ -3570,6 +3571,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
     {id:'consent',label:'Consent form text',type:'rich',word:true,hint:'Type here and use the buttons for bold, headings and lists, or upload a Word file (.docx). Leave empty to use the standard text.'},
+    {id:'consentPdf',label:'Consent form PDF (optional: if uploaded, clients read and sign this PDF instead of the text above)',type:'pdf',keepOld:true},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
@@ -4138,11 +4140,11 @@ function istStamp(iso){try{return new Date(iso).toLocaleString('en-IN',{timeZone
 function openConsent(quoteId,lineKey,onDone){
   if(readOnly){toast('You need Contributor access to record consent.');return}
   var q=findIn('aeQuotes',quoteId), ln=sesLine(q,lineKey); if(!ln){toast('Choose the quotation and procedure first.');return}
-  var cl=clientById(q.clientId)||{name:q.clientName}, text=consentText(ln.l.procId,cl.name,ln.l.name);
+  var cl=clientById(q.clientId)||{name:q.clientName}, text=consentText(ln.l.procId,cl.name,ln.l.name), prc=findIn('aeProcs',ln.l.procId), cpdf=prc&&prc.consentPdf&&prc.consentPdf.id?prc.consentPdf:null;
   var st={tab:'sign',drawn:false,file:null,upBusy:false};
   var m=openModal('<h2>Consent form</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(cl.name)+'</strong> '+esc(cl.phone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(ln.l.name)+'</strong> · '+esc(q.no)+'</dd></dl></div>'+
     '<div class="actions" role="group" aria-label="How" style="margin-bottom:12px"><button type="button" class="btn primary" data-tab="sign">Sign on screen</button><button type="button" class="btn" data-tab="upload">Upload signed form</button></div>'+
-    '<form id="csf" novalidate><div id="cs-sign"><div class="consent-text consent-rich">'+richHtml(text)+'</div>'+
+    '<form id="csf" novalidate><div id="cs-sign">'+(cpdf?'<div class="consent-pdf"><iframe src="'+esc(blobUrl(cpdf.id,'application/pdf'))+'#view=FitH" title="Consent form"></iframe><a class="btn sm" href="'+esc(blobUrl(cpdf.id,'application/pdf'))+'" target="_blank" rel="noopener">Open the consent form full screen</a></div>':'<div class="consent-text consent-rich">'+richHtml(text)+'</div>')+''+
     '<label class="check" style="margin:12px 0"><input type="checkbox" id="cs-agree"> The client has read and agrees to the above</label>'+
     '<div class="f-grid"><input type="hidden" id="cs-name" value="'+esc(cl.name||'')+'">'+
     '<div class="field"><label for="cs-wit">Witness (staff)</label><select id="cs-wit">'+optList([['','None']].concat(userOptions('')),'')+'</select></div></div>'+
@@ -4181,7 +4183,7 @@ function openConsent(quoteId,lineKey,onDone){
       var tw=x1-x0+1,th=y1-y0+1,sc=Math.min(1,500/tw,180/th),c2=document.createElement('canvas');c2.width=Math.max(1,Math.round(tw*sc));c2.height=Math.max(1,Math.round(th*sc));
       c2.getContext('2d').drawImage(pad,x0,y0,tw,th,0,0,c2.width,c2.height);
       var wit=q$('#cs-wit').value;
-      finish(Object.assign(base,{method:'signed',text:text,signedBy:nm,relation:'Self',witnessId:wit,witness:userName(wit)||'',date:todayStr(),signedAt:now,signature:{data:c2.toDataURL('image/png'),w:c2.width,h:c2.height}}));
+      finish(Object.assign(base,{method:'signed',text:cpdf?'':text,formPdf:cpdf?{id:cpdf.id,name:cpdf.name||'Consent form.pdf'}:null,signedBy:nm,relation:'Self',witnessId:wit,witness:userName(wit)||'',date:todayStr(),signedAt:now,signature:{data:c2.toDataURL('image/png'),w:c2.width,h:c2.height}}));
     } else {
       if(!st.file) return show('Choose the signed consent form file.');
       var ty=st.file.type==='application/pdf'?'application/pdf':(/^image\/(jpeg|png)$/.test(st.file.type)?st.file.type:'');
@@ -4203,7 +4205,7 @@ function viewConsent(id){
     var signed=c.method==='signed', src=c.file?blobUrl(c.file.id,c.file.type):'';
     m.innerHTML='<h2>Consent '+esc(c.no)+'</h2><div class="doc-head"><dl class="kv"><dt>Client</dt><dd><strong>'+esc(c.clientName)+'</strong> '+esc(c.clientPhone||'')+'</dd><dt>Procedure</dt><dd><strong>'+esc(c.procName)+'</strong> · '+esc(c.quoteNo||'')+'</dd><dt>How</dt><dd>'+(signed?'Signed on screen':'Signed form uploaded')+'</dd>'+
       (signed?'<dt>Signed by</dt><dd>'+esc(c.signedBy)+'</dd><dt>Signed at</dt><dd>'+esc(istStamp(c.signedAt))+'</dd>'+(c.witness?'<dt>Witness</dt><dd>'+esc(c.witness)+'</dd>':''):'<dt>Date signed</dt><dd>'+fmtDate(c.date)+'</dd>')+'</dl></div>'+
-      (signed?'<div class="consent-text consent-rich">'+richHtml(c.text)+'</div><div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
+      (signed?(c.formPdf?'<p><a class="btn" href="'+esc(blobUrl(c.formPdf.id,'application/pdf'))+'" target="_blank" rel="noopener">Open the consent form the client read</a></p>':'<div class="consent-text consent-rich">'+richHtml(c.text)+'</div>')+'<div class="field" style="margin-top:12px"><label>Signature</label><div class="sig-show"><img alt="Signature of '+esc(c.signedBy)+'" src="'+esc(c.signature&&c.signature.data||'')+'"></div></div>':
         '<p><a class="btn" href="'+esc(src)+'" target="_blank" rel="noopener">Open '+esc(c.file&&c.file.name||'signed form')+'</a></p>')+
       '<div class="m-actions"><button class="btn" data-x>Close</button>'+(signed?'<button class="btn" data-dl>'+EYE+' View PDF</button>':'')+(readOnly?'':'<button class="btn danger w" data-del>Delete</button>')+'</div>';
     m.querySelector('[data-x]').onclick=closeModal;
@@ -4212,9 +4214,24 @@ function viewConsent(id){
   };
   var m=openModal('','--m11',true); render(m); modalRefresh=function(){render(m)};
 }
+var pdfLibP=null;
+function loadPdfLib(){if(window.PDFLib)return Promise.resolve(window.PDFLib);if(!pdfLibP)pdfLibP=new Promise(function(res,rej){var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';sc.onload=function(){window.PDFLib?res(window.PDFLib):rej(new Error('load'))};sc.onerror=function(){pdfLibP=null;rej(new Error('load'))};document.head.appendChild(sc)});return pdfLibP}
 function consentPdf(c){
   if(!c) return; var J=pdfLib(); if(!J) return;
   var cl=clientById(c.clientId)||{};
+  if(c.formPdf&&c.formPdf.id){
+    toast('Preparing the signed consent…');
+    Promise.all([loadPdfLib(),fetch(blobUrl(c.formPdf.id,'application/pdf'),{credentials:'same-origin'}).then(function(r){if(!r.ok)throw new Error('missing');return r.arrayBuffer()})]).then(function(x){
+      var L=x[0];return L.PDFDocument.load(x[1],{ignoreEncryption:true}).then(function(src){
+        var n=src.getPageCount();
+        var c2=Object.assign({},c,{text:'**'+(c.signedBy||c.clientName)+'** read the attached consent form for **'+c.procName+'** ('+n+' page'+(n===1?'':'s')+', before this page) and agreed to it.'});
+        var sig=window.PDFKIT.consent(J,{biz:bizCtx(),c:c2,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},stamp:istStamp(c.signedAt),fmtDate:fmtDate});
+        return Promise.all([L.PDFDocument.create(),L.PDFDocument.load(sig)]).then(function(y){var out=y[0];
+          return out.copyPages(src,src.getPageIndices()).then(function(ps){ps.forEach(function(pg){out.addPage(pg)});return out.copyPages(y[1],y[1].getPageIndices())}).then(function(ps){ps.forEach(function(pg){out.addPage(pg)});return out.save()})});
+      });
+    }).then(function(bytes){pdfView(c.no+'-consent.pdf',bytes)}).catch(function(e){toast(e&&e.message==='missing'?'The consent form file could not be found.':'The signed consent PDF could not be created.')});
+    return;
+  }
   try{var pdf=window.PDFKIT.consent(J,{biz:bizCtx(),c:c,client:{name:c.clientName,phone:c.clientPhone||'',gender:cl.gender||'',age:clientAge(cl)},stamp:istStamp(c.signedAt),fmtDate:fmtDate});pdfView(c.no+'-consent.pdf',pdf)}
   catch(e){toast('The PDF could not be created.')}
 }
