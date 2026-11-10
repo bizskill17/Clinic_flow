@@ -2762,7 +2762,7 @@ function simpleMaster(cfg){
         cfg.fields.forEach(function(f){if(f.id==='phone')bindContactPhone(m.querySelector('#mf-'+f.id))});
         var consVals={}, fileVals={};
         var svcVals={}, priceVals={};
-        cfg.fields.forEach(function(f){if(f.type==='rich')richEditor(m.querySelector('#mf-'+f.id),r[f.id]||'',{label:f.label,chips:f.chips})});
+        cfg.fields.forEach(function(f){if(f.type==='rich')richEditor(m.querySelector('#mf-'+f.id),r[f.id]||'',{label:f.label,chips:f.chips,word:f.word})});
         cfg.fields.forEach(function(f){if(f.type==='svcprices'){priceVals[f.id]=Object.assign({},r[f.id]||{});svcPriceTable(m.querySelector('#mf-'+f.id),function(){return priceVals[f.id]},function(v){priceVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='services'){svcVals[f.id]=Array.isArray(r[f.id])?r[f.id].slice():[];svcPicker(m.querySelector('#mf-'+f.id),function(){return svcVals[f.id]},function(v){svcVals[f.id]=v})}});
         cfg.fields.forEach(function(f){if(f.type==='pdf'){fileVals[f.id]=r[f.id]&&r[f.id].id?Object.assign({},r[f.id]):null;pdfField(m.querySelector('#mf-'+f.id),function(){return fileVals[f.id]},function(v){fileVals[f.id]=v})}});
@@ -3569,7 +3569,7 @@ SECTIONS['ae-proc-master']=simpleMaster({
     {id:'price',label:'Price before GST (₹)',type:'number',req:true},
     {id:'gst',label:'GST rate',type:'select',noBlank:true,def:'18',options:function(){return GST_RATES.map(function(g){return [String(g),g+'%']})}},
     {id:'status',label:'Status',type:'select',noBlank:true,def:'Active',options:function(){return ['Active','Inactive']}},
-    {id:'consent',label:'Consent form text',type:'rich',hint:'Use the buttons for bold, headings and lists. The {client}, {procedure} and {clinic} buttons insert words that are filled in for each client. Leave empty to use the standard text.',chips:[['{client}','Client name'],['{procedure}','Procedure name'],['{clinic}','Clinic name']]},
+    {id:'consent',label:'Consent form text',type:'rich',word:true,hint:'Type here and use the buttons for bold, headings and lists, or upload a Word file (.docx). Leave empty to use the standard text.'},
     {id:'eduPdf',label:'Educational content (PDF)',type:'pdf'},
     {id:'consumables',label:'Consumables used (internal)',type:'consumables',dk:'aes',copyLabel:'Copy from procedure',copyOptions:function(id){return procCopyOptions(id)}}],
   cols:[{h:'Procedure',text:function(r){return r.name}},{h:'SAC',text:function(r){return r.sac||''}},
@@ -4084,17 +4084,21 @@ function richFromHtml(root){
     if(/^H[1-6]$/.test(t)){push('# ',inline(c).trim());return}
     if(t==='UL'||t==='OL'){var k=+(c.getAttribute('start')||1);Array.prototype.forEach.call(c.children,function(li){if(li.tagName==='LI'){push(t==='UL'?'- ':(k++)+'. ',inline(li).trim())}});return}
     if(t==='BR'){lines.push('');return}
+    if(t==='TABLE'){Array.prototype.forEach.call(c.querySelectorAll('tr'),function(tr){var cells=Array.prototype.map.call(tr.children,function(td){return inline(td).replace(/\n+/g,' ').trim()}).filter(Boolean);if(cells.length)push('',cells.join('  –  '))});return}
     if((t==='DIV'||t==='P'||t==='SECTION')&&c.querySelector('p,div,ul,ol,h1,h2,h3,h4,h5,h6')){block(c);return}
     var tx=inline(c);push('',tx.trim()?tx.replace(/^\s+/,''):'')});};
   block(root);
   return lines.join('\n').replace(/\n{3,}/g,'\n\n').replace(/^\n+|\n+$/g,'');
 }
 /* simple rich editor: bold, heading, bullet and numbered lists; stored as plain text with **bold**, # heading, - and 1. lists */
+var mammothP=null;
+function loadMammoth(){if(window.mammoth)return Promise.resolve(window.mammoth);if(!mammothP)mammothP=new Promise(function(res,rej){var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';sc.onload=function(){window.mammoth?res(window.mammoth):rej(new Error('load'))};sc.onerror=function(){mammothP=null;rej(new Error('load'))};document.head.appendChild(sc)});return mammothP}
 function richEditor(host,value,opt){
   opt=opt||{};
   var tb=function(cmd,label,title){return '<button type="button" class="btn sm" data-rt="'+cmd+'" title="'+title+'" aria-label="'+title+'">'+label+'</button>'};
   host.innerHTML='<div class="rte-bar">'+tb('bold','<b>B</b>','Bold')+tb('h','H','Heading')+tb('ul','• List','Bullet list')+tb('ol','1. List','Numbered list')+
     (opt.chips||[]).map(function(c){return '<button type="button" class="btn sm rte-chip" data-ins="'+esc(c[0])+'" title="'+esc(c[1])+'">'+esc(c[0])+'</button>'}).join('')+
+    (opt.word?'<label class="btn sm" style="cursor:pointer;margin-left:auto" title="Bring in the text from a Word file">'+PLUS+' Upload Word file<input type="file" class="rte-word" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></label>':'')+
     '</div><div class="rte" contenteditable="true" role="textbox" aria-multiline="true" aria-label="'+esc(opt.label||'Text')+'"></div>';
   var ed=host.querySelector('.rte'); ed.innerHTML=value?richHtml(value):'<p><br></p>';
   try{document.execCommand('defaultParagraphSeparator',false,'p')}catch(e){}
@@ -4108,6 +4112,14 @@ function richEditor(host,value,opt){
       else if(c==='h'){var cur=(document.queryCommandValue('formatBlock')||'').toLowerCase();document.execCommand('formatBlock',false,cur==='h3'?'p':'h3')}};
   });
   ed.addEventListener('paste',function(e){var t=(e.clipboardData||window.clipboardData);if(!t)return;var tx=t.getData('text/plain');if(tx==null)return;e.preventDefault();document.execCommand('insertText',false,tx)});
+  var wf=host.querySelector('.rte-word');
+  if(wf) wf.onchange=function(){var f=wf.files&&wf.files[0];wf.value='';if(!f)return;
+    if(!/\.docx$/i.test(f.name)){toast(/\.doc$/i.test(f.name)?'This is an old Word file (.doc). In Word, use Save As › Word Document (.docx), then upload that.':'Choose a Word file (.docx).');return}
+    toast('Reading '+f.name+'…');
+    loadMammoth().then(function(M){return f.arrayBuffer().then(function(buf){return M.convertToHtml({arrayBuffer:buf},{styleMap:["p[style-name='Title'] => h1:fresh","p[style-name='Subtitle'] => h2:fresh","b => strong","u => u"],ignoreEmptyParagraphs:false})})})
+      .then(function(res){var tmp=document.createElement('div');tmp.innerHTML=res.value||'';var md=richFromHtml(tmp);if(!md.trim()){toast('No text was found in that file.');return}ed.innerHTML=richHtml(md);ed.focus();toast('Text brought in from '+f.name+'. Check it, then save.')})
+      .catch(function(){toast('That Word file could not be read. Try saving it again as .docx.')});
+  };
   host._get=function(){return richFromHtml(ed)};
   return host;
 }
