@@ -1474,12 +1474,12 @@ function errText(e){
   return 'Could not save. Check your connection and try again.';
 }
 function put(kind,obj){
-  var previous=obj&&findIn(kind,obj.id);if(previous&&!canEdit())return Promise.reject(new Error('Only Admin can edit existing records.'));if(previous&&previous.cancelled)return Promise.reject(new Error("Cancelled records cannot be edited."));
+  var previous=obj&&findIn(kind,obj.id);if(previous&&!canEdit()&&!(kind==='aeCons'&&docOwnsCon(obj.id)&&!obj.cancelled))return Promise.reject(new Error('Only Admin can edit existing records.'));if(previous&&previous.cancelled)return Promise.reject(new Error("Cancelled records cannot be edited."));
   var isNew=!!obj&&!S[kind].some(function(x){return x.id===obj.id});
   return putRaw(kind,obj).then(function(r){if(isNew)waOnSaved(kind,obj);return r});
 }
 function putRaw(kind,obj,internal){
-  if(!internal&&obj&&findIn(kind,obj.id)&&!canEdit())return Promise.reject(new Error("Only Admin can edit existing records."));
+  if(!internal&&obj&&findIn(kind,obj.id)&&!canEdit()&&!(kind==='aeCons'&&docOwnsCon(obj.id)&&!obj.cancelled))return Promise.reject(new Error("Only Admin can edit existing records."));
   if(!internal&&obj&&!findIn(kind,obj.id)&&!isAdmin()&&typeof obj.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(obj.date)&&obj.date<todayStr())return Promise.reject(new Error('Only Admin can enter a back date. Please use today’s date.'));
   var data=Object.assign({},obj); var id=data.id; delete data.id;
   if(DB) return DB.collection(COL[kind]).doc(id).set(data).then(function(result){var saved=result&&result.record?result.record:obj,list=S[kind],i=list.findIndex(function(x){return x.id===id});if(i>=0)list[i]=saved;else list.push(saved);if(result&&result.related)result.related.forEach(function(r){var k=Object.keys(COL).find(function(k){return COL[k]===r.collection});if(!k)return;var j=S[k].findIndex(function(x){return x.id===r.record.id});if(j>=0)S[k][j]=r.record;else S[k].push(r.record)});scheduleRefresh();});
@@ -1567,6 +1567,7 @@ document.addEventListener('click',function(e){if(e.target.closest('[data-cancell
 /* Hide and block record-edit actions for every non-Admin role, including Manager. */
 function isAdminAction(b){
   if(!b)return false;
+  var cid=b.dataset&&(b.dataset.conedit||b.dataset.conown); if(cid&&docOwnsCon(cid)) return false;
   if(b.matches('[data-edit],[data-aiedit],[data-apedit],[data-conedit],[data-guedit],[data-pedit],[data-qtedit],[data-sesedit],[data-del],[data-condel],[data-qtdel],[data-gudel],[data-spdel],[data-vpdel],[data-sesdel],[data-apdel],#di-open'))return true;
   return b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick));
 }
@@ -1641,6 +1642,8 @@ function balanceCell(a){return a.due>0.004?'<span class="due">'+money(a.due)+' d
 function invInfo(inv,pm){if(inv&&inv.cancelled)return {paid:0,bal:0,status:'cancelled'};var paid=r2((pm||paidMap())[inv.id]||0);var bal=r2((+inv.total||0)-paid);return {paid:paid,bal:bal,status:bal<=0.004?'paid':(paid>0?'partial':'unpaid')}}
 function statusPill(s){return '<span class="pill '+s+'">'+({paid:'Paid',partial:'Part paid',unpaid:'Unpaid',cancelled:'Cancelled'}[s])+'</span>'}
 /* next number = the lowest number not in use, so numbers freed by a delete are reused (1, 2, 3 … again) */
+/* a Consultant/Doctor may edit (not cancel) consultations they are on */
+function docOwnsCon(id){var c=id&&findIn('aeCons',id);return !!(isDoctor()&&c&&!c.cancelled&&(c.staffIds||[]).indexOf(CURRENT_USER.id)>=0)}
 function isDoctor(){return !!(CURRENT_USER&&CURRENT_USER.role==='Consultant/Doctor')}
 /* a Consultant/Doctor is always on their own appointments and sessions, so they keep seeing them */
 function meIfDoc(list){list=list||[];return isDoctor()&&CURRENT_USER.id&&list.indexOf(CURRENT_USER.id)<0?list.concat(CURRENT_USER.id):list}
@@ -3934,7 +3937,7 @@ function conListUpdate(){
   $$('[data-condel]',b).forEach(function(x){x.onclick=function(){cancelVoucher('aeCons',x.dataset.condel)}});
 }
 function conEdit(id){
-  if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
+  if(id&&!canEdit()&&!docOwnsCon(id)){toast('Only Admin can edit existing records.');return}
   var c=findIn('aeCons',id); if(!c) return;
   conDraft={id:c.id,seq:c.seq,no:c.no,createdAt:c.createdAt,date:c.date,clientId:c.clientId,clientName:c.clientName,apptId:c.apptId||'',apptNo:c.apptNo||'',age:c.age||'',marital:c.marital||'',weight:c.weight||'',systemic:c.systemic||'',diagnosis:c.diagnosis||'',observations:c.observations||'',rxDiag:c.rxDiag!==false,rxObs:c.rxObs!==false,rxProcs:c.rxProcs!==false,
     meds:(c.meds||[]).map(function(m){return {itemId:m.itemId,name:m.name,dose:m.dose||'',food:m.food||'',duration:m.duration||'',notes:m.notes||''}}),procs:(c.procs||[]).map(function(p){return {procId:p.procId,name:p.name,sessions:p.sessions||1}}),consumables:copyCons(c.consumables),files:(c.files||[]).map(function(f){return Object.assign({saved:true},f)})};
@@ -4139,7 +4142,7 @@ function viewCon(id,fallback){
       '<h3 class="sec-h">Medicines prescribed</h3>'+((c.meds||[]).length?'<div class="tbl"><table><thead><tr><th>Medicine</th><th>Dose</th><th>Food</th><th>Duration</th><th>Notes</th></tr></thead><tbody>'+c.meds.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td>'+esc(x.dose)+'</td><td>'+esc(x.food||'—')+'</td><td>'+esc(x.duration)+'</td><td>'+esc(x.notes||'—')+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       '<h3 class="sec-h">Procedures recommended'+(c.rxProcs===false?' <span class="sub" style="font-weight:400">(not on prescription)</span>':'')+'</h3>'+((c.procs||[]).length?'<div class="tbl"><table><thead><tr><th>Procedure</th><th class="num">Sessions</th></tr></thead><tbody>'+c.procs.map(function(x){return '<tr><td>'+esc(x.name)+'</td><td class="num">'+(x.perUnit?esc(r2(+x.units||+x.sessions||0)+' '+(x.unitName||'units')):x.sessions)+'</td></tr>'}).join('')+'</tbody></table></div>':'<p class="hint">None.</p>')+
       ((c.files||[]).length?'<h3 class="sec-h">Photos &amp; files</h3><div class="cf-files">'+c.files.map(function(f){return '<div class="cf-file">'+conFileView(f)+(f.caption?'<div class="cf-capv">'+esc(f.caption)+'</div>':'')+'</div>'}).join('')+'</div>':'')+
-      waTag('conrx',c.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit>Edit</button></div>';
+      waTag('conrx',c.id)+'<div class="m-actions"><button class="btn" data-x>Close</button><button class="btn" data-dl>'+EYE+' Consultation</button><button class="btn" data-rx>'+EYE+' Prescription</button><button class="btn w" data-edit data-conown="'+esc(c.id)+'">Edit</button></div>';
     m.querySelector('[data-x]').onclick=closeModal;
     m.querySelector('[data-dl]').onclick=function(){conPdf(c,'consultation')};
     m.querySelector('[data-rx]').onclick=function(){conPdf(c,'prescription')};
