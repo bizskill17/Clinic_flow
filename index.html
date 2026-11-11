@@ -1576,6 +1576,7 @@ function applyRecordPermissions(){
   document.querySelectorAll('button').forEach(function(b){
     if(b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick))&&b.textContent.trim()==='Delete')b.textContent='⊘ Cancel';
     if(!canEdit()&&isAdminAction(b)){b.hidden=true;b.disabled=true;}
+    if(isDoctor()&&b.matches('#ap-new,#ad-appt,[data-booknext]')){b.hidden=true;b.disabled=true;}
   });
   document.querySelectorAll('.ap-st').forEach(function(s){if(!canEdit())s.disabled=true});
 }
@@ -3751,6 +3752,7 @@ function apBusy(date,staffIds,exceptId){
     .map(function(x){return {from:toMin(apFrom(x)),to:toMin(apTo(x)),appt:x}});
 }
 function editAppt(id,preset){
+  if(isDoctor()){toast('Doctors can view appointments only.');return}
   if(id&&!canEdit()){toast('Only Admin can edit existing records.');return}
   if(readOnly){toast('You need Contributor access to book appointments.');return}
   var base=findIn('aeAppts',id), a=Object.assign({},base||{date:apF.view==='day'?apF.date:todayStr(),type:'Consultation'},preset||{});
