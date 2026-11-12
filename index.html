@@ -364,6 +364,13 @@ tr.sub-row td{font-size:13px;padding-top:6px;padding-bottom:6px}
 input[type=month],input[type=time]{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:38px}
 
 .menu-btn{display:none}
+/* desktop: the menu button hides/shows the left menu for a full-width view */
+@media (min-width:761px){
+  .menu-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex:none;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer;margin-right:4px}
+  .menu-btn svg{width:20px;height:20px}
+  body.nav-hidden .layout{grid-template-columns:minmax(0,1fr)}
+  body.nav-hidden .side{display:none}
+}
 .nav-backdrop{display:none}
 @media (max-width:760px){
   .layout{grid-template-columns:1fr}
@@ -7587,7 +7594,9 @@ $$('.mi[data-key]').forEach(function(b){b.onclick=function(){toListMode(b.datase
 /* mobile: hamburger opens the department menu as a drawer */
 document.body.insertAdjacentHTML('beforeend','<div class="nav-backdrop" id="nav-backdrop"></div>');
 function setNav(open){document.body.classList.toggle('nav-open',open);$$('[data-menu]').forEach(function(b){b.setAttribute('aria-expanded',String(open))});if(open){var n=$('#nav-'+dept);var c=n&&(n.querySelector('.mi[aria-current="page"]')||n.querySelector('.mi'));if(c)c.focus()}}
-$$('[data-menu]').forEach(function(b){b.onclick=function(){setNav(!document.body.classList.contains('nav-open'))}});
+function setNavHidden(h){document.body.classList.toggle('nav-hidden',h);$$('[data-menu]').forEach(function(b){b.title=h?'Show menu':'Hide menu'});try{localStorage.setItem('navHidden',h?'1':'')}catch(e){}}
+try{setNavHidden(localStorage.getItem('navHidden')==='1')}catch(e){setNavHidden(false)}
+$$('[data-menu]').forEach(function(b){b.onclick=function(){if(window.innerWidth>760){setNavHidden(!document.body.classList.contains('nav-hidden'));return}setNav(!document.body.classList.contains('nav-open'))}});
 $('#nav-backdrop').onclick=function(){setNav(false)};
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('nav-open'))setNav(false)});
 $$('.mi[data-key]').forEach(function(b){b.addEventListener('click',function(){setNav(false)})});
