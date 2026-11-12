@@ -1429,7 +1429,7 @@ function permittedKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return Object.keys(COL);
   var common=['clients','cities','states','users','business','waLog','expCats','vendors','expenses','vpays'];
   if(CURRENT_USER.role==='Spa')return common.concat(['services','invoices','receipts','categories','phItems','deptOpen','deptUsage','memPlans','members','redemptions','clubPlans','clubs']);
-  if(CURRENT_USER.role==='Consultant/Doctor')return ['clients','cities','states','users','business','phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeConsents','aeLineEv'];
+  if(CURRENT_USER.role==='Consultant/Doctor')return ['clients','cities','states','users','business','phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeConsents','aeLineEv','invoices','receipts','phMoves','phReceipts','aeInvoices'];
   if(CURRENT_USER.role==='Aesthetics')return common.concat(['phItems','aeCats','aeProcs','aeAppts','aeCons','aeQuotes','aeSessions','aeInvoices','aeConsents','aeLineEv','deptOpen','deptUsage']);
   return common.concat(['phItems','phCats','phSuppliers','phMoves','phReceipts','receipts','phPays']);
 }
@@ -1576,7 +1576,7 @@ function applyRecordPermissions(){
   document.querySelectorAll('button').forEach(function(b){
     if(b.onclick&&/cancelVoucher\(|deleteInvoice\(|phDelete\(|aiDelete\(|sesDelete\(/.test(String(b.onclick))&&b.textContent.trim()==='Delete')b.textContent='⊘ Cancel';
     if(!canEdit()&&isAdminAction(b)){b.hidden=true;b.disabled=true;}
-    if(isDoctor()&&b.matches('#ap-new,#ad-appt,[data-booknext]')){b.hidden=true;b.disabled=true;}
+    if(isDoctor()&&b.matches('#ap-new,#ad-appt,[data-booknext],[data-ss-book],[data-qtappt]')){b.hidden=true;b.disabled=true;}
   });
   document.querySelectorAll('.ap-st').forEach(function(s){if(!canEdit())s.disabled=true});
 }
@@ -4270,6 +4270,7 @@ function istStamp(iso){try{return new Date(iso).toLocaleString('en-IN',{timeZone
 /* open the consent dialog for a quotation item; onDone(consent) runs after saving */
 function openConsent(quoteId,lineKey,onDone){
   if(readOnly){toast('You need Contributor access to record consent.');return}
+  if(qtLockStop(quoteId)) return;
   var q=findIn('aeQuotes',quoteId), ln=sesLine(q,lineKey); if(!ln){toast('Choose the quotation and procedure first.');return}
   var cl=clientById(q.clientId)||{name:q.clientName}, text=consentText(ln.l.procId,cl.name,ln.l.name), cpdf=null;
   var st={tab:'sign',drawn:false,file:null,upBusy:false};
@@ -4489,6 +4490,7 @@ function sesListUpdate(){
 function sesDelete(id){return cancelVoucher('aeSessions',id);}
 /* open the form, optionally preset from a quotation item */
 function sesOpenForm(preset){
+  if(preset&&preset.quoteId&&qtLockStop(preset.quoteId)) return;
   sesDraft=sesNew(); sesOldPhotos=[];
   if(preset){Object.assign(sesDraft,preset);var q=findIn('aeQuotes',preset.quoteId);if(q){sesDraft.clientId=q.clientId;sesDraft.clientName=q.clientName}sesAutoAppt(sesDraft)}
   sesMode='form'; closeModal(); if(current!=='ae-sessions') go('ae-sessions'); else go(current);
@@ -4714,6 +4716,7 @@ function sesSave(){
   if(!q) return show(sesQuoteOptions(d).length?'Select the quotation.':'Create a quotation for this client first.');
   if(q.clientId!==c.id) return show('The selected quotation belongs to another client.');
   if(!ln) return show('Select the procedure.');
+  if(!d.id){var lkA=qtLock(q);if(lkA) return show(qtLockMsg(q,lkA))}
   if(!d.date) return show('Choose the date the procedure was performed.');
   if(!d.staffIds.length) return show('Choose who performed the procedure.');
   if(Object.keys(d.photos).some(function(k){return d.photos[k].busy})) return show('Wait for the photos to finish uploading.');
@@ -5356,12 +5359,25 @@ function qlUnit(l){return (l&&l.unitName)||'units'}
 function qlQty(l){return qlPU(l)?(+l.units||0):(+l.sessions||0)}
 function qlQtyText(l){return qlPU(l)?r2(+l.units||0)+' '+qlUnit(l):String(+l.sessions||0)}
 function lineEvent(q,key,action){if(readOnly){toast('You need Contributor access.');return}var now=new Date().toISOString();return put('aeLineEv',{id:newId('le'),quoteId:q.id,quoteNo:q.no,lineKey:key,action:action,at:now,by:CURRENT_USER?CURRENT_USER.name:'',createdAt:now,updatedAt:now}).then(function(){toast(action==='complete'?'Marked as completed.':'Reopened.')}).catch(function(e){toast(errText(e))})}
-/* Receive from the Sessions Tracker: quotation total (incl. GST) minus what is already paid on this quotation's invoices, minus the client's unused advance */
+/* Full-payment lock. Received for a quotation = paid on its invoices + client advance (advance used on the client's oldest open quotation first).
+   Consent, sessions and photos open only when that covers the quotation total (incl. GST). Admin can allow a quotation without full payment. */
+function qtHasOpen(q){return (q.lines||[]).some(function(l,i){var st=qtLineStats(q,i);return st.perUnit?!st.closed:st.left>0})}
+function qtPayMap(){
+  var al=allocate(), paid={}, need={}, byC={}, left={};
+  activeVouchers('aeInvoices').forEach(function(v){if(v.cancelled)return;var parts={};(v.lines||[]).forEach(function(l){if(l.quoteId)parts[l.quoteId]=(parts[l.quoteId]||0)+aiCalc(l).total});
+    var p=+al.paid[v.id]||0;Object.keys(parts).forEach(function(k){var x=Math.min(parts[k],p);paid[k]=r2((paid[k]||0)+x);p-=x})});
+  activeVouchers('aeQuotes').forEach(function(q){if(q.cancelled)return;need[q.id]=r2(Math.max(0,(+q.total||0)-(paid[q.id]||0)));left[q.id]=need[q.id];if(qtHasOpen(q))(byC[q.clientId]=byC[q.clientId]||[]).push(q)});
+  Object.keys(byC).forEach(function(cid){var adv=r2(al.advance[cid]||0);
+    byC[cid].sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||(+a.seq||0)-(+b.seq||0)}).forEach(function(q){var use=Math.min(adv,need[q.id]);adv=r2(adv-use);left[q.id]=r2(need[q.id]-use)})});
+  return {left:left,paid:paid,al:al};
+}
+function qtLock(q,pm){if(!q||q.payOverride||!((+q.total||0)>0))return 0;var x=(pm||qtPayMap()).left[q.id]||0;return x>1?x:0}
+function qtLockMsg(q,amt){return isDoctor()?'Payment pending for '+q.no+'. Please ask the front desk.':'Payment pending: '+money(amt)+' still to receive for '+q.no+'. Use \u20B9 Receive first.'}
+function qtLockStop(quoteId){var q=quoteId&&findIn('aeQuotes',quoteId),amt=qtLock(q);if(amt){toast(qtLockMsg(q,amt));return true}return false}
 function qtReceive(q){
-  var al=allocate(), paidQ=0;
-  activeVouchers('aeInvoices').forEach(function(v){if(v.cancelled)return;var part=0;(v.lines||[]).forEach(function(l){if(l.quoteId===q.id)part+=aiCalc(l).total});if(part>0)paidQ+=Math.min(part,+al.paid[v.id]||0)});
-  var adv=r2(al.advance[q.clientId]||0), sug=r2(Math.max(0,(+q.total||0)-paidQ-adv));
-  recordPayment('',q.clientId,{amount:sug,towards:'Advance for '+q.no,hint:q.no+' quoted '+money(+q.total||0)+(paidQ>0.004?' · paid on its invoices '+money(paidQ):'')+(adv>0.004?' · advance held '+money(adv):'')+'. Suggested: '+money(sug)+'. You can change it or take more; any extra stays as advance.'});
+  var pm=qtPayMap(), al=pm.al, paidQ=pm.paid[q.id]||0;
+  var adv=r2(al.advance[q.clientId]||0), sug=r2(Math.max(0,pm.left[q.id]||0));
+  recordPayment('',q.clientId,{amount:sug,towards:'Advance for '+q.no,hint:q.no+' quoted '+money(+q.total||0)+(paidQ>0.004?' · paid on its invoices '+money(paidQ):'')+(adv>0.004?' · client advance '+money(adv)+(r2((+q.total||0)-paidQ-sug)<adv-0.004?' (part used for older quotations)':''):'')+'. Suggested: '+money(sug)+'. You can change it or take more; any extra stays as advance.'});
 }
 function qtLineStats(q,i){
   var l=q.lines[i], key=qtLineKey(q,l,i);
@@ -5458,18 +5474,22 @@ SECTIONS['ae-procedures']={
     if(!activeVouchers('aeQuotes').length){b.innerHTML='<div class="empty"><strong>No sessions yet</strong>Sessions come from quotations. Create a quotation to start tracking.</div>';return}
     var rows=ssRows(), all=0; activeVouchers('aeQuotes').forEach(function(q){all+=(q.lines||[]).length});
     if(!rows.length){b.innerHTML='<div class="empty"><strong>No matches</strong>No quotation item matches these filters.</div>';return}
-    var advAl=isDoctor()?null:allocate(), advOf=function(cid){return advAl?r2(advAl.advance[cid]||0):0};
+    var pmT=qtPayMap(), advAl=isDoctor()?null:pmT.al, advOf=function(cid){return advAl?r2(advAl.advance[cid]||0):0};
     b.innerHTML='<div class="tbl"><table class="ap-tbl"><thead><tr><th>Client</th><th>Quotation</th><th>Procedure</th><th>Sessions done</th><th class="num">Upcoming</th><th class="num">Left</th>'+(advAl?'<th class="num" title="Client\u2019s unused advance (all departments)">Advance</th>':'')+'<th>Next appointment</th><th>Consent</th><th></th></tr></thead><tbody>'+
       rows.map(function(r){return '<tr><td><button class="link" style="color:inherit" data-client-view="'+esc(r.q.clientId)+'">'+esc(r.q.clientName)+'</button><div class="sub">'+esc(r.q.clientPhone||'')+'</div></td>'+
         '<td class="nowrap"><button class="link" data-ss-qt="'+esc(r.q.id)+'">'+esc(r.q.no)+'</button></td>'+
-        '<td>'+esc(r.l.name)+(r.st.perUnit?'<div class="sub">'+esc(r2(r.st.unitsUsed)+' of '+r2(r.st.unitsQ)+' '+qlUnit(r.l)+' used')+'</div>':'')+'</td><td class="nowrap">'+(r.st.perUnit?r.st.done+' visit'+(r.st.done===1?'':'s'):progBar(r.st.done,r.total))+'</td><td class="num">'+r.upcoming+'</td><td class="num">'+(r.st.perUnit?(r.st.closed?'Completed':'Open'):r.st.left)+'</td>'+(advAl?'<td class="num nowrap">'+(advOf(r.q.clientId)>0.004?'<strong style="color:#1d7a46">'+money(advOf(r.q.clientId))+'</strong>':'—')+'</td>':'')+
+        '<td>'+esc(r.l.name)+(r.st.perUnit?'<div class="sub">'+esc(r2(r.st.unitsUsed)+' of '+r2(r.st.unitsQ)+' '+qlUnit(r.l)+' used')+'</div>':'')+'</td><td class="nowrap">'+(r.st.perUnit?r.st.done+' visit'+(r.st.done===1?'':'s'):progBar(r.st.done,r.total))+'</td><td class="num">'+r.upcoming+'</td><td class="num">'+(r.st.perUnit?(r.st.closed?'Completed':'Open'):r.st.left)+'</td>'+(advAl?'<td class="num nowrap">'+(advOf(r.q.clientId)>0.004?'<strong style="color:#1d7a46">'+money(advOf(r.q.clientId))+'</strong>':'—')+(function(){var lk=qtLock(r.q,pmT);if(lk)return '<div class="sub" style="color:#b42318;font-weight:600">Pending '+money(lk)+'</div>'+(isAdmin()&&!readOnly?'<button class="link" style="font-size:12px" data-ss-allow="'+esc(r.q.id)+'">Allow anyway</button>':'');if(r.q.payOverride)return '<div class="sub">Allowed by Admin'+(isAdmin()&&!readOnly?' · <button class="link" style="font-size:12px" data-ss-allow="'+esc(r.q.id)+'">Undo</button>':'')+'</div>';return ''})()+'</td>':'')+
         '<td class="nowrap">'+(r.next?fmtDate(r.next.date)+'<div class="sub">'+esc(fmtTime(apFrom(r.next)))+'</div>':'—')+'</td>'+
         '<td class="nowrap">'+(function(){var c=consentFor(r.q.id,r.st.key);if(c)return '<button class="link" data-ss-cview="'+esc(c.id)+'"><span class="pill paid">Taken</span></button>';if(consentNeeded(r.q.id,r.st.key))return '<span class="pill unpaid">Required</span>'+(readOnly?'':' <button class="btn sm" data-ss-cons="'+esc(r.q.id)+'|'+r.i+'">Take</button>');return '—'})()+'</td>'+
         '<td><div class="row-acts">'+(!readOnly&&!isDoctor()?'<button class="btn sm" data-ss-recv="'+esc(r.q.id)+'" title="Receive payment" aria-label="Receive payment">\u20B9 Receive</button>':'')+(!readOnly&&(r.st.left>0||r.st.perUnit)?(r.st.open>0||r.st.perUnit?'<button class="btn sm w" data-ss-book="'+esc(r.q.id)+'|'+r.i+'">Appointment</button>':'')+'<button class="btn sm w" data-ss-ses="'+esc(r.q.id)+'|'+r.i+'">Session</button>':'')+(!readOnly&&r.st.perUnit?(r.st.closed?'<button class="btn sm" data-ss-ev="reopen|'+esc(r.q.id)+'|'+r.i+'">Reopen</button>':'<button class="btn sm" data-ss-ev="complete|'+esc(r.q.id)+'|'+r.i+'" title="Treatment finished: move out of the open list">Mark completed</button>'):'')+'<button class="btn sm" data-ss-photos="'+esc(r.q.id)+'|'+r.i+'">Photos</button></div></td></tr>'}).join('')+
       '</tbody></table></div><p class="hint">'+countOf(rows.length,all,'items')+'</p>';
+    $$('[data-ss-ses],[data-ss-cons],[data-ss-photos]',b).forEach(function(x){var v=x.dataset.ssSes||x.dataset.ssCons||x.dataset.ssPhotos||'',q=findIn('aeQuotes',v.split('|')[0]),lk=qtLock(q,pmT);if(lk){x.disabled=true;x.title=qtLockMsg(q,lk);x.style.opacity='.45';x.style.cursor='not-allowed'}});
+    $$('[data-ss-allow]',b).forEach(function(x){x.onclick=function(){var q=findIn('aeQuotes',x.dataset.ssAllow);if(!q)return;var on=!q.payOverride;
+      if(!confirm(on?'Allow consent, sessions and photos for '+q.no+' before full payment?':'Lock '+q.no+' again until full payment?'))return;
+      x.disabled=true;put('aeQuotes',Object.assign({},q,{payOverride:on,payOverrideBy:on?((CURRENT_USER&&CURRENT_USER.name)||''):'',payOverrideAt:on?new Date().toISOString():'',updatedAt:new Date().toISOString()})).then(function(){toast(on?q.no+' allowed without full payment.':q.no+' locked until full payment.');go(current)}).catch(function(e){x.disabled=false;toast(errText(e))})}});
     $$('[data-ss-qt]',b).forEach(function(x){x.onclick=function(){viewQt(x.dataset.ssQt)}});
     $$('[data-ss-ev]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssEv.split('|'),q=findIn('aeQuotes',p[1]),l=q&&q.lines[+p[2]];if(!l)return;x.disabled=true;lineEvent(q,qtLineKey(q,l,+p[2]),p[0])}});
-    $$('[data-ss-photos]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssPhotos.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)viewLinePhotos(q.id,qtLineKey(q,l,+p[1]))}});
+    $$('[data-ss-photos]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssPhotos.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l&&!qtLockStop(q.id))viewLinePhotos(q.id,qtLineKey(q,l,+p[1]))}});
     $$('[data-ss-cview]',b).forEach(function(x){x.onclick=function(){viewConsent(x.dataset.ssCview)}});
     $$('[data-ss-cons]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssCons.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)openConsent(q.id,qtLineKey(q,l,+p[1]))}});
     $$('[data-ss-recv]',b).forEach(function(x){x.onclick=function(){var q=findIn('aeQuotes',x.dataset.ssRecv);if(q)qtReceive(q)}});
@@ -5670,7 +5690,7 @@ function qtSave(){
     }
   }
   var now=new Date().toISOString(), editing=!!d.id, seq=editing?d.seq:nextSeq(S.aeQuotes);
-  var obj={id:d.id||newId('qt'),seq:seq,no:editing?d.no:'QTN-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',conId:con.id,conNo:con.no,doctor:con.doctor||'',
+  var obj={id:d.id||newId('qt'),seq:seq,no:editing?d.no:'QTN-'+pad(seq),date:d.date,clientId:c.id,clientName:c.name,clientPhone:c.phone||'',conId:con.id,conNo:con.no,doctor:con.doctor||'',payOverride:!!(editing&&(findIn('aeQuotes',d.id)||{}).payOverride),
     lines:lines.map(function(l){var x=qtLine(l);return Object.assign({lid:l.lid||newId('ql'),procId:l.procId,name:l.name,sac:l.sac||'',sessions:+l.sessions},qlPU(l)?{perUnit:true,units:r2(+l.units),unitName:qlUnit(l)}:{},{rate:r2(l.rate),discPct:r2(l.discPct||0),gst:+l.gst||0,amount:x.amount,disc:x.disc,net:x.net,tax:x.tax,total:x.total})}),
     amount:t.amount,discount:t.discount,net:t.net,tax:t.tax,otherDesc:String(d.otherDesc||'').trim(),other:t.other,otherGst:+d.otherGst||0,otherTax:t.otherTax,roundOn:!!d.roundOn,roundOff:t.roundOff,total:t.total,createdAt:d.createdAt||now,updatedAt:now};
   var btn=$('#qt-form [type=submit]'); btn.disabled=true;
