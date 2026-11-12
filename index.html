@@ -2562,7 +2562,7 @@ function towardsCell(r){
   if(r.saleId&&phMove(r.saleId)) return '<button class="link" data-pm="'+esc(r.saleId)+'">'+esc(r.saleNo)+'</button> <span class="sub">Pharmacy</span>';
   if(r.aeInvId&&aeInvById(r.aeInvId)) return '<button class="link" data-aeinv="'+esc(r.aeInvId)+'">'+esc(r.aeInvNo)+'</button> <span class="sub">Aesthetics</span>';
   if(r.invoiceNo||r.saleNo||r.aeInvNo) return esc(r.invoiceNo||r.saleNo||r.aeInvNo);
-  return '<span class="pill off">Advance / on account</span>';
+  return '<span class="pill off">Advance / on account</span>'+(r.towards?' <span class="sub">'+esc(r.towards)+'</span>':'');
 }
 SECTIONS.receipts={
   mount:function(){
@@ -2604,7 +2604,8 @@ function filteredReceipts(){
   }).sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||'')});
 }
 function nextReceiptNo(){var rs=nextSeq(S.receipts.concat(S.phReceipts));return {seq:rs,no:'RCT-'+pad(rs)}}
-function recordPayment(billId,clientId){
+function recordPayment(billId,clientId,opts){
+  opts=opts||{};
   if(readOnly){toast('You need Contributor access to record payments.');return}
   if(!S.clients.length){toast('Add a client first.');return}
   var b0=billId&&allBills().find(function(b){return b.id===billId}), st={client:clientId||(b0&&b0.clientId)||'',bill:billId||''};
@@ -2635,6 +2636,7 @@ function recordPayment(billId,clientId){
       sel.onchange=function(){st.bill=sel.value;info(true)};
       payments=mountSplit(m.querySelector('#pf-split'),st,function(){var al=allocate(),b=st.bill&&allBills().find(function(x){return x.id===st.bill});return b?Math.max(0,billInfo(b,al).bal):(st.client?clientAccount(st.client,al).due:0)});
       fill();
+      if(opts.amount!=null&&payments){payments.setAmount(opts.amount>0?opts.amount:'');if(opts.hint)due.textContent=opts.hint}
       m.querySelector('[data-x]').onclick=closeModal;
       m.querySelector('#pf').onsubmit=function(e){
         e.preventDefault();
@@ -2642,7 +2644,7 @@ function recordPayment(billId,clientId){
         var msg=''; if(!c) msg='Choose the client who paid.'; else if(splitError(st,true)) msg=splitError(st,true); else if(!d) msg='Choose the payment date.';
         if(msg){err.textContent=msg;err.hidden=false;return}
         var n=nextReceiptNo(), btn=m.querySelector('[type=submit]'); btn.disabled=true;
-        var r={id:newId('r'),seq:n.seq,no:n.no,date:d,clientId:c.id,clientName:c.name,invoiceId:b&&b.kind==='inv'?b.id:'',invoiceNo:b&&b.kind==='inv'?b.no:'',saleId:b&&b.kind==='sale'?b.id:'',saleNo:b&&b.kind==='sale'?b.no:'',aeInvId:b&&b.kind==='ae'?b.id:'',aeInvNo:b&&b.kind==='ae'?b.no:'',amount:a,module:dept,createdAt:new Date().toISOString()};
+        var r={id:newId('r'),seq:n.seq,no:n.no,date:d,clientId:c.id,clientName:c.name,invoiceId:b&&b.kind==='inv'?b.id:'',invoiceNo:b&&b.kind==='inv'?b.no:'',saleId:b&&b.kind==='sale'?b.id:'',saleNo:b&&b.kind==='sale'?b.no:'',aeInvId:b&&b.kind==='ae'?b.id:'',aeInvNo:b&&b.kind==='ae'?b.no:'',amount:a,module:dept,towards:(!b&&opts.towards)?opts.towards:'',createdAt:new Date().toISOString()};
         writeSplitReceipts(st,r).then(function(){closeModal();toast('Payment receipts saved: '+money(a)+(b?' for '+b.no:' on '+c.name+'’s account'))}).catch(function(e2){btn.disabled=false;err.textContent=errText(e2);err.hidden=false});
       };
     });
@@ -5354,6 +5356,13 @@ function qlUnit(l){return (l&&l.unitName)||'units'}
 function qlQty(l){return qlPU(l)?(+l.units||0):(+l.sessions||0)}
 function qlQtyText(l){return qlPU(l)?r2(+l.units||0)+' '+qlUnit(l):String(+l.sessions||0)}
 function lineEvent(q,key,action){if(readOnly){toast('You need Contributor access.');return}var now=new Date().toISOString();return put('aeLineEv',{id:newId('le'),quoteId:q.id,quoteNo:q.no,lineKey:key,action:action,at:now,by:CURRENT_USER?CURRENT_USER.name:'',createdAt:now,updatedAt:now}).then(function(){toast(action==='complete'?'Marked as completed.':'Reopened.')}).catch(function(e){toast(errText(e))})}
+/* Receive from the Sessions Tracker: quotation total (incl. GST) minus what is already paid on this quotation's invoices, minus the client's unused advance */
+function qtReceive(q){
+  var al=allocate(), paidQ=0;
+  activeVouchers('aeInvoices').forEach(function(v){if(v.cancelled)return;var part=0;(v.lines||[]).forEach(function(l){if(l.quoteId===q.id)part+=aiCalc(l).total});if(part>0)paidQ+=Math.min(part,+al.paid[v.id]||0)});
+  var adv=r2(al.advance[q.clientId]||0), sug=r2(Math.max(0,(+q.total||0)-paidQ-adv));
+  recordPayment('',q.clientId,{amount:sug,towards:'Advance for '+q.no,hint:q.no+' quoted '+money(+q.total||0)+(paidQ>0.004?' · paid on its invoices '+money(paidQ):'')+(adv>0.004?' · advance held '+money(adv):'')+'. Suggested: '+money(sug)+'. You can change it or take more; any extra stays as advance.'});
+}
 function qtLineStats(q,i){
   var l=q.lines[i], key=qtLineKey(q,l,i);
   var ap=activeVouchers('aeAppts').filter(function(a){return a.quoteId===q.id&&a.quoteLineId===key});
@@ -5456,13 +5465,14 @@ SECTIONS['ae-procedures']={
         '<td>'+esc(r.l.name)+(r.st.perUnit?'<div class="sub">'+esc(r2(r.st.unitsUsed)+' of '+r2(r.st.unitsQ)+' '+qlUnit(r.l)+' used')+'</div>':'')+'</td><td class="nowrap">'+(r.st.perUnit?r.st.done+' visit'+(r.st.done===1?'':'s'):progBar(r.st.done,r.total))+'</td><td class="num">'+r.upcoming+'</td><td class="num">'+(r.st.perUnit?(r.st.closed?'Completed':'Open'):r.st.left)+'</td>'+(advAl?'<td class="num nowrap">'+(advOf(r.q.clientId)>0.004?'<strong style="color:#1d7a46">'+money(advOf(r.q.clientId))+'</strong>':'—')+'</td>':'')+
         '<td class="nowrap">'+(r.next?fmtDate(r.next.date)+'<div class="sub">'+esc(fmtTime(apFrom(r.next)))+'</div>':'—')+'</td>'+
         '<td class="nowrap">'+(function(){var c=consentFor(r.q.id,r.st.key);if(c)return '<button class="link" data-ss-cview="'+esc(c.id)+'"><span class="pill paid">Taken</span></button>';if(consentNeeded(r.q.id,r.st.key))return '<span class="pill unpaid">Required</span>'+(readOnly?'':' <button class="btn sm" data-ss-cons="'+esc(r.q.id)+'|'+r.i+'">Take</button>');return '—'})()+'</td>'+
-        '<td><div class="row-acts">'+(!readOnly&&(r.st.left>0||r.st.perUnit)?(r.st.open>0||r.st.perUnit?'<button class="btn sm w" data-ss-book="'+esc(r.q.id)+'|'+r.i+'">Appointment</button>':'')+'<button class="btn sm w" data-ss-ses="'+esc(r.q.id)+'|'+r.i+'">Session</button>':'')+(!readOnly&&r.st.perUnit?(r.st.closed?'<button class="btn sm" data-ss-ev="reopen|'+esc(r.q.id)+'|'+r.i+'">Reopen</button>':'<button class="btn sm" data-ss-ev="complete|'+esc(r.q.id)+'|'+r.i+'" title="Treatment finished: move out of the open list">Mark completed</button>'):'')+'<button class="btn sm" data-ss-photos="'+esc(r.q.id)+'|'+r.i+'">Photos</button></div></td></tr>'}).join('')+
+        '<td><div class="row-acts">'+(!readOnly&&!isDoctor()?'<button class="btn sm" data-ss-recv="'+esc(r.q.id)+'" title="Receive payment" aria-label="Receive payment">\u20B9 Receive</button>':'')+(!readOnly&&(r.st.left>0||r.st.perUnit)?(r.st.open>0||r.st.perUnit?'<button class="btn sm w" data-ss-book="'+esc(r.q.id)+'|'+r.i+'">Appointment</button>':'')+'<button class="btn sm w" data-ss-ses="'+esc(r.q.id)+'|'+r.i+'">Session</button>':'')+(!readOnly&&r.st.perUnit?(r.st.closed?'<button class="btn sm" data-ss-ev="reopen|'+esc(r.q.id)+'|'+r.i+'">Reopen</button>':'<button class="btn sm" data-ss-ev="complete|'+esc(r.q.id)+'|'+r.i+'" title="Treatment finished: move out of the open list">Mark completed</button>'):'')+'<button class="btn sm" data-ss-photos="'+esc(r.q.id)+'|'+r.i+'">Photos</button></div></td></tr>'}).join('')+
       '</tbody></table></div><p class="hint">'+countOf(rows.length,all,'items')+'</p>';
     $$('[data-ss-qt]',b).forEach(function(x){x.onclick=function(){viewQt(x.dataset.ssQt)}});
     $$('[data-ss-ev]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssEv.split('|'),q=findIn('aeQuotes',p[1]),l=q&&q.lines[+p[2]];if(!l)return;x.disabled=true;lineEvent(q,qtLineKey(q,l,+p[2]),p[0])}});
     $$('[data-ss-photos]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssPhotos.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)viewLinePhotos(q.id,qtLineKey(q,l,+p[1]))}});
     $$('[data-ss-cview]',b).forEach(function(x){x.onclick=function(){viewConsent(x.dataset.ssCview)}});
     $$('[data-ss-cons]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssCons.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(l)openConsent(q.id,qtLineKey(q,l,+p[1]))}});
+    $$('[data-ss-recv]',b).forEach(function(x){x.onclick=function(){var q=findIn('aeQuotes',x.dataset.ssRecv);if(q)qtReceive(q)}});
     $$('[data-ss-ses]',b).forEach(function(x){x.onclick=function(){var p=x.dataset.ssSes.split('|'),q=findIn('aeQuotes',p[0]),l=q&&q.lines[+p[1]];if(!l)return;sesOpenForm({quoteId:q.id,lineKey:qtLineKey(q,l,+p[1])})}});
     $$('[data-ss-book]',b).forEach(function(x){x.onclick=function(){
       var p=x.dataset.ssBook.split('|'), q=findIn('aeQuotes',p[0]), i=+p[1], l=q&&q.lines[i]; if(!l) return;
