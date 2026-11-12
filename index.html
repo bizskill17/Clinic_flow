@@ -6818,7 +6818,20 @@ SECTIONS['ae-dashboard']={
 
 /* ---------- Pending Tasks (one per department, clickable counts) ---------- */
 var pendSel={spa:'',aes:'',pha:''};
+/* Pending Tasks for a Consultant/Doctor: only their own appointments and consultations */
+function docPendTasks(){
+  var me=CURRENT_USER.id, t=todayStr(), conByAp={};
+  activeVouchers('aeCons').forEach(function(c){if(c.apptId)conByAp[c.apptId]=c});
+  var appts=activeVouchers('aeAppts').filter(function(a){return apStaff(a).indexOf(me)>=0});
+  var start=function(a){var c=conByAp[a.id];if(c){viewCon(c.id);return}conDraft=conNew();conDraft.clientId=a.clientId;conDraft.clientName=a.clientName||'';conDraft.apptId=a.id;conMode='form';go('ae-consultations')};
+  return [
+    {key:'missed',label:'Missed Appointments',hint:'No-shows and past appointments never completed or cancelled. The front desk reschedules these.',ro:true,rows:appts.filter(apMissed).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a))+' · '+a.status,date:a.date}})},
+    {key:'sched',label:'Scheduled Appointments',hint:'Your appointments from today onwards.',upcoming:true,noBadge:true,rows:appts.filter(function(a){return a.date>=t&&AP_ACTIVE.indexOf(a.status)>=0&&!apMissed(a)}).sort(function(a,b){return ((a.date||'')+apFrom(a)).localeCompare((b.date||'')+apFrom(b))}).map(function(a){return {main:a.clientName,sub:apWhat(a)+' · '+fmtDate(a.date)+' '+fmtTime(apFrom(a)),date:a.date,btn:conByAp[a.id]?'Open consultation':'Start consultation',run:function(){start(a)}}})},
+    {key:'conip',label:'Consultations In Progress',hint:'Your consultations saved as In progress. Open one and mark it Complete when done.',rows:activeVouchers('aeCons').filter(function(c){return !conDone(c)&&(c.staffIds||[]).indexOf(me)>=0}).sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).map(function(c){return {main:c.clientName,sub:(c.no||'')+' · '+fmtDate(c.date),date:c.date,btn:'Open',run:function(){viewCon(c.id)}}})}
+  ];
+}
 function pendTasks(d){
+  if(d==='aes'&&isDoctor()) return docPendTasks();
   var t=todayStr(), out=[], al=allocate();
   var dues=function(kind,view){return dueBills(al).filter(function(b){return b.kind===kind}).map(function(b){var x=billInfo(b,al);return {main:b.clientName,sub:(b.clientPhone||'')+' · '+b.no+' · '+fmtDate(b.date),date:b.date,amt:x.bal,btn:'View',run:function(){view(b.id)}}})};
   if(d==='spa'){
@@ -6894,7 +6907,7 @@ function pendSection(d){return {
       '<div class="tbl pend-tbl"><table><thead><tr><th>Task</th><th class="num">Count</th><th class="num">Amount</th><th>'+colH+'</th><th></th></tr></thead><tbody>'+
       tasks.map(function(x,ix){var on=!!op[x.key], c=['--m6','--m5','--m4','--m3','--m2','--m11','--m13','--m7'][ix%8];
         var row='<tr class="pend-row'+(x.rows.length?'':' zero')+(on?' open':'')+'" data-pk="'+esc(x.key)+'" tabindex="0" role="button" aria-expanded="'+on+'"><td><span class="pdot" style="background:var('+c+')"></span><strong>'+esc(x.label)+'</strong></td><td class="num"><span class="pcnt'+(x.upcoming?' info':'')+'">'+x.rows.length+'</span></td><td class="num">'+(x.hasAmt&&x.rows.length?money(x.amt):'—')+'</td><td>'+(x.rows.length?pendAge(x):'—')+'</td><td class="num"><span class="pcar">▸</span></td></tr>';
-        if(on) row+='<tr class="pend-detail"><td colspan="5"><div class="pin"><p class="sub" style="margin:0 0 6px">'+esc(x.hint)+'</p>'+(x.rows.length?x.rows.map(function(r,i){return '<div class="pit"><div class="pwho"><strong>'+(r.view?'<button class="link" style="color:inherit" data-pview="'+esc(x.key)+'|'+i+'">'+esc(r.main)+'</button>':esc(r.main))+'</strong><span class="sub">'+esc(r.sub)+'</span></div>'+(r.amt!=null?'<span class="pamt">'+money(r.amt)+'</span>':'')+(readOnly&&!r.ro?'':'<button class="btn sm primary w" data-prun="'+esc(x.key)+'|'+i+'">'+esc(r.btn)+'</button>')+'</div>'}).join(''):'<p class="hint" style="margin:6px 0 0">Nothing pending here.</p>')+'</div></td></tr>';
+        if(on) row+='<tr class="pend-detail"><td colspan="5"><div class="pin"><p class="sub" style="margin:0 0 6px">'+esc(x.hint)+'</p>'+(x.rows.length?x.rows.map(function(r,i){return '<div class="pit"><div class="pwho"><strong>'+(r.view?'<button class="link" style="color:inherit" data-pview="'+esc(x.key)+'|'+i+'">'+esc(r.main)+'</button>':esc(r.main))+'</strong><span class="sub">'+esc(r.sub)+'</span></div>'+(r.amt!=null?'<span class="pamt">'+money(r.amt)+'</span>':'')+((readOnly&&!r.ro)||!r.btn?'':'<button class="btn sm primary w" data-prun="'+esc(x.key)+'|'+i+'">'+esc(r.btn)+'</button>')+'</div>'}).join(''):'<p class="hint" style="margin:6px 0 0">Nothing pending here.</p>')+'</div></td></tr>';
         return row}).join('')+'</tbody></table></div>';
     b.innerHTML=html;
     var find=function(v){var p=v.split('|'),t=tasks.find(function(x){return x.key===p[0]});return t&&t.rows[+p[1]]};
@@ -7553,7 +7566,7 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
   if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
-  if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-appointments','ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
+  if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-pending','ae-appointments','ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
   if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
