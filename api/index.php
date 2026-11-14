@@ -80,8 +80,8 @@ function waSendTpl(PDO $p,array $cfg,string $group,string $to,array $params,?arr
   if($params)$comps[]=['type'=>'body','parameters'=>array_map(function($t){return['type'=>'text','text'=>mb_substr(preg_replace('/\s+/',' ',(string)$t),0,900)];},$params)];
   $tpl=['name'=>$cfg['tpl'][$group],'language'=>['code'=>$cfg['lang']?:'en']];if($comps)$tpl['components']=$comps;
   [$code,$r]=waHttp($base.'/messages',$cfg['token'],['messaging_product'=>'whatsapp','to'=>$to,'type'=>'template','template'=>$tpl]);
-  if($code>=200&&$code<300&&!empty($r['messages'][0]['id']))return['ok'=>true,'waId'=>$r['messages'][0]['id']];
-  return['ok'=>false,'error'=>waErr($r)];
+  if($code>=200&&$code<300&&!empty($r['messages'][0]['id']))return['ok'=>true,'waId'=>$r['messages'][0]['id'],'payload'=>$tpl];
+  return['ok'=>false,'error'=>waErr($r),'payload'=>$tpl,'code'=>(int)($r['error']['code']??0)];
 }
 /* public "Pay now" page: your UPI QR code and UPI ID */
 function payPage(PDO $pdo):void{
@@ -136,7 +136,8 @@ if(($_GET['action']??'')==='wa_webhook'){
       foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(($d['waId']??'')!==$wid)continue;
         $new=(string)($st['status']??'');$rank=['sent'=>1,'delivered'=>2,'read'=>3,'failed'=>4];
         if(($rank[$new]??0)>=($rank[$d['status']??'sent']??0)||$new==='failed'){$d['status']=$new;$d[$new.'At']=gmdate('c');
-          if($new==='failed'){$e=$st['errors'][0]??[];$d['error']=mb_substr(trim('(#'.($e['code']??'').') '.($e['title']??'').' '.($e['error_data']['details']??$e['message']??'')),0,300);}
+          if($new==='failed'){$e=$st['errors'][0]??[];$d['error']=mb_substr(trim('(#'.($e['code']??'').') '.($e['title']??'').' '.($e['error_data']['details']??$e['message']??'')),0,300);
+            $n=(int)($d['retries']??0);if((int)($e['code']??0)===130429&&!empty($d['payload'])&&$n<3){$d['retryAt']=gmdate('c',time()+[300,1200,3600][$n]);}else{unset($d['retryAt']);}}
           save($pdo,'wa_log',$r['id'],$d);}}}
     $names=[];foreach(($v['contacts']??[]) as $ct)$names[(string)($ct['wa_id']??'')]=(string)($ct['profile']['name']??'');
     foreach(($v['messages']??[]) as $m){waInboxStore($pdo,$m,$names);}
@@ -192,6 +193,8 @@ if($action==='pay_qr'){if($method!=='POST')respond(405,['error'=>'Method not all
   if($img!==''&&(!preg_match('#^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$#',$img)||strlen($img)>2000000))respond(400,['error'=>'Choose a PNG or JPG image under 1.5 MB.']);
   save($pdo,'pay_qr','main',['img'=>$img,'at'=>gmdate('c'),'by'=>$u['name']??'']);respond(200,['ok'=>true,'qrImg'=>$img]);}
 if($action==='wa_status'){me($pdo);waDaily($pdo);respond(200,waPublic(waCfg($pdo),false));}
+if($action==='wa_tick'){me($pdo);respond(200,waRetryDue($pdo,false));}
+if($action==='wa_retry'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!manager($u))respond(403,['error'=>'Only Admin or Manager can retry messages.']);$r=waRetryDue($pdo,true);$c=waCfg($pdo);if(!empty($c['on']['birthday'])){$b=waBirthdays($pdo,$c);$r['sent']+=$b['sent'];$r['failed']+=$b['failed'];}respond(200,$r);}
 if($action==='wa_get'){$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can open WhatsApp settings.']);respond(200,waPublic(waCfg($pdo),true)+['lastRun'=>waLastRun($pdo),'lastHook'=>(string)(waDoc($pdo,'wa_runs','hook-last')['at']??''),'hook'=>waDoc($pdo,'wa_runs','hook-last')?:null,'verify'=>waDoc($pdo,'wa_runs','hook-verify')?:null,'qrImg'=>(string)(waDoc($pdo,'pay_qr','main')['img']??'')]);}
 if($action==='wa_save'){if($method!=='POST')respond(405,['error'=>'Method not allowed.']);$u=me($pdo);if(!admin($u))respond(403,['error'=>'Only Admin can change WhatsApp settings.']);$c=waCfg($pdo);
   foreach(['phoneId','wabaId'] as $k)if(isset($in[$k]))$c[$k]=preg_replace('/\D/','',(string)$in[$k]);
@@ -231,8 +234,29 @@ if($action==='wa_send'){if($method!=='POST')respond(405,['error'=>'Method not al
   elseif(!empty($in['fileId'])){$hit=fileFind(fileDir($cfg),(string)$in['fileId']);if(!$hit||$hit[1]!=='application/pdf'){$l=waLog($pdo,$base+['to'=>$to,'status'=>'failed','error'=>'The PDF file was not found on the server.']);respond(200,['ok'=>false,'error'=>$l['error'],'log'=>$l]);}$file=[$hit[0],preg_replace('/[^A-Za-z0-9._ -]/','',(string)($in['filename']??'document.pdf'))?:'document.pdf'];}
   $params=array_values(array_map('strval',is_array($in['params']??null)?$in['params']:[]));
   $r=waSendTpl($pdo,$c,$group,$to,$params,$file);if($tmp)@unlink($tmp);
-  $l=waLog($pdo,$base+['to'=>$to,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'']);
+  $l=waLog($pdo,$base+['to'=>$to,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','payload'=>$r['payload']??null]+(!$r['ok']&&($r['code']??0)===130429?['retries'=>0,'retryAt'=>gmdate('c',time()+300)]:[]));
   respond(200,['ok'=>$r['ok'],'error'=>$r['error']??'','log'=>$l,'test'=>$tn!=='']);}
+/* Messages Meta refused with #130429 ("too many messages") are sent again later from their saved payload, one every 2.5 s.
+   Runs at most every 2 minutes; $all = the Retry failed button (failed messages of the last 3 days, retried now). */
+function waRetryDue(PDO $pdo,bool $all=false):array{
+  $c=waCfg($pdo);if($c['phoneId']===''||$c['token']==='')return['sent'=>0,'failed'=>0,'left'=>0];
+  if(!$all){$lk=waDoc($pdo,'wa_runs','retry-tick');if(!empty($lk['at'])&&time()-strtotime((string)$lk['at'])<110)return['sent'=>0,'failed'=>0,'left'=>0];save($pdo,'wa_runs','retry-tick',['at'=>gmdate('c')]);}
+  $q=$pdo->prepare("SELECT id,data FROM docs WHERE collection='wa_log' AND data LIKE ?");$q->execute([$all?'%"status":"failed"%':'%"retryAt"%']);
+  $due=[];$now=time();$from=$now-3*86400;
+  foreach($q->fetchAll() as $r){$d=json_decode($r['data'],true)?:[];if(($d['status']??'')!=='failed'||empty($d['payload'])||empty($d['to']))continue;
+    if($all){if(strtotime((string)($d['at']??''))<$from)continue;}elseif(empty($d['retryAt'])||strtotime((string)$d['retryAt'])>$now)continue;
+    $due[]=[$r['id'],$d];}
+  usort($due,function($a,$b){return strcmp((string)($a[1]['at']??''),(string)($b[1]['at']??''));});
+  $max=$all?40:6;$sent=0;$failed=0;@set_time_limit(180);ignore_user_abort(true);
+  $base=rtrim((string)($GLOBALS['cfg']['waBase']??'https://graph.facebook.com/v25.0'),'/').'/'.rawurlencode($c['phoneId']);
+  foreach(array_slice($due,0,$max) as $i=>[$id,$d]){if($i)usleep(2500000);
+    [$code,$r]=waHttp($base.'/messages',$c['token'],['messaging_product'=>'whatsapp','to'=>$d['to'],'type'=>'template','template'=>$d['payload']]);
+    $n=(int)($d['retries']??0)+1;$d['retries']=$n;$d['retriedAt']=gmdate('c');
+    if($code>=200&&$code<300&&!empty($r['messages'][0]['id'])){$d['status']='sent';$d['waId']=$r['messages'][0]['id'];$d['error']='';unset($d['retryAt']);$sent++;}
+    else{$d['error']=waErr($r);if((int)($r['error']['code']??0)===130429&&$n<3)$d['retryAt']=gmdate('c',time()+[300,1200,3600][$n]??3600);else unset($d['retryAt']);$failed++;}
+    save($pdo,'wa_log',$id,$d);}
+  return['sent'=>$sent,'failed'=>$failed,'left'=>max(0,count($due)-$max)];
+}
 /* daily job (Hostinger cron): birthday wishes. Called with the secret cron key. */
 /* birthday wishes for today (IST); safe to call many times: each client gets one wish per year */
 function waBirthdays(PDO $pdo,array $c):array{
@@ -242,8 +266,8 @@ function waBirthdays(PDO $pdo,array $c):array{
   foreach($rows as $row){$cl=json_decode($row['data'],true)?:[];$dob=(string)($cl['dob']??'');if(strlen($dob)<10||substr($dob,5,5)!==$md||!empty($cl['waOff']))continue;
     $to=waPhone((string)($cl['phone']??''));$tn=waTest($c);$orig=$to;if($tn!==''){$to=$tn;}if(strlen($to)<11)continue;$dk=($tn!==''?'test:':'').$row['id'].'|'.$yr;if(waLogged($pdo,'birthday',$dk))continue;
     $first=trim(explode(' ',trim((string)($cl['name']??'')))[0]??'');$r=waSendTpl($pdo,$c,'birthday',$to,[$first?:'there',$bname?:'us'],null);
-    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','by'=>'Automatic (daily)']+($tn!==''?['test'=>true,'origTo'=>$orig]:[]));
-    $r['ok']?$sent++:$failed++;}
+    waLog($pdo,['kind'=>'birthday','group'=>'birthday','clientId'=>$row['id'],'clientName'=>(string)($cl['name']??''),'to'=>$to,'dedupe'=>$dk,'status'=>$r['ok']?'sent':'failed','error'=>$r['error']??'','waId'=>$r['waId']??'','payload'=>$r['payload']??null,'by'=>'Automatic (daily)']+(!$r['ok']&&($r['code']??0)===130429?['retries'=>0,'retryAt'=>gmdate('c',time()+300)]:[])+($tn!==''?['test'=>true,'origTo'=>$orig]:[]));
+    $r['ok']?$sent++:$failed++;usleep(2500000);}
   return['sent'=>$sent,'failed'=>$failed];
 }
 /* runs once a day, the first time the system is used after 9:00 AM IST (no cron needed) */

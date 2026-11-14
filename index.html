@@ -6970,6 +6970,8 @@ var WA_LABEL={invoice:'Invoice',quotation:'Quotation',receipt:'Receipt',prescrip
 function waErrText(e){var m=e&&e.message||'';return m&&m!=='Failed to fetch'&&m!=='Request failed.'?m:(m==='Request failed.'?'The server returned an error. Please send a screenshot.':'No connection to the server.')}
 function waLoadStatus(){return authCall('wa_status').then(function(x){WA=x||WA}).catch(function(){})}
 setInterval(function(){if(CURRENT_USER)waLoadStatus()},30*60*1000);
+/* every 2 minutes: let the server resend messages Meta throttled (#130429) */
+setInterval(function(){if(CURRENT_USER&&WA&&WA.configured&&storeMode==='live')authCall('wa_tick').catch(function(){})},2*60*1000);
 function waOn(group){return !!(WA.configured&&WA.on&&WA.on[group])}
 function waB64(data){
   var u8=data instanceof Uint8Array?data:new Uint8Array(data instanceof ArrayBuffer?data:(data&&data.buffer?data.buffer:[]));
@@ -7136,15 +7138,27 @@ SECTIONS['wa-settings']={
   }
 };
 var waLogF={q:'',status:''};
+/* Retry failed (last 3 days): the server resends saved messages one by one; older failures without a saved copy are rebuilt and sent from here */
+function waRetryFailed(btn,b){
+  var from=new Date(Date.now()-3*864e5).toISOString(), old=S.waLog.filter(function(l){return l.status==='failed'&&!l.payload&&(l.at||'')>=from&&l.docId&&WA_GROUP[l.kind]&&l.kind!=='birthday'});
+  if(!confirm('Send the failed WhatsApp messages of the last 3 days again? They go one by one, a few seconds apart.'))return;
+  btn.disabled=true;btn.textContent='Retrying…';
+  authCall('wa_retry').then(function(x){
+    var seen={};old.forEach(function(l){var k=l.kind+'|'+l.docId;if(seen[k])return;seen[k]=1;waQueue(l.kind,l.docId,true)});
+    var n=Object.keys(seen).length;
+    toast('Sent again: '+(x.sent||0)+(x.failed?' · still failing: '+x.failed:'')+(n?' · '+n+' older message'+(n>1?'s':'')+' queued':'')+(x.left?' · '+x.left+' more on the next retry':''));
+  }).catch(function(e){toast(errText(e))}).then(function(){btn.disabled=false;btn.textContent='Retry failed';apiCall('GET',{collection:'wa_log'}).then(function(r){S.waLog=r.records||[];waLogView(b)}).catch(function(){})});
+}
 function waLogView(b){
   if(!ready()){b.innerHTML=loadingHTML();return}
   var q=norm(waLogF.q), all=S.waLog.slice().sort(function(a,c){return (c.at||'').localeCompare(a.at||'')});
   var list=all.filter(function(l){return (!waLogF.status||l.status===waLogF.status)&&(!q||norm((l.clientName||'')+' '+(l.to||'')+' '+(l.docNo||'')+' '+(WA_LABEL[l.group]||'')).indexOf(q)>=0)});
-  if(!b.querySelector('#wl-q')) b.innerHTML='<div class="toolbar"><div class="field grow"><label for="wl-q">Search</label><input type="search" id="wl-q" placeholder="Client, number or document" value="'+esc(waLogF.q)+'"></div><div class="field"><label for="wl-st">Status</label><select id="wl-st">'+optList([['','All'],['sent','Sent'],['delivered','Delivered'],['read','Read'],['failed','Failed']],waLogF.status)+'</select></div></div><div id="wl-body"></div>';
+  if(!b.querySelector('#wl-q')) b.innerHTML='<div class="toolbar"><div class="field grow"><label for="wl-q">Search</label><input type="search" id="wl-q" placeholder="Client, number or document" value="'+esc(waLogF.q)+'"></div><div class="field"><label for="wl-st">Status</label><select id="wl-st">'+optList([['','All'],['sent','Sent'],['delivered','Delivered'],['read','Read'],['failed','Failed']],waLogF.status)+'</select></div>'+(isMgr()&&!readOnly?'<div class="field"><label>&nbsp;</label><button type="button" class="btn" id="wl-retry">Retry failed</button></div>':'')+'</div><div id="wl-body"></div>';
+  var rb=$('#wl-retry',b); if(rb&&!rb.dataset.on){rb.dataset.on='1';rb.onclick=function(){waRetryFailed(rb,b)}}
   $('#wl-q',b).oninput=function(e){waLogF.q=e.target.value;waLogView(b)}; $('#wl-st',b).onchange=function(e){waLogF.status=e.target.value;waLogView(b)};
   var t=$('#wl-body',b);
   if(!all.length){t.innerHTML='<div class="empty"><strong>No messages yet</strong>Messages sent on WhatsApp will be listed here.</div>';return}
-  t.innerHTML=list.length?'<div class="tbl"><table><thead><tr><th>Timestamp</th><th>Message</th><th>Client</th><th>Number</th><th>Sent by</th><th>Status</th></tr></thead><tbody>'+list.slice(0,500).map(function(l){var d=new Date(l.at);return '<tr><td class="nowrap">'+esc(d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}))+'</td><td>'+esc(WA_LABEL[l.group]||l.group||'')+(l.docNo?'<div class="sub">'+esc(l.docNo)+'</div>':'')+'</td><td>'+esc(l.clientName||'')+'</td><td class="nowrap">'+esc(l.to||'')+(l.test?'<div class="sub">Test · client '+esc(l.origTo||'no number')+'</div>':'')+'</td><td>'+esc(l.by||'—')+(l.manual?'<div class="sub">Resent</div>':'')+'</td><td>'+(function(){var w=WA_ST[l.status]||WA_ST.sent;return '<span class="pill '+w[1]+'">'+w[0]+'</span>'+(l.status==='failed'?'<div class="sub">'+esc(l.error||'')+'</div>':'')})()+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(Math.min(list.length,500),all.length,'messages')+'</p>':'<div class="empty"><strong>No matches</strong>No message matches these filters.</div>';
+  t.innerHTML=list.length?'<div class="tbl"><table><thead><tr><th>Timestamp</th><th>Message</th><th>Client</th><th>Number</th><th>Sent by</th><th>Status</th></tr></thead><tbody>'+list.slice(0,500).map(function(l){var d=new Date(l.at);return '<tr><td class="nowrap">'+esc(d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}))+'</td><td>'+esc(WA_LABEL[l.group]||l.group||'')+(l.docNo?'<div class="sub">'+esc(l.docNo)+'</div>':'')+'</td><td>'+esc(l.clientName||'')+'</td><td class="nowrap">'+esc(l.to||'')+(l.test?'<div class="sub">Test · client '+esc(l.origTo||'no number')+'</div>':'')+'</td><td>'+esc(l.by||'—')+(l.manual?'<div class="sub">Resent</div>':'')+'</td><td>'+(function(){var w=WA_ST[l.status]||WA_ST.sent;return '<span class="pill '+w[1]+'">'+w[0]+'</span>'+(l.status==='failed'?'<div class="sub">'+esc(l.error||'')+'</div>':'')+(l.status==='failed'&&l.retryAt?'<div class="sub" style="color:#9a5b00">Will retry automatically at '+esc(new Date(l.retryAt).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'numeric',minute:'2-digit',hour12:true}))+'</div>':'')+(l.retries?'<div class="sub">Retried '+l.retries+(l.retries>1?' times':' time')+'</div>':'')})()+'</td></tr>'}).join('')+'</tbody></table></div><p class="hint">'+countOf(Math.min(list.length,500),all.length,'messages')+'</p>':'<div class="empty"><strong>No matches</strong>No message matches these filters.</div>';
 }
 
 /* =========================================================
