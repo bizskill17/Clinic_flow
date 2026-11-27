@@ -2344,7 +2344,7 @@ function renderItems(){
     return '<div class="line" data-i="'+i+'">'+
       '<div class="line-top"><span class="line-n" aria-hidden="true">'+(i+1)+'</span>'+
       '<div class="field"><label for="it-svc-'+i+'">Service <span class="req">*</span><span class="mem-tag" hidden></span></label><div class="h-svc"></div></div>'+
-      '<div class="field"><label for="it-perf-'+i+'">Performed by</label><div class="h-perf"></div></div>'+
+      '<div class="field"><label for="it-perf-'+i+'">Performed by <span class="req">*</span></label><div class="h-perf"></div></div>'+
       '<div class="field"><label for="it-ref-'+i+'">Referred by</label><div class="h-ref"></div></div>'+
       '<button type="button" class="icon-btn it-del" aria-label="Remove service '+(i+1)+'"'+(draft.items.length===1?' disabled':'')+'>×</button></div>'+
       '<div class="line-nums">'+
@@ -2415,7 +2415,7 @@ function saveInvoice(){
   if(!draft.date) return show('Choose the invoice date.');
   if(!c) return show('Choose a client, or add a new one with the + button.');
   if(!items.length) return show('Add at least one service.');
-  for(var k=0;k<items.length;k++){var it=items[k];if(!(it.qty>0))return show('Quantity for '+it.name+' must be at least 1.');if(it.rate<0)return show('Rate for '+it.name+' can’t be negative.');if(it.discPct<0||it.discPct>100)return show('Discount % for '+it.name+' must be between 0 and 100.')}
+  for(var k=0;k<items.length;k++){var it=items[k];if(!(it.qty>0))return show('Quantity for '+it.name+' must be at least 1.');if(it.rate<0)return show('Rate for '+it.name+' can’t be negative.');if(it.discPct<0||it.discPct>100)return show('Discount % for '+it.name+' must be between 0 and 100.');if(!it.performedBy&&!it.performedByName)return show('Choose who performed '+it.name+' (Performed by).')}
   var sp=!draft.id&&memSplit(items); if(sp) return saveWithMembership(sp,c,show);
   var mp=0;
   var saved=items.map(function(it){var lc=lineCalc(it,mp),sv=S.services.find(function(x){return x.id===it.serviceId});return {consumables:cleanCons(it.consumables),serviceId:it.serviceId,name:it.name,sac:(sv&&sv.sac)||it.sac||'',qty:+it.qty,rate:r2(it.rate),discPct:r2(it.discPct),disc:lc.disc,memDisc:lc.memDisc,gst:+it.gst||0,amount:lc.amount,tax:lc.tax,total:lc.total,stdRate:+it.stdRate>+it.rate?r2(it.stdRate):0,clubId:+it.stdRate>+it.rate?(it.clubId||''):'',performedBy:it.performedBy||'',performedByName:userName(it.performedBy),referredBy:it.referredBy||'',referredByName:userName(it.referredBy)}});
