@@ -476,6 +476,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="spa-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+            <li><button class="mi c4" data-key="spa-work">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+              Work Report</button></li>
             <li><button class="mi c6" data-key="expenses">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
               Expenses</button></li>
@@ -598,6 +601,9 @@ input[type=month],input[type=time]{width:100%;background:var(--surface);border:1
             <li><button class="mi c7" data-key="ae-inventory">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4Z"/><path d="m3 7 9 4 9-4M12 11v10"/></svg></span>
               Inventory</button></li>
+            <li><button class="mi c4" data-key="ae-work">
+              <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+              Work Report</button></li>
             <li><button class="mi c6" data-key="expenses">
               <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
               Expenses</button></li>
@@ -1388,7 +1394,7 @@ var MODES=['Cash','UPI','Card','Bank transfer','Other'];
 var GST_RATES=[0,3,5,12,18,28,40];
 var CATS=['Massage','Facial','Body treatment','Hair','Nails','Wellness','Package'];
 var INDIA_STATES=[['Andhra Pradesh','AP'],['Arunachal Pradesh','AR'],['Assam','AS'],['Bihar','BR'],['Chhattisgarh','CG'],['Goa','GA'],['Gujarat','GJ'],['Haryana','HR'],['Himachal Pradesh','HP'],['Jharkhand','JH'],['Karnataka','KA'],['Kerala','KL'],['Madhya Pradesh','MP'],['Maharashtra','MH'],['Manipur','MN'],['Meghalaya','ML'],['Mizoram','MZ'],['Nagaland','NL'],['Odisha','OD'],['Punjab','PB'],['Rajasthan','RJ'],['Sikkim','SK'],['Tamil Nadu','TN'],['Telangana','TS'],['Tripura','TR'],['Uttar Pradesh','UP'],['Uttarakhand','UK'],['West Bengal','WB'],['Andaman and Nicobar Islands','AN'],['Chandigarh','CH'],['Dadra and Nagar Haveli and Daman and Diu','DH'],['Delhi','DL'],['Jammu and Kashmir','JK'],['Ladakh','LA'],['Lakshadweep','LD'],['Puducherry','PY']];
-var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],'exp-cats':['--m6','--m6-soft'],vendors:['--m13','--m13-soft'],expenses:['--m6','--m6-soft'],'vendor-pay':['--m13','--m13-soft'],'exp-report':['--m6','--m6-soft'],'vendor-payable':['--m13','--m13-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
+var COLORS={dashboard:['--m0','--m0-soft'],clients:['--m1','--m1-soft'],services:['--m2','--m2-soft'],categories:['--m7','--m7-soft'],cities:['--m8','--m8-soft'],states:['--m9','--m9-soft'],users:['--m10','--m10-soft'],business:['--mg','--mg-soft'],'ph-dashboard':['--m0','--m0-soft'],'spa-pending':['--m6','--m6-soft'],'ae-pending':['--m6','--m6-soft'],'ph-pending':['--m6','--m6-soft'],'ae-dashboard':['--m0','--m0-soft'],'ae-proc-cats':['--m12','--m12-soft'],'ae-proc-master':['--m11','--m11-soft'],'ae-appointments':['--m2','--m2-soft'],'ae-consultations':['--m13','--m13-soft'],'ae-quotations':['--m3','--m3-soft'],'ae-procedures':['--m7','--m7-soft'],'ae-sessions':['--m11','--m11-soft'],'spa-inventory':['--m7','--m7-soft'],'ae-inventory':['--m7','--m7-soft'],'ae-invoices':['--m4','--m4-soft'],'ae-receipts':['--m5','--m5-soft'],'ae-outstanding':['--m6','--m6-soft'],'ph-items':['--m11','--m11-soft'],'ph-item-categories':['--m12','--m12-soft'],'ph-suppliers':['--m13','--m13-soft'],'ph-item-in':['--m2','--m2-soft'],'ph-item-issue':['--m3','--m3-soft'],'ph-receipts':['--m5','--m5-soft'],'ph-outstanding':['--m6','--m6-soft'],'ph-inventory':['--m7','--m7-soft'],'ph-low-stock':['--m3','--m3-soft'],'invoice-form':['--m3','--m3-soft'],invoices:['--m4','--m4-soft'],'ph-sup-pay':['--m13','--m13-soft'],'ph-payable':['--m13','--m13-soft'],'mem-plans':['--m3','--m3-soft'],'club-plans':['--m4','--m4-soft'],'wa-settings':['--m5','--m5-soft'],'exp-cats':['--m6','--m6-soft'],vendors:['--m13','--m13-soft'],expenses:['--m6','--m6-soft'],'vendor-pay':['--m13','--m13-soft'],'exp-report':['--m6','--m6-soft'],'spa-work':['--m4','--m4-soft'],'ae-work':['--m4','--m4-soft'],'vendor-payable':['--m13','--m13-soft'],clubs:['--m4','--m4-soft'],packages:['--m3','--m3-soft'],receipts:['--m5','--m5-soft'],outstanding:['--m6','--m6-soft']};
 
 /* ---------- store ---------- */
 var S={aeLineEv:[],clients:[],services:[],invoices:[],receipts:[],categories:[],cities:[],states:[],users:[],business:[],phItems:[],phCats:[],phSuppliers:[],phMoves:[],phReceipts:[],aeCats:[],aeProcs:[],aeAppts:[],aeCons:[],aeQuotes:[],aeSessions:[],aeInvoices:[],aeConsents:[],deptOpen:[],deptUsage:[],memPlans:[],members:[],redemptions:[],phPays:[],clubPlans:[],clubs:[],waLog:[],expCats:[],vendors:[],expenses:[],vpays:[],waInbox:[]};
@@ -7572,6 +7578,74 @@ SECTIONS['vendor-payable']={
 
 /* ---------- Expense report ---------- */
 var erF={from:'',to:'',dept:''}, erLastDept=null;
+/* ---------- Work Report: work done in a period, by staff or by procedure / service ---------- */
+var wkF={from:'',to:'',by:'staff'};
+/* one entry per piece of work: {date, no, client, clientId, what, staff:[ids or names], units, value(before GST)} */
+function wkWho(ids,names){ids=(ids||[]).filter(Boolean);if(ids.length)return ids.slice();return String(names||'').split(',').map(function(x){return x.trim()}).filter(Boolean).map(function(x){return '~'+x})}
+function wkEntries(d){
+  var out=[],inR=function(x){return (!wkF.from||x>=wkF.from)&&(!wkF.to||x<=wkF.to)};
+  if(d==='aes'){
+    activeVouchers('aeSessions').forEach(function(s){if(s.cancelled||!inR(s.date||''))return;
+      var q=findIn('aeQuotes',s.quoteId),ln=q&&sesLine(q,s.quoteLineId),l=ln?ln.l:null,val=0,units=0;
+      if(l){if(qlPU(l)){units=+s.units||0;val=r2(units*(+l.rate||0)*(1-Math.min(Math.max(+l.discPct||0,0),100)/100))}else{var n=qlQty(l)||1;val=r2(qtLine(l).net/n)}}
+      out.push({kind:'Session',date:s.date,no:s.no,client:s.clientName||'',clientId:s.clientId,what:s.procName||(l&&l.name)||'Procedure',staff:wkWho(s.staffIds,s.performedBy),units:units,unitName:units?(s.unitName||(l?qlUnit(l):'units')):'',value:val})});
+    activeVouchers('aeCons').forEach(function(c){if(c.cancelled||!inR(c.date||''))return;
+      out.push({kind:'Consultation',date:c.date,no:c.no,client:c.clientName||'',clientId:c.clientId,what:'Consultation',staff:wkWho(c.staffIds,c.doctor),units:0,value:0})});
+  }else{
+    activeVouchers('invoices').forEach(function(v){if(v.cancelled||!inR(v.date||'')||v.redId||v.redemptionId)return;
+      (v.items||[]).forEach(function(it){if(!it.serviceId)return;out.push({kind:'Service',date:v.date,no:v.no,client:v.clientName||'',clientId:v.clientId,what:it.name||'Service',staff:it.performedBy?[it.performedBy]:(it.performedByName?['~'+it.performedByName]:[]),qty:+it.qty||1,units:0,value:r2(it.amount!=null?+it.amount:lineCalc(it).amount)})})});
+    activeVouchers('redemptions').forEach(function(rd){if(rd.cancelled||!inR(rd.date||''))return;
+      (rd.items||[]).forEach(function(it){if(!it.serviceId)return;out.push({kind:'Package visit',date:rd.date,no:rd.no,client:rd.clientName||'',clientId:rd.clientId,what:it.name||'Service',staff:it.performedBy?[it.performedBy]:(it.performedByName?['~'+it.performedByName]:[]),qty:+it.qty||1,units:0,value:r2(+it.worth||0)})})});
+  }
+  return out.sort(function(a,b){return (a.date||'').localeCompare(b.date||'')||String(a.no).localeCompare(String(b.no))});
+}
+function wkStaffName(id){return id.charAt(0)==='~'?id.slice(1):(userName(id)||'Unknown user')}
+/* group: by staff (work shared by 2 people counts for each; its value is split between them) or by procedure */
+function wkGroups(d){
+  var es=wkEntries(d),g={},add=function(key,label,e,share){var x=g[key]=g[key]||{key:key,label:label,n:0,cons:0,units:0,unitName:'',value:0,clients:{},list:[]};
+    if(e.kind==='Consultation')x.cons++;else x.n+=e.qty||1;x.units+=e.units||0;if(e.unitName)x.unitName=e.unitName;x.value=r2(x.value+share);x.clients[e.clientId||e.client]=1;x.list.push(e)};
+  es.forEach(function(e){
+    if(wkF.by==='staff'){var st=e.staff.length?e.staff:['~(not recorded)'];st.forEach(function(id){add(id,wkStaffName(id),e,r2(e.value/st.length))})}
+    else if(e.kind!=='Consultation')add(e.what.toLowerCase(),e.what,e,e.value);
+  });
+  var rows=Object.keys(g).map(function(k){var x=g[k];x.clientsN=Object.keys(x.clients).length;return x}).sort(function(a,b){return b.value-a.value||b.n-a.n||a.label.localeCompare(b.label)});
+  var tot={n:0,cons:0,value:0,clients:{}};es.forEach(function(e){if(e.kind==='Consultation')tot.cons++;else tot.n+=e.qty||1;tot.value=r2(tot.value+e.value);tot.clients[e.clientId||e.client]=1});
+  tot.clientsN=Object.keys(tot.clients).length;return {rows:rows,tot:tot,entries:es};
+}
+function wkSection(d){
+  var aes=d==='aes', key=aes?'ae-work':'spa-work', word=aes?'procedure':'service', Word=aes?'Procedure':'Service', workW=aes?'Sessions':'Services';
+  return {
+    mount:function(){
+      if(!wkF.from){wkF.from=monthStart();wkF.to=todayStr()}
+      work.innerHTML=head('Work Report','<button class="btn" id="wk-export">Export CSV</button>')+
+        '<div class="toolbar"><div class="seg" role="group" aria-label="Group by"><button type="button" class="btn'+(wkF.by==='staff'?' primary':'')+'" data-wkby="staff">By staff</button><button type="button" class="btn'+(wkF.by==='proc'?' primary':'')+'" data-wkby="proc">By '+word+'</button></div>'+dateFilters('wkd',wkF)+'</div><div id="body"></div>';
+      var up=function(){SECTIONS[key].update()};
+      $$('[data-wkby]').forEach(function(b){b.onclick=function(){wkF.by=b.dataset.wkby;go(key)}});
+      $('#wkd-from').onchange=function(e){wkF.from=e.target.value;up()};
+      $('#wkd-to').onchange=function(e){wkF.to=e.target.value;up()};
+      $('#wk-export').onclick=function(){var r=wkGroups(d),byS=wkF.by==='staff';
+        saveFile('work-report-'+(byS?'staff':word)+'-'+(wkF.from||'')+'-to-'+(wkF.to||'')+'.csv',csv([[byS?'Staff':Word,workW].concat(aes&&byS?['Consultations']:[]).concat(aes?['Units']:[]).concat(['Clients','Value before GST'])].concat(r.rows.map(function(x){return [x.label,x.n].concat(aes&&byS?[x.cons]:[]).concat(aes?[x.units?x.units+' '+x.unitName:'']:[]).concat([x.clientsN,x.value])})).concat([['Total',r.tot.n].concat(aes&&byS?[r.tot.cons]:[]).concat(aes?['']:[]).concat([r.tot.clientsN,r.tot.value])])))};
+    },
+    update:function(){
+      var b=$('#body',work);if(!b)return;
+      if(!ready()){b.innerHTML=loadingHTML();return}
+      var r=wkGroups(d),byS=wkF.by==='staff';
+      if(!r.entries.length){b.innerHTML='<div class="empty"><strong>No work recorded in this period</strong>Change the dates.</div>';return}
+      b.innerHTML='<div class="tiles">'+tile('--m4',workW+' done',String(r.tot.n),aes?'Completed sessions':'Services billed and package visits')+(aes?tile('--m5','Consultations',String(r.tot.cons),'In this period'):'')+tile('--m3','Clients served',String(r.tot.clientsN),'Different clients')+tile('--m6','Value of work',money0(r.tot.value),'Before GST')+'</div>'+
+        '<div class="tbl"><table><thead><tr><th>'+(byS?'Staff':Word)+'</th><th class="num">'+workW+'</th>'+(aes&&byS?'<th class="num">Consultations</th>':'')+(aes?'<th class="num">Units</th>':'')+'<th class="num">Clients</th><th class="num">Value before GST</th><th class="num">Share</th></tr></thead><tbody>'+
+        r.rows.map(function(x,i){return '<tr class="click-row" data-wkrow="'+i+'" tabindex="0"><td><strong>'+esc(x.label)+'</strong></td><td class="num">'+x.n+'</td>'+(aes&&byS?'<td class="num">'+x.cons+'</td>':'')+(aes?'<td class="num">'+(x.units?x.units+' '+esc(x.unitName):'—')+'</td>':'')+'<td class="num">'+x.clientsN+'</td><td class="num">'+money(x.value)+'</td><td class="num">'+(r.tot.value>0?Math.round(x.value/r.tot.value*100)+'%':'—')+'</td></tr>'}).join('')+
+        '</tbody><tfoot><tr><td>Total</td><td class="num">'+r.tot.n+'</td>'+(aes&&byS?'<td class="num">'+r.tot.cons+'</td>':'')+(aes?'<td></td>':'')+'<td class="num">'+r.tot.clientsN+'</td><td class="num">'+money(r.tot.value)+'</td><td></td></tr></tfoot></table></div>';
+      $$('[data-wkrow]',b).forEach(function(tr){var open=function(){var x=r.rows[+tr.dataset.wkrow];if(!x)return;
+        var m=openModal('<h2>'+esc(x.label)+'</h2><p class="hint">'+fmtDate(wkF.from)+' to '+fmtDate(wkF.to)+' · '+x.list.length+' entr'+(x.list.length===1?'y':'ies')+'</p><div class="tbl"><table><thead><tr><th>Date</th><th>Entry</th><th>Client</th><th>'+(byS?Word:'Staff')+'</th><th class="num">Value</th></tr></thead><tbody>'+
+          x.list.map(function(e){return '<tr><td class="nowrap">'+fmtDate(e.date)+'</td><td class="nowrap">'+esc(e.no||'')+'<div class="sub">'+esc(e.kind)+'</div></td><td>'+esc(e.client)+'</td><td>'+(byS?esc(e.what)+(e.units?'<div class="sub">'+e.units+' '+esc(e.unitName)+'</div>':''):esc(e.staff.map(wkStaffName).join(', ')||'—'))+'</td><td class="num">'+(e.value?money(e.value):'—')+'</td></tr>'}).join('')+
+          '</tbody></table></div><div class="m-actions"><button class="btn" data-x>Close</button></div>','--m4',true);
+        m.querySelector('[data-x]').onclick=closeModal};
+        tr.onclick=open;tr.onkeydown=function(e){if(e.key==='Enter')open()}});
+    }
+  };
+}
+SECTIONS['ae-work']=wkSection('aes');
+SECTIONS['spa-work']=wkSection('spa');
 SECTIONS['exp-report']={
   mount:function(){
     if(erLastDept!==dept){erF.dept=expDeptDefault();erLastDept=dept;if(!erF.from){erF.from=monthStart();erF.to=todayStr()}}
@@ -7713,9 +7787,9 @@ $$('.mgroup').forEach(function(t){var sub=$('#'+t.getAttribute('aria-controls'))
 
 function roleKeys(){
   if(!CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager')return null;
-  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
+  if(CURRENT_USER.role==='Spa')return ['dashboard','spa-pending','spa-work','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','services','categories','mem-plans','club-plans','cities','states','invoice-form','invoices','packages','clubs','receipts','outstanding','spa-inventory'];
   if(CURRENT_USER.role==='Consultant/Doctor'){var acc=Array.isArray(CURRENT_USER.access)?CURRENT_USER.access:[];return ['ae-pending','ae-appointments','ae-consultations'].concat(DOC_VIEWS.map(function(v){return v[0]}).filter(function(k){return acc.indexOf(k)>=0}))}
-  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
+  if(CURRENT_USER.role==='Aesthetics')return ['ae-dashboard','ae-pending','ae-work','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ae-proc-master','ae-appointments','ae-consultations','ae-quotations','ae-sessions','ae-procedures','ae-invoices','ae-receipts','ae-outstanding','ae-inventory'];
   return ['ph-dashboard','ph-pending','clients','exp-cats','vendors','expenses','vendor-pay','exp-report','vendor-payable','cities','states','ph-items','ph-item-categories','ph-suppliers','ph-item-in','ph-item-issue','ph-receipts','ph-sup-pay','ph-outstanding','ph-payable','ph-inventory','ph-low-stock'];
 }
 function allowedDept(d){return !CURRENT_USER||CURRENT_USER.role==='Admin'||CURRENT_USER.role==='Manager'||(CURRENT_USER.role==='Spa'&&d==='spa')||((CURRENT_USER.role==='Aesthetics'||CURRENT_USER.role==='Consultant/Doctor')&&d==='aes')||(CURRENT_USER.role==='Pharmacy'&&d==='pha')}
